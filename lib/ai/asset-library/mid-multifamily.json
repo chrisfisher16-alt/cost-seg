@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Unit appliances",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.02,
+    "typicalPctHigh": 0.04,
+    "examples": "Per-unit refrigerators, ranges, dishwashers, microwaves, washers/dryers."
+  },
+  {
+    "name": "Carpet and vinyl flooring",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.015,
+    "typicalPctHigh": 0.03,
+    "examples": "Carpet and resilient flooring throughout units and common areas."
+  },
+  {
+    "name": "Common-area furnishings",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.005,
+    "typicalPctHigh": 0.015,
+    "examples": "Clubhouse furniture, gym equipment, removable decor."
+  },
+  {
+    "name": "Security and access systems",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.005,
+    "typicalPctHigh": 0.015,
+    "examples": "Access-control panels, cameras, keypads (removable)."
+  },
+  {
+    "name": "Site work and paving",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.03,
+    "typicalPctHigh": 0.06,
+    "examples": "Parking lot, sidewalks, curbs, site concrete."
+  },
+  {
+    "name": "Landscaping",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.02,
+    "typicalPctHigh": 0.04,
+    "examples": "Trees, shrubs, sod, irrigation system."
+  },
+  {
+    "name": "Exterior site amenities",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.01,
+    "typicalPctHigh": 0.03,
+    "examples": "Pool, dog park, playground, tennis/pickleball courts, site lighting."
+  },
+  {
+    "name": "Building structure",
+    "depreciationClass": "27_5yr",
+    "typicalPctLow": 0.45,
+    "typicalPctHigh": 0.65,
+    "examples": "Foundation, structural framing, roof, exterior envelope."
+  },
+  {
+    "name": "Core building systems",
+    "depreciationClass": "27_5yr",
+    "typicalPctLow": 0.12,
+    "typicalPctHigh": 0.2,
+    "examples": "Central HVAC or per-unit, domestic water, sanitary, fire, electrical."
+  },
+  {
+    "name": "Interior finishes (fixed)",
+    "depreciationClass": "27_5yr",
+    "typicalPctLow": 0.05,
+    "typicalPctHigh": 0.12,
+    "examples": "Hardwood, tile, cabinetry, built-in millwork, attached countertops."
+  }
+]

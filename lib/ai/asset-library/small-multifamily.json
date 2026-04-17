@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Appliances per unit",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.015,
+    "typicalPctHigh": 0.035,
+    "examples": "Refrigerators, ranges, dishwashers across 2–4 units."
+  },
+  {
+    "name": "Carpet and vinyl flooring",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.01,
+    "typicalPctHigh": 0.025,
+    "examples": "Carpet, vinyl plank, sheet vinyl — treated as short-life floor coverings."
+  },
+  {
+    "name": "Removable fixtures",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.005,
+    "typicalPctHigh": 0.015,
+    "examples": "Blinds, decorative fixtures, unit-specific removable items."
+  },
+  {
+    "name": "Site work and hardscape",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.025,
+    "typicalPctHigh": 0.05,
+    "examples": "Parking lot, sidewalks, curbs, trash enclosure."
+  },
+  {
+    "name": "Landscaping",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.02,
+    "typicalPctHigh": 0.04,
+    "examples": "Shared landscaping, trees, irrigation."
+  },
+  {
+    "name": "Exterior lighting, fencing, signage",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.005,
+    "typicalPctHigh": 0.02,
+    "examples": "Parking lot lighting, perimeter fencing, property signage."
+  },
+  {
+    "name": "Building structure",
+    "depreciationClass": "27_5yr",
+    "typicalPctLow": 0.5,
+    "typicalPctHigh": 0.7,
+    "examples": "Foundation, framing, roof, exterior walls, windows, doors."
+  },
+  {
+    "name": "Core building systems",
+    "depreciationClass": "27_5yr",
+    "typicalPctLow": 0.1,
+    "typicalPctHigh": 0.18,
+    "examples": "HVAC (central or per-unit), plumbing, electrical, water heaters."
+  },
+  {
+    "name": "Interior finishes (fixed)",
+    "depreciationClass": "27_5yr",
+    "typicalPctLow": 0.05,
+    "typicalPctHigh": 0.1,
+    "examples": "Hardwood, tile, attached cabinetry, countertops."
+  }
+]

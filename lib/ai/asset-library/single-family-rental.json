@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Appliances",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.015,
+    "typicalPctHigh": 0.03,
+    "examples": "Refrigerator, range, dishwasher, microwave, washer, dryer."
+  },
+  {
+    "name": "Removable fixtures",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.005,
+    "typicalPctHigh": 0.015,
+    "examples": "Blinds, area rugs, plug-in lamps, decorative light fixtures."
+  },
+  {
+    "name": "Site work and hardscape",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.02,
+    "typicalPctHigh": 0.04,
+    "examples": "Driveway, walkways, patios, retaining walls."
+  },
+  {
+    "name": "Landscaping",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.02,
+    "typicalPctHigh": 0.05,
+    "examples": "Trees, shrubs, sod, irrigation."
+  },
+  {
+    "name": "Exterior lighting and fencing",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.005,
+    "typicalPctHigh": 0.015,
+    "examples": "Path lights, perimeter fencing, gates."
+  },
+  {
+    "name": "Building structure",
+    "depreciationClass": "27_5yr",
+    "typicalPctLow": 0.55,
+    "typicalPctHigh": 0.75,
+    "examples": "Foundation, framing, roof, siding, windows, doors, drywall."
+  },
+  {
+    "name": "Core building systems",
+    "depreciationClass": "27_5yr",
+    "typicalPctLow": 0.1,
+    "typicalPctHigh": 0.18,
+    "examples": "HVAC, plumbing, electrical, water heater."
+  },
+  {
+    "name": "Interior finishes (fixed)",
+    "depreciationClass": "27_5yr",
+    "typicalPctLow": 0.05,
+    "typicalPctHigh": 0.12,
+    "examples": "Attached flooring, cabinetry, countertops, tile, trim."
+  }
+]

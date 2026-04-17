@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Tenant improvements (short life)",
+    "depreciationClass": "5yr",
+    "typicalPctLow": 0.05,
+    "typicalPctHigh": 0.15,
+    "examples": "Removable partitions, millwork, specialty lighting, branded fit-out."
+  },
+  {
+    "name": "FF&E — furniture and equipment",
+    "depreciationClass": "7yr",
+    "typicalPctLow": 0.02,
+    "typicalPctHigh": 0.08,
+    "examples": "Office furniture, workstations, back-of-house equipment."
+  },
+  {
+    "name": "Process and specialty equipment",
+    "depreciationClass": "7yr",
+    "typicalPctLow": 0.0,
+    "typicalPctHigh": 0.1,
+    "examples": "Restaurant kitchen equipment, lab equipment, retail POS (vertical-dependent)."
+  },
+  {
+    "name": "Site work and paving",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.04,
+    "typicalPctHigh": 0.08,
+    "examples": "Parking, sidewalks, retaining walls, site concrete."
+  },
+  {
+    "name": "Landscaping and exterior lighting",
+    "depreciationClass": "15yr",
+    "typicalPctLow": 0.015,
+    "typicalPctHigh": 0.03,
+    "examples": "Landscaping, irrigation, exterior lighting, monument signage."
+  },
+  {
+    "name": "Building shell",
+    "depreciationClass": "39yr",
+    "typicalPctLow": 0.4,
+    "typicalPctHigh": 0.6,
+    "examples": "Foundation, structure, roof, exterior envelope, fire-rated assemblies."
+  },
+  {
+    "name": "Core building systems",
+    "depreciationClass": "39yr",
+    "typicalPctLow": 0.12,
+    "typicalPctHigh": 0.22,
+    "examples": "HVAC, plumbing, electrical distribution, fire suppression, elevators."
+  },
+  {
+    "name": "Permanent interior finishes",
+    "depreciationClass": "39yr",
+    "typicalPctLow": 0.05,
+    "typicalPctHigh": 0.12,
+    "examples": "Attached ceilings, built-in millwork, hard-tile restrooms, permanent wall finishes."
+  }
+]
