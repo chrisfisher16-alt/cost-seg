@@ -192,8 +192,10 @@ model AiAuditLog {
 
 model Lead {
   id                        String   @id @default(uuid()) @db.Uuid
-  email                     String
-  source                    String   // e.g. "estimator", "pricing_page"
+  // Nullable — anonymous estimator submissions create a Lead first; email
+  // may be attached later via the follow-up capture form.
+  email                     String?
+  source                    String   // e.g. "estimator", "estimator_email"
   estimatorInputs           Json?
   estimatedSavingsLowCents  Int?
   estimatedSavingsHighCents Int?
