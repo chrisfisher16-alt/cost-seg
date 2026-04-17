@@ -179,3 +179,131 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
 
   return { ok: true, storagePath, signedUrl, expiresAtIso };
 }
+
+interface DeliverEngineeredArgs {
+  studyId: string;
+  actorId: string;
+  engineerName: string;
+  engineerLicense: string;
+  /** Already-uploaded storage path — typically `{studyId}/deliverables/engineer-study.pdf`. */
+  storagePath: string;
+}
+
+/**
+ * Deliver a Tier 2 engineer-signed PDF. Assumes the PDF is already in
+ * Supabase Storage at `storagePath`. Flips status to DELIVERED, records the
+ * signing engineer on the Study via StudyEvent, and emails the customer.
+ */
+export async function deliverEngineeredStudy(
+  args: DeliverEngineeredArgs,
+): Promise<DeliverAiReportResult> {
+  const prisma = getPrisma();
+  const study = await prisma.study.findUnique({
+    where: { id: args.studyId },
+    select: {
+      id: true,
+      tier: true,
+      status: true,
+      user: { select: { email: true, name: true } },
+      property: { select: { address: true, city: true, state: true } },
+    },
+  });
+  if (!study) return { ok: false, skippedReason: "study not found" };
+  if (study.tier !== "ENGINEER_REVIEWED") {
+    return { ok: false, skippedReason: "not a Tier 2 study" };
+  }
+
+  const signedUrl = await createSignedReadUrl(args.storagePath, DELIVERABLE_EXPIRY_SECONDS);
+  const expiresAtIso = new Date(Date.now() + DELIVERABLE_EXPIRY_SECONDS * 1000).toISOString();
+
+  try {
+    await sendReportDeliveredEmail({
+      to: study.user.email,
+      firstName: study.user.name ? study.user.name.split(" ")[0] : null,
+      tier: study.tier,
+      downloadUrl: signedUrl,
+      propertyAddress: `${study.property.address}, ${study.property.city}, ${study.property.state}`,
+      expiresAtIso,
+    });
+  } catch (err) {
+    console.error("[deliver] engineer email send failed", err);
+  }
+
+  await prisma.$transaction([
+    prisma.study.update({
+      where: { id: args.studyId },
+      data: {
+        status: "DELIVERED",
+        deliveredAt: new Date(),
+        deliverableUrl: args.storagePath,
+        engineerSignedAt: new Date(),
+      },
+    }),
+    prisma.studyEvent.create({
+      data: {
+        studyId: args.studyId,
+        kind: "engineer.signed_and_delivered",
+        actorId: args.actorId,
+        payload: {
+          storagePath: args.storagePath,
+          engineerName: args.engineerName,
+          engineerLicense: args.engineerLicense,
+          expiresAtIso,
+        } as Prisma.InputJsonValue,
+      },
+    }),
+  ]);
+
+  return { ok: true, storagePath: args.storagePath, signedUrl, expiresAtIso };
+}
+
+/**
+ * Regenerate a fresh 7-day signed URL for an already-delivered study and
+ * re-send the delivery email. Doesn't move status.
+ */
+export async function resendDeliveryEmail(
+  studyId: string,
+  actorId: string,
+): Promise<DeliverAiReportResult> {
+  const prisma = getPrisma();
+  const study = await prisma.study.findUnique({
+    where: { id: studyId },
+    select: {
+      id: true,
+      tier: true,
+      status: true,
+      deliverableUrl: true,
+      user: { select: { email: true, name: true } },
+      property: { select: { address: true, city: true, state: true } },
+    },
+  });
+  if (!study || !study.deliverableUrl) {
+    return { ok: false, skippedReason: "no deliverable to resend" };
+  }
+  if (study.status !== "DELIVERED") {
+    return { ok: false, skippedReason: "study is not DELIVERED" };
+  }
+
+  const signedUrl = await createSignedReadUrl(study.deliverableUrl, DELIVERABLE_EXPIRY_SECONDS);
+  const expiresAtIso = new Date(Date.now() + DELIVERABLE_EXPIRY_SECONDS * 1000).toISOString();
+
+  await sendReportDeliveredEmail({
+    to: study.user.email,
+    firstName: study.user.name ? study.user.name.split(" ")[0] : null,
+    tier: study.tier,
+    downloadUrl: signedUrl,
+    propertyAddress: `${study.property.address}, ${study.property.city}, ${study.property.state}`,
+    expiresAtIso,
+  });
+
+  await prisma.studyEvent.create({
+    data: {
+      studyId,
+      kind: "admin.delivery_email_resent",
+      actorId,
+      payload: { expiresAtIso } as Prisma.InputJsonValue,
+    },
+  });
+
+  return { ok: true, storagePath: study.deliverableUrl, signedUrl, expiresAtIso };
+}

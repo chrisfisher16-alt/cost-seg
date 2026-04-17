@@ -59,3 +59,4 @@ prisma/migrations/dev/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.shared.json
+.claude/worktrees/
