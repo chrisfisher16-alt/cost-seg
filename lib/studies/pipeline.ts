@@ -231,6 +231,7 @@ export async function finalizeStudy(input: PipelineFinalize): Promise<void> {
     narrative: input.narrative,
     totalCents: input.assetScheduleTotalCents,
   } as Prisma.InputJsonValue;
+
   await prisma.$transaction([
     prisma.study.update({
       where: { id: input.studyId },
@@ -247,6 +248,16 @@ export async function finalizeStudy(input: PipelineFinalize): Promise<void> {
       },
     }),
   ]);
+
+  // Tier 1 auto-delivers via the `study.ai.complete` Inngest chain. Tier 2
+  // waits for admin-triggered engineer upload (Phase 7).
+  if (input.tier === "AI_REPORT") {
+    const { inngest } = await import("@/inngest/client");
+    await inngest.send({
+      name: "study.ai.complete",
+      data: { studyId: input.studyId, tier: input.tier },
+    });
+  }
 }
 
 export async function markStudyFailed(studyId: string, reason: string): Promise<void> {

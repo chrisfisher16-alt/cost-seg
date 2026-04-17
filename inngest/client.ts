@@ -12,6 +12,13 @@ export type AppEvents = {
       tier: "AI_REPORT" | "ENGINEER_REVIEWED";
     };
   };
+  "study.ai.complete": {
+    name: "study.ai.complete";
+    data: {
+      studyId: string;
+      tier: "AI_REPORT" | "ENGINEER_REVIEWED";
+    };
+  };
 };
 
 export const inngest = new Inngest({
