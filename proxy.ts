@@ -2,18 +2,32 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Refreshes the Supabase auth token cookie if it's about to expire. Runs on
- * every matched request. Noop when Supabase env is missing (local dev).
+ * Header name our layouts read to reconstruct the inbound path. Next doesn't
+ * surface request.nextUrl.pathname to Server Components directly, so we
+ * forward it as a request header the app-layer `requireAuth` can read.
+ */
+export const PATHNAME_HEADER = "x-cs-pathname";
+
+/**
+ * Refreshes the Supabase auth token cookie if it's about to expire and
+ * stamps the inbound pathname as a header. Runs on every matched request.
+ * Noop when Supabase env is missing (local dev).
  *
  * Next 16 renamed this file convention from `middleware.ts` to `proxy.ts`
  * and the export from `middleware` to `proxy`.
  */
 export async function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname + request.nextUrl.search;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(PATHNAME_HEADER, path);
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return NextResponse.next({ request });
+  if (!url || !anon) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
-  let response = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(url, anon, {
     cookies: {
@@ -24,7 +38,7 @@ export async function proxy(request: NextRequest) {
         for (const { name, value } of cookiesToSet) {
           request.cookies.set(name, value);
         }
-        response = NextResponse.next({ request });
+        response = NextResponse.next({ request: { headers: requestHeaders } });
         for (const { name, value, options } of cookiesToSet) {
           response.cookies.set(name, value, options);
         }

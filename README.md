@@ -23,19 +23,26 @@ Private and pre-V1. Single operator.
 
 See [`docs/runbooks/local-dev.md`](docs/runbooks/local-dev.md).
 
+## Deploying
+
+See [`docs/runbooks/deploy.md`](docs/runbooks/deploy.md) for Vercel +
+Supabase + Stripe + Inngest + Resend setup, per-release checks, and
+post-deploy smoke. The [go-live checklist](docs/runbooks/go-live-checklist.md)
+covers the business + legal posture before the first paying customer.
+
 ## Phase status
 
 V1 is being built phase by phase (see §9 of the master prompt):
 
 - [x] Phase 0 — scaffolding
-- [ ] Phase 1 — landing + estimator
-- [ ] Phase 2 — auth + dashboards
-- [ ] Phase 3 — Stripe + study creation
-- [ ] Phase 4 — intake + document upload
-- [ ] Phase 5 — OCR + AI pipeline
-- [ ] Phase 6 — PDF + email delivery
-- [ ] Phase 7 — admin dashboard + manual Tier 2 handoff
-- [ ] Phase 8 — e2e hardening
+- [x] Phase 1 — landing + estimator
+- [x] Phase 2 — auth + dashboards
+- [x] Phase 3 — Stripe + study creation
+- [x] Phase 4 — intake + document upload
+- [x] Phase 5 — OCR + AI pipeline
+- [x] Phase 6 — PDF + email delivery
+- [x] Phase 7 — admin dashboard + manual Tier 2 handoff
+- [x] Phase 8 — e2e hardening + deploy readiness
 
 ## Decisions
 

@@ -50,8 +50,8 @@ export async function requireAuth(redirectTo?: string): Promise<AuthContext> {
  * logged-in user without the right role is sent to `/dashboard` (we don't
  * surface the existence of admin pages to customers).
  */
-export async function requireRole(roles: UserRole[]): Promise<AuthContext> {
-  const ctx = await requireAuth();
+export async function requireRole(roles: UserRole[], redirectTo?: string): Promise<AuthContext> {
+  const ctx = await requireAuth(redirectTo);
   if (!roles.includes(ctx.user.role)) {
     redirect("/dashboard" as Route);
   }

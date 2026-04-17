@@ -1,5 +1,7 @@
+import type { Route } from "next";
 import Link from "next/link";
 
+import { downloadMyDeliverableAction } from "./actions";
 import { requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 
@@ -16,6 +18,7 @@ async function listStudies(userId: string) {
         tier: true,
         status: true,
         createdAt: true,
+        deliverableUrl: true,
         property: { select: { address: true, city: true, state: true } },
       },
     });
@@ -85,14 +88,19 @@ type StudyCardProps = {
     tier: "AI_REPORT" | "ENGINEER_REVIEWED";
     status: string;
     createdAt: Date;
+    deliverableUrl: string | null;
     property: { address: string; city: string; state: string };
   };
 };
 
 function StudyCard({ study }: StudyCardProps) {
+  const intakeHref =
+    study.status === "AWAITING_DOCUMENTS" ? (`/studies/${study.id}/intake` as Route) : null;
+  const canDownload = study.status === "DELIVERED" && Boolean(study.deliverableUrl);
+
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200/70 bg-white p-4 text-sm dark:border-zinc-800/70 dark:bg-zinc-950">
-      <div>
+      <div className="min-w-0 flex-1">
         <p className="font-medium">
           {study.property.address}, {study.property.city}, {study.property.state}
         </p>
@@ -101,7 +109,29 @@ function StudyCard({ study }: StudyCardProps) {
           {study.createdAt.toLocaleDateString()}
         </p>
       </div>
-      <StatusBadge status={study.status} />
+      <div className="flex items-center gap-3">
+        {intakeHref ? (
+          <Link href={intakeHref} className="text-xs underline">
+            Continue intake
+          </Link>
+        ) : null}
+        {canDownload ? (
+          <form
+            action={async () => {
+              "use server";
+              await downloadMyDeliverableAction(study.id);
+            }}
+          >
+            <button
+              type="submit"
+              className="inline-flex h-8 items-center justify-center rounded-md border border-zinc-300 px-3 text-xs font-medium transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+            >
+              Download report
+            </button>
+          </form>
+        ) : null}
+        <StatusBadge status={study.status} />
+      </div>
     </li>
   );
 }
