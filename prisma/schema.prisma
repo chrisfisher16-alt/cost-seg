@@ -1,0 +1,206 @@
+// Cost Seg — Prisma schema
+// See docs/adr/0002-authz-without-rls.md for authorization strategy.
+// RLS is intentionally disabled on these tables; app-layer helpers enforce
+// ownership + role on every query.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: connection URLs live in prisma.config.ts. The runtime Prisma
+// client is constructed with a Postgres driver adapter — see lib/db/client.ts.
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Users + roles
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  ENGINEER
+}
+
+model User {
+  id         String     @id @default(uuid()) @db.Uuid
+  email      String     @unique
+  name       String?
+  role       UserRole   @default(CUSTOMER)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  properties Property[]
+  studies    Study[]
+
+  @@index([role])
+}
+
+// ---------------------------------------------------------------------------
+// Property under study
+// ---------------------------------------------------------------------------
+
+enum PropertyType {
+  SINGLE_FAMILY_RENTAL
+  SHORT_TERM_RENTAL
+  SMALL_MULTIFAMILY
+  MID_MULTIFAMILY
+  COMMERCIAL
+}
+
+model Property {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @db.Uuid
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address       String
+  city          String
+  state         String       @db.Char(2)
+  zip           String
+  purchasePrice Decimal      @db.Decimal(14, 2)
+  acquiredAt    DateTime     @db.Date
+  propertyType  PropertyType
+  squareFeet    Int?
+  yearBuilt     Int?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  studies       Study[]
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Study — the core unit of work
+// ---------------------------------------------------------------------------
+
+enum Tier {
+  AI_REPORT
+  ENGINEER_REVIEWED
+}
+
+enum StudyStatus {
+  PENDING_PAYMENT
+  AWAITING_DOCUMENTS
+  PROCESSING
+  AI_COMPLETE
+  AWAITING_ENGINEER
+  ENGINEER_REVIEWED
+  DELIVERED
+  FAILED
+  REFUNDED
+}
+
+model Study {
+  id               String       @id @default(uuid()) @db.Uuid
+  userId           String       @db.Uuid
+  user             User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  propertyId       String       @db.Uuid
+  property         Property     @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  tier             Tier
+  status           StudyStatus  @default(PENDING_PAYMENT)
+  pricePaidCents   Int
+  stripeSessionId  String?      @unique
+  assetSchedule    Json?
+  deliverableUrl   String?
+  engineerId       String?      @db.Uuid
+  engineerSignedAt DateTime?
+  deliveredAt      DateTime?
+  failedReason     String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  documents        Document[]
+  events           StudyEvent[]
+  aiAuditLogs      AiAuditLog[]
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([tier, status])
+}
+
+// ---------------------------------------------------------------------------
+// Documents uploaded by the customer + parsed outputs
+// ---------------------------------------------------------------------------
+
+enum DocumentKind {
+  CLOSING_DISCLOSURE
+  IMPROVEMENT_RECEIPTS
+  PROPERTY_PHOTO
+  APPRAISAL
+  OTHER
+}
+
+model Document {
+  id            String       @id @default(uuid()) @db.Uuid
+  studyId       String       @db.Uuid
+  study         Study        @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  kind          DocumentKind
+  storagePath   String       // Supabase storage object key
+  filename      String
+  sizeBytes    Int
+  mimeType      String
+  extractedJson Json?
+  createdAt     DateTime     @default(now())
+
+  @@index([studyId])
+  @@index([studyId, kind])
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline events (one row per meaningful state transition)
+// ---------------------------------------------------------------------------
+
+model StudyEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  studyId   String   @db.Uuid
+  study     Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  kind      String   // e.g. "ocr.completed", "ai.classified", "engineer.assigned"
+  payload   Json
+  actorId   String?  @db.Uuid   // set for admin actions, null for system
+  createdAt DateTime @default(now())
+
+  @@index([studyId, createdAt])
+  @@index([kind])
+}
+
+// ---------------------------------------------------------------------------
+// AI audit log (every Claude call writes one row; idempotent by inputHash)
+// ---------------------------------------------------------------------------
+
+model AiAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  studyId    String?  @db.Uuid
+  study      Study?   @relation(fields: [studyId], references: [id], onDelete: SetNull)
+  operation  String   // e.g. "classify_assets"
+  model      String   // resolved model ID at call time
+  promptVersion String
+  inputHash  String   // sha256 of normalized input
+  input      Json
+  output     Json
+  tokensIn   Int
+  tokensOut  Int
+  costUsd    Decimal  @db.Decimal(10, 6)
+  createdAt  DateTime @default(now())
+
+  @@unique([operation, inputHash])
+  @@index([studyId, createdAt])
+  @@index([operation])
+}
+
+// ---------------------------------------------------------------------------
+// Lead capture (estimator email capture before signup)
+// ---------------------------------------------------------------------------
+
+model Lead {
+  id                        String   @id @default(uuid()) @db.Uuid
+  email                     String
+  source                    String   // e.g. "estimator", "pricing_page"
+  estimatorInputs           Json?
+  estimatedSavingsLowCents  Int?
+  estimatedSavingsHighCents Int?
+  userAgent                 String?
+  ipHash                    String?  // sha256(ip) — not raw IP
+  createdAt                 DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}

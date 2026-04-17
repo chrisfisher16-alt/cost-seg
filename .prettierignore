@@ -1,0 +1,8 @@
+node_modules
+.next
+.vercel
+coverage
+pnpm-lock.yaml
+playwright-report
+test-results
+prisma/migrations
