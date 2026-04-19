@@ -52,14 +52,22 @@ export function AppHeader({ ctx }: { ctx: AuthContext }) {
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <span className="bg-primary text-primary-foreground inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2"
+                aria-label={`Account menu for ${user.name ?? user.email}`}
+              >
+                <span
+                  aria-hidden
+                  className="bg-primary text-primary-foreground inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold"
+                >
                   {initial}
                 </span>
                 <span className="hidden max-w-[160px] truncate text-sm sm:inline">
                   {user.name ?? user.email}
                 </span>
-                <ChevronDownIcon className="h-3.5 w-3.5 opacity-60" />
+                <ChevronDownIcon aria-hidden className="h-3.5 w-3.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">

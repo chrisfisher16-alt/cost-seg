@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const params = await searchParams;
   return (
-    <main className="flex flex-1 flex-col">
+    <main id="main-content" className="flex flex-1 flex-col">
       <header className="border-border/60 bg-background/60 border-b backdrop-blur">
         <Container size="xl" className="flex h-16 items-center">
           <BrandMark />

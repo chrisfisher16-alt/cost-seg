@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SkipLink } from "@/components/shared/SkipLink";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="bg-background text-foreground selection:bg-primary/20 flex min-h-full flex-col">
+        <SkipLink />
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -62,7 +62,7 @@ export default async function GetStartedPage({ searchParams }: Props) {
   const ctx = await getOptionalAuth();
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       {/* Minimal checkout header — focused flow, no full nav */}
       <header className="border-border/60 bg-background/60 border-b backdrop-blur">
         <Container size="xl" className="flex h-16 items-center justify-between">

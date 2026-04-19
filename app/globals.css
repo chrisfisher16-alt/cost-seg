@@ -27,9 +27,9 @@
   --secondary: oklch(0.968 0.005 95);
   --secondary-foreground: oklch(0.205 0.01 240);
 
-  /* Muted / subtle */
+  /* Muted / subtle — foreground lightness tuned to meet WCAG AA (≥ 4.5:1) on both --background and --muted surfaces. */
   --muted: oklch(0.968 0.005 95);
-  --muted-foreground: oklch(0.52 0.01 240);
+  --muted-foreground: oklch(0.45 0.01 240);
 
   /* Accent — warm amber, reserved for celebration */
   --accent: oklch(0.91 0.08 85);
@@ -75,7 +75,7 @@
   --secondary-foreground: oklch(0.97 0.005 95);
 
   --muted: oklch(0.22 0.008 240);
-  --muted-foreground: oklch(0.65 0.01 240);
+  --muted-foreground: oklch(0.72 0.01 240);
 
   --accent: oklch(0.4 0.08 85);
   --accent-foreground: oklch(0.95 0.04 85);

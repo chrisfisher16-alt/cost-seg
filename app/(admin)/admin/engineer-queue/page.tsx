@@ -47,7 +47,7 @@ export default async function AdminEngineerQueuePage() {
   const rows = await loadQueue();
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <div className="mx-auto max-w-5xl px-6 py-10">
       <nav className="mb-4 text-xs">
         <Link href="/admin" className="hover:text-foreground text-zinc-500">
           &larr; Pipeline
@@ -97,6 +97,6 @@ export default async function AdminEngineerQueuePage() {
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

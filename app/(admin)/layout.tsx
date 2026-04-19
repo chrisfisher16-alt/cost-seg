@@ -11,7 +11,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <AdminHeader ctx={ctx} />
-      <div className="flex-1">{children}</div>
+      <main id="main-content" className="flex-1">
+        {children}
+      </main>
     </div>
   );
 }
