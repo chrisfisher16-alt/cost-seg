@@ -6,12 +6,19 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + Day 6 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + Day 6 + Day 7 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (34 routes) · `pnpm test` 79/79
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (35 routes) · `pnpm test` 89/89
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe: create a DIY price** — one-time $149 price, copy the ID to `STRIPE_PRICE_ID_DIY` in `.env.local`.
+
+**What landed in Day 7 (Portfolio rollup + CSV export):**
+
+- **`lib/studies/aggregate.ts`** — pure `buildPortfolioTotals` + `studyToPortfolioRow` + `renderPortfolioCsv`. Aggregates year-1 deductions, accelerated basis, depreciable basis, and tax savings across every delivered study. 10 unit tests (RFC-compliant CSV escaping, bracket override, empty portfolios, pending-study handling).
+- **Dashboard Portfolio Strip** — emerald callout above the study list when any study is delivered. Four KPIs (year-1 deduction with tax-savings hint, accelerated property, depreciable basis, total purchase price), plus an average-accelerated-% badge.
+- **`/api/dashboard/portfolio.csv`** — owner-scoped GET that streams 15-column CSV (id, tier, status, address, property type, acquired, purchase price, land, depreciable basis, accelerated, year-1 deduction, year-1 tax savings, line items, created, delivered). Filename stamped with today's date. Caps at 500 studies.
+- **Dashboard "Export CSV" button** — appears next to "Start a new study" whenever the Portfolio Strip is visible.
 
 **What landed in Day 6 (Form 3115 CPA worksheet — Appendix E):**
 
