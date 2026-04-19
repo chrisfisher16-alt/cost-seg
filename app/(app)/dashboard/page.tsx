@@ -1,9 +1,17 @@
 import type { Route } from "next";
 import Link from "next/link";
-import { DownloadIcon, EyeIcon, HomeIcon, PlusIcon, SparklesIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  EyeIcon,
+  FileSpreadsheetIcon,
+  HomeIcon,
+  PlusIcon,
+  SparklesIcon,
+} from "lucide-react";
 
 import { downloadMyDeliverableAction } from "./actions";
 import { Container } from "@/components/shared/Container";
+import { Kpi } from "@/components/shared/Kpi";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Section } from "@/components/shared/Section";
 import { StudyStatusBadge } from "@/components/shared/StatusBadge";
@@ -12,7 +20,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
-import { CATALOG, type Tier } from "@/lib/stripe/catalog";
+import {
+  buildPortfolioTotals,
+  type PortfolioStudyInput,
+  type PortfolioTotals,
+} from "@/lib/studies/aggregate";
+import { CATALOG, formatCents, type Tier } from "@/lib/stripe/catalog";
 import { listStudiesSharedWith } from "@/lib/studies/share";
 
 export const metadata = { title: "Dashboard" };
@@ -26,9 +39,12 @@ type StudyListItem = {
   property: { address: string; city: string; state: string };
 };
 
-async function listStudies(userId: string): Promise<StudyListItem[]> {
+async function listStudies(userId: string): Promise<{
+  listItems: StudyListItem[];
+  aggregateInput: PortfolioStudyInput[];
+}> {
   try {
-    return await getPrisma().study.findMany({
+    const rows = await getPrisma().study.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -37,18 +53,61 @@ async function listStudies(userId: string): Promise<StudyListItem[]> {
         tier: true,
         status: true,
         createdAt: true,
+        deliveredAt: true,
         deliverableUrl: true,
-        property: { select: { address: true, city: true, state: true } },
+        assetSchedule: true,
+        property: {
+          select: {
+            address: true,
+            city: true,
+            state: true,
+            zip: true,
+            propertyType: true,
+            purchasePrice: true,
+            acquiredAt: true,
+          },
+        },
       },
     });
+
+    return {
+      listItems: rows.map((r) => ({
+        id: r.id,
+        tier: r.tier,
+        status: r.status,
+        createdAt: r.createdAt,
+        deliverableUrl: r.deliverableUrl,
+        property: { address: r.property.address, city: r.property.city, state: r.property.state },
+      })),
+      aggregateInput: rows.map((r) => ({
+        id: r.id,
+        tier: r.tier,
+        status: r.status,
+        createdAt: r.createdAt,
+        deliveredAt: r.deliveredAt,
+        property: {
+          address: r.property.address,
+          city: r.property.city,
+          state: r.property.state,
+          zip: r.property.zip,
+          propertyType: r.property.propertyType,
+          purchasePriceCents: Math.round(Number(r.property.purchasePrice) * 100),
+          acquiredAt: r.property.acquiredAt,
+        },
+        assetSchedule: (r.assetSchedule as PortfolioStudyInput["assetSchedule"]) ?? null,
+      })),
+    };
   } catch {
-    return [];
+    return { listItems: [], aggregateInput: [] };
   }
 }
 
 export default async function DashboardPage() {
   const { user } = await requireAuth();
-  const [studies, sharedRaw] = await Promise.all([listStudies(user.id), safeListShared(user.id)]);
+  const [{ listItems: studies, aggregateInput }, sharedRaw] = await Promise.all([
+    listStudies(user.id),
+    safeListShared(user.id),
+  ]);
 
   const delivered = studies.filter((s) => s.status === "DELIVERED").length;
   const processing = studies.filter((s) =>
@@ -58,6 +117,8 @@ export default async function DashboardPage() {
 
   const firstName = user.name?.split(" ")[0] ?? null;
   const isCpa = user.role === "CPA";
+  const portfolio = buildPortfolioTotals(aggregateInput);
+  const showPortfolio = portfolio.deliveredCount >= 1;
 
   return (
     <Container size="xl" className="py-10 sm:py-14">
@@ -69,9 +130,18 @@ export default async function DashboardPage() {
             : "All of your properties and studies in one place."
         }
         actions={
-          <Button asChild size="lg" leadingIcon={<PlusIcon />}>
-            <Link href="/pricing">Start a new study</Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {showPortfolio ? (
+              <Button asChild size="lg" variant="outline" leadingIcon={<FileSpreadsheetIcon />}>
+                <a href="/api/dashboard/portfolio.csv" download>
+                  Export CSV
+                </a>
+              </Button>
+            ) : null}
+            <Button asChild size="lg" leadingIcon={<PlusIcon />}>
+              <Link href="/pricing">Start a new study</Link>
+            </Button>
+          </div>
         }
         meta={
           isCpa ? (
@@ -82,8 +152,10 @@ export default async function DashboardPage() {
         }
       />
 
+      {showPortfolio ? <PortfolioStrip portfolio={portfolio} /> : null}
+
       {studies.length > 0 ? (
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
           <StatCard label="Studies" value={studies.length.toString()} />
           <StatCard label="Delivered" value={delivered.toString()} tone="success" />
           <StatCard
@@ -309,5 +381,58 @@ function SharedStudyCard({ entry }: { entry: SharedEntry }) {
         </CardContent>
       </Card>
     </li>
+  );
+}
+
+function PortfolioStrip({ portfolio }: { portfolio: PortfolioTotals }) {
+  const avgPct = `${(portfolio.averageAcceleratedPct * 100).toFixed(1)}%`;
+  return (
+    <Card className="border-primary/20 bg-primary/5 ring-primary/10 mt-10 shadow-sm ring-1">
+      <CardContent className="p-7">
+        <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <p className="text-muted-foreground font-mono text-[11px] tracking-[0.2em] uppercase">
+              Portfolio rollup
+            </p>
+            <p className="mt-1 text-lg font-semibold tracking-tight">
+              Across {portfolio.deliveredCount} delivered stud
+              {portfolio.deliveredCount === 1 ? "y" : "ies"}
+            </p>
+          </div>
+          <Badge variant="default" size="sm">
+            {avgPct} avg accelerated
+          </Badge>
+        </div>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <Kpi
+            label="Year-1 deduction"
+            value={formatCents(portfolio.totalYear1DeductionCents)}
+            hint={`≈ ${formatCents(portfolio.totalYear1TaxSavingsCents)} tax savings @ 37%`}
+            size="lg"
+            tone="accent"
+          />
+          <Kpi
+            label="Accelerated property"
+            value={formatCents(portfolio.totalAcceleratedCents)}
+            hint="5/7/15-year classes across all studies"
+            size="lg"
+            tone="primary"
+          />
+          <Kpi
+            label="Depreciable basis"
+            value={formatCents(portfolio.totalDepreciableBasisCents)}
+            hint="Net of land across all delivered studies"
+            size="lg"
+          />
+          <Kpi
+            label="Total purchase price"
+            value={formatCents(portfolio.totalPurchasePriceCents)}
+            hint={`Across ${portfolio.studyCount} total propert${portfolio.studyCount === 1 ? "y" : "ies"}`}
+            size="lg"
+            tone="muted"
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
