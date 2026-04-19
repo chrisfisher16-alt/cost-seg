@@ -4,7 +4,8 @@ test.describe("auth gating", () => {
   test("unauthenticated access to /dashboard redirects to /sign-in", async ({ page }) => {
     const response = await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/sign-in(\?|$)/);
-    await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
+    // The sign-in page heading is "Welcome back.".
+    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
     expect(response?.ok()).toBe(true);
   });
 
@@ -13,11 +14,21 @@ test.describe("auth gating", () => {
     await expect(page).toHaveURL(/\/sign-in(\?|$)/);
   });
 
-  test("sign-in page renders and surfaces the 'not configured' banner in dev", async ({ page }) => {
+  test("sign-in page renders the magic-link form", async ({ page }) => {
     await page.goto("/sign-in");
-    await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
-    // Without NEXT_PUBLIC_SUPABASE_URL set, the form should surface a config hint.
-    await expect(page.getByText(/sign-in is not configured/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
+    // Either the magic-link form (when Supabase is configured) or the
+    // "not configured" alert should be visible — never neither.
+    const formVisible = await page
+      .getByLabel(/email/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    const bannerVisible = await page
+      .getByText(/sign-in is not configured/i)
+      .isVisible()
+      .catch(() => false);
+    expect(formVisible || bannerVisible, "neither the form nor the banner rendered").toBe(true);
   });
 
   test("marketing header shows Sign in when unauthenticated", async ({ page }) => {

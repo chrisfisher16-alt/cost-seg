@@ -6,7 +6,7 @@ test.describe("get-started + checkout", () => {
     await page.locator("#pricing").scrollIntoViewIfNeeded();
     await page.getByRole("link", { name: /start an ai report/i }).click();
     await expect(page).toHaveURL(/\/get-started\?tier=AI_REPORT/);
-    await expect(page.getByRole("heading", { name: /start a ai report/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /start your ai report/i })).toBeVisible();
   });
 
   test("Engineer-Reviewed CTA routes to /get-started?tier=ENGINEER_REVIEWED", async ({ page }) => {
@@ -14,12 +14,16 @@ test.describe("get-started + checkout", () => {
     await page.locator("#pricing").scrollIntoViewIfNeeded();
     await page.getByRole("link", { name: /start an engineered study/i }).click();
     await expect(page).toHaveURL(/\/get-started\?tier=ENGINEER_REVIEWED/);
-    await expect(page.getByRole("heading", { name: /engineer-reviewed study/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /start your engineer-reviewed study/i }),
+    ).toBeVisible();
   });
 
-  test("get-started form surfaces 'Stripe not configured' in dev", async ({ page }) => {
+  test("get-started surfaces 'payment not configured' when Stripe env is missing", async ({
+    page,
+  }) => {
     await page.goto("/get-started?tier=AI_REPORT");
-    await expect(page.getByText(/stripe is not configured/i)).toBeVisible();
+    await expect(page.getByText(/payment is not configured/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /continue to secure checkout/i })).toBeDisabled();
     await expect(page.getByText(/important scope disclosure/i)).toBeVisible();
   });

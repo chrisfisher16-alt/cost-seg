@@ -6,9 +6,25 @@ test.describe("marketing coverage", () => {
     await expect(
       page.getByRole("heading", { name: /cost segregation studies/i, level: 1 }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: /how it works/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /run a free estimate/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /pick the report you need/i })).toBeVisible();
+    // "How it works" is the eyebrow; the actual h2 describes the flow.
+    await expect(
+      page.getByRole("heading", {
+        name: /from purchase price to year-one deductions/i,
+        level: 2,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: /see your year-one savings in 30 seconds/i,
+        level: 2,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: /pay for exactly the report you need/i,
+        level: 2,
+      }),
+    ).toBeVisible();
   });
 
   test("footer shows the scope-disclosure line", async ({ page }) => {
@@ -30,13 +46,15 @@ test.describe("marketing coverage", () => {
   });
 });
 
-test.describe("get-started form validation (Stripe not configured)", () => {
-  test("requires email, property type, and submits disabled without Stripe env", async ({
-    page,
-  }) => {
+test.describe("get-started form", () => {
+  test("renders the form with email and property type fields", async ({ page }) => {
     await page.goto("/get-started?tier=AI_REPORT");
-    await expect(page.getByRole("button", { name: /continue to secure checkout/i })).toBeDisabled();
+    // Heading reads "Start your ai report." (tier label lowercased).
+    await expect(page.getByRole("heading", { name: /start your/i, level: 1 })).toBeVisible();
     await expect(page.getByLabel(/email/i, { exact: false }).first()).toBeVisible();
-    await expect(page.getByLabel(/property type/i)).toBeVisible();
+    // Radix Select: Field label is not a real <label for=...>, so assert on
+    // the visible label text instead.
+    await expect(page.getByText(/^property type/i).first()).toBeVisible();
+    await expect(page.getByRole("combobox").first()).toBeVisible();
   });
 });
