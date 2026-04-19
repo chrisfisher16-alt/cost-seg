@@ -1,24 +1,409 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ----------------------------------------------------------------
+ * Design tokens — OKLCH palette, emerald-forward brand
+ * Light mode is default. Dark mode via `.dark` on <html>.
+ * ---------------------------------------------------------------- */
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
+  --radius: 0.75rem;
+
+  /* Surfaces */
+  --background: oklch(0.994 0.002 95);
+  --foreground: oklch(0.145 0.01 240);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0.01 240);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0.01 240);
+
+  /* Emerald-forward primary */
+  --primary: oklch(0.508 0.118 165);
+  --primary-foreground: oklch(0.985 0.002 95);
+
+  /* Neutral secondary */
+  --secondary: oklch(0.968 0.005 95);
+  --secondary-foreground: oklch(0.205 0.01 240);
+
+  /* Muted / subtle */
+  --muted: oklch(0.968 0.005 95);
+  --muted-foreground: oklch(0.52 0.01 240);
+
+  /* Accent — warm amber, reserved for celebration */
+  --accent: oklch(0.91 0.08 85);
+  --accent-foreground: oklch(0.27 0.05 85);
+
+  /* Destructive */
+  --destructive: oklch(0.58 0.21 27);
+  --destructive-foreground: oklch(0.985 0.002 95);
+
+  /* Lines & focus */
+  --border: oklch(0.922 0.005 95);
+  --input: oklch(0.922 0.005 95);
+  --ring: oklch(0.508 0.118 165 / 0.4);
+
+  /* Data viz */
+  --chart-1: oklch(0.508 0.118 165);
+  --chart-2: oklch(0.6 0.14 220);
+  --chart-3: oklch(0.7 0.17 85);
+  --chart-4: oklch(0.62 0.2 300);
+  --chart-5: oklch(0.55 0.18 25);
+
+  /* Status tones (used in StatusBadge, toasts, banners) */
+  --success: oklch(0.508 0.118 165);
+  --success-foreground: oklch(0.985 0.002 95);
+  --warning: oklch(0.76 0.14 80);
+  --warning-foreground: oklch(0.27 0.05 85);
+  --info: oklch(0.6 0.14 235);
+  --info-foreground: oklch(0.985 0.002 95);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #f5f5f5;
-  }
+.dark {
+  --background: oklch(0.12 0.008 240);
+  --foreground: oklch(0.97 0.005 95);
+  --card: oklch(0.16 0.008 240);
+  --card-foreground: oklch(0.97 0.005 95);
+  --popover: oklch(0.16 0.008 240);
+  --popover-foreground: oklch(0.97 0.005 95);
+
+  --primary: oklch(0.65 0.14 165);
+  --primary-foreground: oklch(0.145 0.01 240);
+
+  --secondary: oklch(0.22 0.008 240);
+  --secondary-foreground: oklch(0.97 0.005 95);
+
+  --muted: oklch(0.22 0.008 240);
+  --muted-foreground: oklch(0.65 0.01 240);
+
+  --accent: oklch(0.4 0.08 85);
+  --accent-foreground: oklch(0.95 0.04 85);
+
+  --destructive: oklch(0.7 0.18 27);
+  --destructive-foreground: oklch(0.145 0.01 240);
+
+  --border: oklch(1 0 0 / 0.1);
+  --input: oklch(1 0 0 / 0.15);
+  --ring: oklch(0.65 0.14 165 / 0.5);
+
+  --chart-1: oklch(0.65 0.14 165);
+  --chart-2: oklch(0.7 0.14 220);
+  --chart-3: oklch(0.78 0.17 85);
+  --chart-4: oklch(0.72 0.2 300);
+  --chart-5: oklch(0.7 0.18 25);
+
+  --success: oklch(0.65 0.14 165);
+  --success-foreground: oklch(0.145 0.01 240);
+  --warning: oklch(0.82 0.14 80);
+  --warning-foreground: oklch(0.22 0.05 85);
+  --info: oklch(0.7 0.14 235);
+  --info-foreground: oklch(0.145 0.01 240);
 }
+
+/* ----------------------------------------------------------------
+ * Tailwind v4 theme — maps CSS variables to utility classes
+ * ---------------------------------------------------------------- */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* Animation tokens — keyframes are defined outside the @theme block below */
+  --animate-fade-in: fade-in 200ms ease-out;
+  --animate-fade-out: fade-out 150ms ease-in;
+  --animate-slide-in-from-top: slide-in-from-top 200ms ease-out;
+  --animate-slide-in-from-bottom: slide-in-from-bottom 200ms ease-out;
+  --animate-slide-in-from-right: slide-in-from-right 250ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-slide-out-to-right: slide-out-to-right 200ms ease-in;
+  --animate-scale-in: scale-in 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-scale-out: scale-out 100ms ease-in;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-kpi-count: kpi-count 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-check-in: check-in 400ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-bounce-in: bounce-in 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Keyframes — referenced by both --animate-* tokens above and inline animation utilities. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes slide-in-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes slide-in-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes slide-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes slide-out-to-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes scale-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+@keyframes kpi-count {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes check-in {
+  0% {
+    stroke-dashoffset: 32;
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ----------------------------------------------------------------
+ * Base element styles
+ * ---------------------------------------------------------------- */
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular, monospace numbers where we render currency and schedules */
+.font-mono,
+[data-tabular] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus ring — consistent across the app */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Selection */
+::selection {
+  background: color-mix(in oklch, var(--primary) 20%, transparent);
+  color: var(--foreground);
+}
+
+/* Scrollbars (WebKit) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--foreground) 15%, transparent);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--foreground) 30%, transparent);
+  background-clip: padding-box;
+}
+
+/* Reduced-motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Shimmer utility used by Skeleton */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--muted) 40%, transparent) 0%,
+    color-mix(in oklch, var(--muted) 80%, transparent) 50%,
+    color-mix(in oklch, var(--muted) 40%, transparent) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* Subtle grid pattern for hero backgrounds */
+.bg-grid {
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--foreground) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--foreground) 4%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 40px 40px;
+  background-position: -1px -1px;
+}
+
+.bg-grid-fade {
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+}
+
+/* Brand gradient for hero accent */
+.brand-gradient-text {
+  background: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    color-mix(in oklch, var(--primary) 70%, var(--info) 30%) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-gradient-bg {
+  background:
+    radial-gradient(
+      ellipse at top left,
+      color-mix(in oklch, var(--primary) 20%, transparent) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at bottom right,
+      color-mix(in oklch, var(--info) 15%, transparent) 0%,
+      transparent 50%
+    );
 }

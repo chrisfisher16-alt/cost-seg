@@ -14,20 +14,32 @@ import { createSignedReadUrl } from "@/lib/storage/studies";
  * has expired.
  */
 export async function downloadMyDeliverableAction(studyId: string): Promise<void> {
+  const url = await mintDeliverableUrl(studyId);
+  if (!url) redirect("/dashboard");
+  redirect(url as Route);
+}
+
+/**
+ * Client-callable variant: returns the signed URL so the caller can open it in a
+ * new tab or drive a client-side `window.location` navigation without a form POST.
+ */
+export async function getDeliverableUrlAction(
+  studyId: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const url = await mintDeliverableUrl(studyId);
+  if (!url) return { ok: false, error: "Report not available yet." };
+  return { ok: true, url };
+}
+
+async function mintDeliverableUrl(studyId: string): Promise<string | null> {
   const { user } = await requireAuth();
   const prisma = getPrisma();
   const study = await prisma.study.findUnique({
     where: { id: studyId },
     select: { id: true, userId: true, status: true, deliverableUrl: true },
   });
-  if (!study || !study.deliverableUrl) {
-    redirect("/dashboard");
-  }
+  if (!study || !study.deliverableUrl) return null;
   assertOwnership(user, study);
-  if (study.status !== "DELIVERED") {
-    redirect("/dashboard");
-  }
-
-  const signedUrl = await createSignedReadUrl(study.deliverableUrl, 7 * 24 * 60 * 60);
-  redirect(signedUrl as Route);
+  if (study.status !== "DELIVERED") return null;
+  return await createSignedReadUrl(study.deliverableUrl, 7 * 24 * 60 * 60);
 }

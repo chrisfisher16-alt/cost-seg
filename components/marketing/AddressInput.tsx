@@ -1,7 +1,9 @@
 "use client";
 
+import { MapPinIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface PlaceResult {
@@ -59,9 +61,18 @@ interface AddressInputProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  placeholder?: string;
+  required?: boolean;
 }
 
-export function AddressInput({ id, value, onChange, className }: AddressInputProps) {
+export function AddressInput({
+  id,
+  value,
+  onChange,
+  className,
+  placeholder,
+  required,
+}: AddressInputProps) {
   const ref = useRef<HTMLInputElement>(null);
   const [enhanced, setEnhanced] = useState(false);
 
@@ -84,7 +95,7 @@ export function AddressInput({ id, value, onChange, className }: AddressInputPro
         setEnhanced(true);
       })
       .catch(() => {
-        // Graceful fallback — plain text input still works.
+        /* graceful fallback — plain text input still works. */
       });
     return () => {
       cancelled = true;
@@ -93,19 +104,20 @@ export function AddressInput({ id, value, onChange, className }: AddressInputPro
   }, [onChange]);
 
   return (
-    <input
+    <Input
       ref={ref}
       id={id}
       name="address"
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder={enhanced ? "Start typing an address…" : "123 Main St, Asheville, NC"}
+      placeholder={
+        placeholder ?? (enhanced ? "Start typing an address…" : "123 Main St, Asheville, NC")
+      }
       autoComplete="street-address"
-      className={cn(
-        "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400",
-        className,
-      )}
+      required={required}
+      leadingAdornment={<MapPinIcon className="h-4 w-4" aria-hidden />}
+      className={cn(className)}
     />
   );
 }

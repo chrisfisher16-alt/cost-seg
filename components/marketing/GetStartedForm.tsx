@@ -1,11 +1,22 @@
 "use client";
 
+import { ArrowRightIcon, DollarSignIcon, LockIcon, MailIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { startCheckoutAction } from "@/app/get-started/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PROPERTY_TYPES, PROPERTY_TYPE_LABELS, type PropertyType } from "@/lib/estimator/types";
 import type { Tier } from "@/lib/stripe/catalog";
-import { cn } from "@/lib/utils";
 
 interface Props {
   tier: Tier;
@@ -41,18 +52,25 @@ export function GetStartedForm({ tier, defaultEmail, stripeConfigured }: Props) 
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <form onSubmit={submit} className="space-y-6">
       {!stripeConfigured ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-          Stripe is not configured in this environment. Form is disabled.
-        </div>
+        <Alert variant="warning">
+          <AlertTitle>Payment is not configured in this environment</AlertTitle>
+          <AlertDescription>
+            Your dev setup is missing the Stripe keys in{" "}
+            <span className="font-mono">.env.local</span>. Add them and restart the dev server to
+            enable checkout.
+          </AlertDescription>
+        </Alert>
       ) : null}
 
-      <div className="space-y-1.5">
-        <label htmlFor="email" className="text-sm font-medium">
-          Email
-        </label>
-        <input
+      <Field
+        label="Email"
+        required
+        htmlFor="email"
+        hint="We&rsquo;ll email you a sign-in link after payment so you can upload documents."
+      >
+        <Input
           id="email"
           type="email"
           autoComplete="email"
@@ -60,87 +78,75 @@ export function GetStartedForm({ tier, defaultEmail, stripeConfigured }: Props) 
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400"
+          leadingAdornment={<MailIcon className="h-4 w-4" />}
         />
-        <p className="text-xs text-zinc-500">
-          We&rsquo;ll email you a sign-in link to upload documents after payment.
-        </p>
-      </div>
+      </Field>
 
-      <div className="space-y-1.5">
-        <label htmlFor="propertyType" className="text-sm font-medium">
-          Property type
-        </label>
-        <select
-          id="propertyType"
-          value={propertyType}
-          onChange={(e) => setPropertyType(e.target.value as PropertyType)}
-          required
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400"
-        >
-          {PROPERTY_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {PROPERTY_TYPE_LABELS[t]}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Field label="Property type" required>
+        <Select value={propertyType} onValueChange={(v) => setPropertyType(v as PropertyType)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PROPERTY_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {PROPERTY_TYPE_LABELS[t]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
 
-      <div className="space-y-1.5">
-        <label htmlFor="addressLine" className="text-sm font-medium">
-          Property address <span className="text-zinc-400">(optional)</span>
-        </label>
-        <input
+      <Field
+        label="Property address"
+        hint="Optional — you&rsquo;ll refine this during intake."
+        htmlFor="addressLine"
+      >
+        <Input
           id="addressLine"
           type="text"
           value={addressLine}
           onChange={(e) => setAddressLine(e.target.value)}
           placeholder="123 Main St, Asheville, NC"
           autoComplete="street-address"
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400"
         />
-      </div>
+      </Field>
 
-      <div className="space-y-1.5">
-        <label htmlFor="purchasePrice" className="text-sm font-medium">
-          Purchase price <span className="text-zinc-400">(optional)</span>
-        </label>
-        <div className="relative">
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-zinc-500">
-            $
-          </span>
-          <input
-            id="purchasePrice"
-            type="text"
-            inputMode="numeric"
-            value={purchasePrice}
-            onChange={(e) => setPurchasePrice(e.target.value)}
-            placeholder="500,000"
-            className="w-full rounded-md border border-zinc-300 bg-white py-2 pr-3 pl-6 text-sm transition outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400"
-          />
-        </div>
-        <p className="text-xs text-zinc-500">
-          Fill this in later during intake if you&rsquo;d rather.
-        </p>
-      </div>
+      <Field
+        label="Purchase price"
+        hint="Optional — we&rsquo;ll extract this from your closing disclosure."
+        htmlFor="purchasePrice"
+      >
+        <Input
+          id="purchasePrice"
+          type="text"
+          inputMode="numeric"
+          value={purchasePrice}
+          onChange={(e) => setPurchasePrice(e.target.value)}
+          placeholder="500,000"
+          leadingAdornment={<DollarSignIcon className="h-4 w-4" />}
+        />
+      </Field>
 
       {error ? (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-destructive text-sm font-medium">
           {error}
         </p>
       ) : null}
 
-      <button
+      <Button
         type="submit"
-        disabled={isPending || !stripeConfigured}
-        className={cn(
-          "bg-foreground text-background inline-flex h-11 w-full items-center justify-center rounded-md text-sm font-medium transition",
-          isPending || !stripeConfigured ? "opacity-60" : "hover:opacity-90",
-        )}
+        size="lg"
+        className="w-full"
+        disabled={!stripeConfigured}
+        loading={isPending}
+        loadingText="Opening secure checkout…"
+        trailingIcon={<ArrowRightIcon />}
       >
-        {isPending ? "Opening Stripe…" : "Continue to secure checkout"}
-      </button>
-      <p className="text-center text-xs text-zinc-500">
+        Continue to secure checkout
+      </Button>
+      <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
+        <LockIcon className="h-3 w-3" aria-hidden />
         Powered by Stripe. We never see your card.
       </p>
     </form>

@@ -1,40 +1,55 @@
 import Link from "next/link";
+import { ArrowLeftIcon, LogOutIcon } from "lucide-react";
 
 import { signOutAction } from "@/app/(auth)/actions";
+import { BrandMark } from "@/components/shared/BrandMark";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/shared/Container";
 import type { AuthContext } from "@/lib/auth/require";
 
 export function AdminHeader({ ctx }: { ctx: AuthContext }) {
   return (
-    <header className="bg-background/80 sticky top-0 z-40 border-b border-zinc-200/70 backdrop-blur dark:border-zinc-800/70">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="text-sm font-semibold tracking-tight">
-            Cost Seg
-          </Link>
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 font-mono text-[10px] tracking-widest text-amber-900 uppercase dark:bg-amber-950/60 dark:text-amber-200">
+    <header className="border-border/60 bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
+      <Container size="full" className="flex h-16 items-center justify-between">
+        <div className="flex items-center gap-5">
+          <BrandMark />
+          <Badge variant="warning" size="sm">
             Admin
-          </span>
-          <nav className="flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
-            <Link href="/admin" className="hover:text-foreground">
+          </Badge>
+          <nav className="hidden items-center gap-5 text-sm sm:flex">
+            <Link
+              href="/admin"
+              className="text-muted-foreground hover:text-foreground font-medium transition-colors"
+            >
               Pipeline
             </Link>
-            <Link href="/dashboard" className="hover:text-foreground">
+            <Link
+              href="/admin/engineer-queue"
+              className="text-muted-foreground hover:text-foreground font-medium transition-colors"
+            >
+              Engineer queue
+            </Link>
+            <Link
+              href="/dashboard"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium transition-colors"
+            >
+              <ArrowLeftIcon className="h-3.5 w-3.5" aria-hidden />
               My dashboard
             </Link>
           </nav>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="hidden text-xs text-zinc-500 sm:block">{ctx.user.email}</span>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <span className="text-muted-foreground hidden text-xs sm:block">{ctx.user.email}</span>
           <form action={signOutAction}>
-            <button
-              type="submit"
-              className="hover:text-foreground text-sm text-zinc-600 transition dark:text-zinc-400"
-            >
+            <Button type="submit" variant="ghost" size="sm" leadingIcon={<LogOutIcon />}>
               Sign out
-            </button>
+            </Button>
           </form>
         </div>
-      </div>
+      </Container>
     </header>
   );
 }

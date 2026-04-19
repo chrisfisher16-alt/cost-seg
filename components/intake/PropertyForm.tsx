@@ -1,12 +1,23 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { CheckCircle2Icon, DollarSignIcon, SaveIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { updatePropertyAction } from "@/app/(app)/studies/[id]/actions";
 import { AddressInput } from "@/components/marketing/AddressInput";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PROPERTY_TYPES, PROPERTY_TYPE_LABELS, type PropertyType } from "@/lib/estimator/types";
-import { cn } from "@/lib/utils";
 
 interface InitialValues {
   address: string;
@@ -39,14 +50,12 @@ export function PropertyForm({
   const [propertyType, setPropertyType] = useState<PropertyType>(initial.propertyType);
   const [squareFeet, setSquareFeet] = useState<string>(initial.squareFeet?.toString() ?? "");
   const [yearBuilt, setYearBuilt] = useState<string>(initial.yearBuilt?.toString() ?? "");
-  const [status, setStatus] = useState<
-    { kind: "idle" } | { kind: "saved" } | { kind: "error"; message: string }
-  >({ kind: "idle" });
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus({ kind: "idle" });
+    setError(null);
     startTransition(async () => {
       const result = await updatePropertyAction(studyId, {
         address,
@@ -60,10 +69,13 @@ export function PropertyForm({
         yearBuilt: yearBuilt ? Number(yearBuilt) : undefined,
       });
       if (result.ok) {
-        setStatus({ kind: "saved" });
+        toast.success("Property details saved.", {
+          icon: <CheckCircle2Icon className="h-4 w-4" />,
+        });
         router.refresh();
       } else {
-        setStatus({ kind: "error", message: result.error });
+        setError(result.error);
+        toast.error("Couldn't save", { description: result.error });
       }
     });
   }
@@ -71,149 +83,123 @@ export function PropertyForm({
   return (
     <form onSubmit={submit} className="space-y-5">
       <fieldset disabled={locked} className="space-y-5">
-        <div className="space-y-1.5">
-          <label htmlFor="address" className="text-sm font-medium">
-            Address
-          </label>
-          <AddressInput id="address" value={address} onChange={setAddress} />
-        </div>
+        <Field label="Address" required>
+          <AddressInput id="address" value={address} onChange={setAddress} required />
+        </Field>
+
         <div className="grid gap-5 sm:grid-cols-3">
-          <Field label="City">
-            <input
+          <Field label="City" required>
+            <Input
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
               required
-              className={fieldClass}
               autoComplete="address-level2"
             />
           </Field>
-          <Field label="State (2-letter)">
-            <input
+          <Field label="State" required hint="2-letter code">
+            <Input
               type="text"
               value={stateCode}
               onChange={(e) => setStateCode(e.target.value.toUpperCase())}
               required
               maxLength={2}
-              className={fieldClass}
               autoComplete="address-level1"
             />
           </Field>
-          <Field label="ZIP">
-            <input
+          <Field label="ZIP" required>
+            <Input
               type="text"
               value={zip}
               onChange={(e) => setZip(e.target.value)}
               required
               pattern="\d{5}(-\d{4})?"
-              className={fieldClass}
               autoComplete="postal-code"
             />
           </Field>
         </div>
+
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Property type">
-            <select
-              value={propertyType}
-              onChange={(e) => setPropertyType(e.target.value as PropertyType)}
-              required
-              className={fieldClass}
-            >
-              {PROPERTY_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {PROPERTY_TYPE_LABELS[t]}
-                </option>
-              ))}
-            </select>
+          <Field label="Property type" required>
+            <Select value={propertyType} onValueChange={(v) => setPropertyType(v as PropertyType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROPERTY_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {PROPERTY_TYPE_LABELS[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
-          <Field label="Purchase price (USD)">
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-zinc-500">
-                $
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-                placeholder="500,000"
-                className={cn(fieldClass, "pl-6")}
-              />
-            </div>
+          <Field label="Purchase price" required>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              required
+              placeholder="500,000"
+              leadingAdornment={<DollarSignIcon className="h-4 w-4" />}
+            />
           </Field>
         </div>
+
         <div className="grid gap-5 sm:grid-cols-3">
-          <Field label="Acquired date">
-            <input
+          <Field label="Acquired date" required>
+            <Input
               type="date"
               value={acquiredAt}
               onChange={(e) => setAcquiredAt(e.target.value)}
               required
-              className={fieldClass}
             />
           </Field>
-          <Field label="Square feet (optional)">
-            <input
+          <Field label="Square feet" hint="Optional">
+            <Input
               type="number"
               min={1}
               value={squareFeet}
               onChange={(e) => setSquareFeet(e.target.value)}
-              className={fieldClass}
             />
           </Field>
-          <Field label="Year built (optional)">
-            <input
+          <Field label="Year built" hint="Optional">
+            <Input
               type="number"
               min={1800}
               max={2100}
               value={yearBuilt}
               onChange={(e) => setYearBuilt(e.target.value)}
-              className={fieldClass}
             />
           </Field>
         </div>
       </fieldset>
 
-      {status.kind === "error" ? (
-        <p role="alert" className="text-sm text-red-600">
-          {status.message}
+      {error ? (
+        <p role="alert" className="text-destructive text-sm font-medium">
+          {error}
         </p>
       ) : null}
-      {status.kind === "saved" ? (
-        <p className="text-sm text-emerald-700 dark:text-emerald-300">Saved.</p>
-      ) : null}
 
-      <div className="flex items-center justify-end gap-3">
-        {locked ? (
-          <p className="text-xs text-zinc-500">
-            Property details are locked — processing has started.
-          </p>
-        ) : (
-          <button
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-muted-foreground text-xs">
+          {locked
+            ? "Property details are locked — processing has started."
+            : "Save whenever you need to step away. Nothing is submitted yet."}
+        </p>
+        {!locked ? (
+          <Button
             type="submit"
-            disabled={isPending || locked}
-            className={cn(
-              "bg-foreground text-background inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition",
-              isPending ? "opacity-60" : "hover:opacity-90",
-            )}
+            size="default"
+            loading={isPending}
+            loadingText="Saving…"
+            leadingIcon={<SaveIcon />}
           >
-            {isPending ? "Saving…" : "Save property details"}
-          </button>
-        )}
+            Save property details
+          </Button>
+        ) : null}
       </div>
     </form>
   );
 }
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="block text-sm font-medium">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-const fieldClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400";

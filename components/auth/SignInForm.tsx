@@ -1,10 +1,15 @@
 "use client";
 
+import { CheckCircle2Icon, MailIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { sendMagicLinkAction } from "@/app/(auth)/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
-import { cn } from "@/lib/utils";
 
 type Stage =
   | { kind: "idle" }
@@ -56,32 +61,32 @@ export function SignInForm({ next, supabaseConfigured }: Props) {
 
   if (!supabaseConfigured) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-        Sign-in is not configured in this environment. Set{" "}
-        <code className="rounded bg-white/60 px-1 dark:bg-black/40">NEXT_PUBLIC_SUPABASE_URL</code>{" "}
-        and{" "}
-        <code className="rounded bg-white/60 px-1 dark:bg-black/40">
-          NEXT_PUBLIC_SUPABASE_ANON_KEY
-        </code>{" "}
-        in <code>.env.local</code>.
-      </div>
+      <Alert variant="warning">
+        <AlertTitle>Sign-in is not configured.</AlertTitle>
+        <AlertDescription className="mt-2">
+          Set <code className="font-mono text-xs">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
+          <code className="font-mono text-xs">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in{" "}
+          <code className="font-mono text-xs">.env.local</code>, then restart the dev server.
+        </AlertDescription>
+      </Alert>
     );
   }
 
   if (stage.kind === "sent") {
     return (
-      <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-200">
-        <p className="font-semibold">Check your email.</p>
-        <p>
-          We sent a sign-in link to <strong>{stage.email}</strong>. The link expires in 1 hour.
-        </p>
-        <button
-          type="button"
-          onClick={() => setStage({ kind: "idle" })}
-          className="text-xs underline"
-        >
+      <div className="space-y-4">
+        <div className="border-success/30 bg-success/5 flex items-start gap-3 rounded-lg border p-5 text-sm">
+          <CheckCircle2Icon className="text-success mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+          <div className="text-success">
+            <p className="font-semibold">Check your email.</p>
+            <p className="mt-1">
+              We sent a sign-in link to <strong>{stage.email}</strong>. The link expires in 1 hour.
+            </p>
+          </div>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setStage({ kind: "idle" })}>
           Use a different email
-        </button>
+        </Button>
       </div>
     );
   }
@@ -90,59 +95,65 @@ export function SignInForm({ next, supabaseConfigured }: Props) {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={submitEmail} className="space-y-3">
-        <label htmlFor="email" className="block text-sm font-medium">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400"
-          placeholder="you@example.com"
-        />
-        <button
+      <form onSubmit={submitEmail} className="space-y-4">
+        <Field label="Email" htmlFor="email" required>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            placeholder="you@example.com"
+            leadingAdornment={<MailIcon className="h-4 w-4" />}
+          />
+        </Field>
+        <Button
           type="submit"
-          disabled={sending}
-          className={cn(
-            "bg-foreground text-background inline-flex h-11 w-full items-center justify-center rounded-md text-sm font-medium transition",
-            sending ? "opacity-60" : "hover:opacity-90",
-          )}
+          size="lg"
+          className="w-full"
+          loading={sending}
+          loadingText="Sending magic link…"
         >
-          {sending ? "Sending…" : "Email me a magic link"}
-        </button>
+          Email me a magic link
+        </Button>
         {stage.kind === "error" ? (
-          <p role="alert" className="text-xs text-red-600">
+          <p role="alert" className="text-destructive text-xs font-medium">
             {stage.message}
           </p>
         ) : null}
       </form>
 
-      <div className="flex items-center gap-3 text-xs text-zinc-500">
-        <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-        or
-        <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+      <div className="text-muted-foreground flex items-center gap-3 text-xs">
+        <Separator className="flex-1" />
+        <span className="font-mono tracking-[0.18em] uppercase">or</span>
+        <Separator className="flex-1" />
       </div>
 
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="lg"
+        className="w-full"
         onClick={signInWithGoogle}
-        disabled={isGooglePending}
-        className={cn(
-          "inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-zinc-300 bg-white text-sm font-medium transition dark:border-zinc-700 dark:bg-zinc-950",
-          isGooglePending ? "opacity-60" : "hover:bg-zinc-50 dark:hover:bg-zinc-900",
-        )}
+        loading={isGooglePending}
+        loadingText="Opening Google…"
+        leadingIcon={<GoogleIcon />}
       >
-        <GoogleIcon />
-        {isGooglePending ? "Opening Google…" : "Continue with Google"}
-      </button>
+        Continue with Google
+      </Button>
 
-      <p className="text-center text-xs text-zinc-500">
-        By continuing you agree to our terms and privacy policy.
+      <p className="text-muted-foreground text-center text-xs">
+        By continuing you agree to our{" "}
+        <a href="/legal/terms" className="underline-offset-2 hover:underline">
+          terms
+        </a>{" "}
+        and{" "}
+        <a href="/legal/privacy" className="underline-offset-2 hover:underline">
+          privacy policy
+        </a>
+        .
       </p>
     </div>
   );

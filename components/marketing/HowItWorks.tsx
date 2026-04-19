@@ -1,42 +1,60 @@
+import { FileTextIcon, SparklesIcon, UploadCloudIcon } from "lucide-react";
+
+import { Container } from "@/components/shared/Container";
+import { Section, SectionHeader } from "@/components/shared/Section";
+import { Card, CardContent } from "@/components/ui/card";
+
 const STEPS = [
   {
+    n: "01",
+    icon: FileTextIcon,
     title: "Tell us about the property",
-    body: "Address, purchase price, and property type. No account needed for the estimate.",
+    body: "Address, purchase price, and property type — 90 seconds. No account needed for the free estimate.",
   },
   {
+    n: "02",
+    icon: UploadCloudIcon,
     title: "Upload three documents",
-    body: "Closing disclosure, improvement receipts, and a few property photos. 25MB per file.",
+    body: "Closing disclosure, improvement receipts, and a few property photos. We extract what we need automatically.",
   },
   {
-    title: "Get your report",
-    body: "AI Report in minutes. Engineer-Reviewed study signed and delivered in 3–7 days.",
+    n: "03",
+    icon: SparklesIcon,
+    title: "Watch the pipeline work — live",
+    body: "See every step in real time: document parsing, basis decomposition, asset classification, narrative drafting. You get a branded PDF the moment it finishes.",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20">
-      <div className="mx-auto max-w-5xl px-6">
-        <h2 className="text-center text-3xl font-semibold tracking-tight sm:text-4xl">
-          How it works
-        </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-center text-zinc-600 dark:text-zinc-400">
-          Built for owners of short-term rentals, small multifamily, and commercial real estate who
-          want year-one depreciation without paying $5,000 for a 6-week engagement.
-        </p>
-        <ol className="mt-12 grid gap-6 sm:grid-cols-3">
-          {STEPS.map((step, i) => (
-            <li
-              key={step.title}
-              className="rounded-2xl border border-zinc-200/70 bg-white p-6 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950"
-            >
-              <div className="mb-3 font-mono text-xs text-zinc-500">Step {i + 1}</div>
-              <h3 className="text-lg font-semibold">{step.title}</h3>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{step.body}</p>
+    <Section id="how-it-works">
+      <Container size="xl">
+        <SectionHeader
+          eyebrow="How it works"
+          title="From purchase price to year-one deductions, in plain view."
+          description="Built for owners of short-term rentals, small multifamily, and commercial real estate — and the CPAs who file for them."
+        />
+        <ol className="mt-14 grid gap-6 md:grid-cols-3">
+          {STEPS.map((step) => (
+            <li key={step.n}>
+              <Card className="group h-full transition hover:-translate-y-0.5 hover:shadow-md">
+                <CardContent className="p-7">
+                  <div className="flex items-center justify-between">
+                    <div className="bg-primary/10 text-primary inline-flex h-11 w-11 items-center justify-center rounded-lg">
+                      <step.icon className="h-5 w-5" aria-hidden />
+                    </div>
+                    <span className="text-muted-foreground font-mono text-xs tracking-[0.2em]">
+                      STEP {step.n}
+                    </span>
+                  </div>
+                  <h3 className="mt-6 text-lg font-semibold tracking-tight">{step.title}</h3>
+                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{step.body}</p>
+                </CardContent>
+              </Card>
             </li>
           ))}
         </ol>
-      </div>
-    </section>
+      </Container>
+    </Section>
   );
 }

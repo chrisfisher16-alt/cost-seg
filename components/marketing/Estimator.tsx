@@ -1,5 +1,7 @@
 "use client";
 
+import { ArrowRightIcon, CheckCircle2Icon, DollarSignIcon, RotateCwIcon } from "lucide-react";
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import {
@@ -7,9 +9,20 @@ import {
   estimateAction,
   type EstimateActionResult,
 } from "@/app/(marketing)/actions";
+import { Kpi } from "@/components/shared/Kpi";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatUsd, formatUsdRange, parseUsdInputToCents } from "@/lib/estimator/format";
 import { PROPERTY_TYPES, PROPERTY_TYPE_LABELS, type PropertyType } from "@/lib/estimator/types";
-import { cn } from "@/lib/utils";
 
 import { AddressInput } from "./AddressInput";
 import { ScopeDisclosure } from "./ScopeDisclosure";
@@ -31,7 +44,7 @@ export function Estimator() {
     event.preventDefault();
     const cents = parseUsdInputToCents(priceInput);
     if (!cents) {
-      setStage({ kind: "error", message: "Enter a purchase price." });
+      setStage({ kind: "error", message: "Enter a purchase price to continue." });
       return;
     }
     setStage({ kind: "loading" });
@@ -64,80 +77,72 @@ export function Estimator() {
           inputs={{ propertyType, address, priceInput }}
         />
       ) : (
-        <form
-          onSubmit={submit}
-          className="space-y-5 rounded-2xl border border-zinc-200/70 bg-white p-6 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950"
-        >
-          <div className="space-y-1.5">
-            <label htmlFor="address" className="text-sm font-medium">
-              Property address
-            </label>
-            <AddressInput id="address" value={address} onChange={setAddress} />
-            <p className="text-xs text-zinc-500">Optional — helps us contextualize.</p>
-          </div>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label htmlFor="propertyType" className="text-sm font-medium">
-                Property type
-              </label>
-              <select
-                id="propertyType"
-                name="propertyType"
-                value={propertyType}
-                onChange={(e) => setPropertyType(e.target.value as PropertyType)}
-                className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400"
-                required
+        <Card>
+          <CardContent className="p-7">
+            <form onSubmit={submit} className="space-y-5">
+              <Field
+                label="Property address"
+                htmlFor="address"
+                hint="Optional — helps us contextualize."
               >
-                {PROPERTY_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {PROPERTY_TYPE_LABELS[t]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="price" className="text-sm font-medium">
-                Purchase price (USD)
-              </label>
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-zinc-500">
-                  $
-                </span>
-                <input
-                  id="price"
-                  name="price"
-                  type="text"
-                  inputMode="numeric"
-                  value={priceInput}
-                  onChange={(e) => setPriceInput(e.target.value)}
-                  placeholder="500,000"
-                  className="w-full rounded-md border border-zinc-300 bg-white py-2 pr-3 pl-6 text-sm transition outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400"
-                  required
-                />
+                <AddressInput id="address" value={address} onChange={setAddress} />
+              </Field>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Property type" required>
+                  <Select
+                    value={propertyType}
+                    onValueChange={(v) => setPropertyType(v as PropertyType)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROPERTY_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {PROPERTY_TYPE_LABELS[t]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+
+                <Field label="Purchase price" required htmlFor="price">
+                  <Input
+                    id="price"
+                    name="price"
+                    type="text"
+                    inputMode="numeric"
+                    value={priceInput}
+                    onChange={(e) => setPriceInput(e.target.value)}
+                    placeholder="500,000"
+                    leadingAdornment={<DollarSignIcon className="h-4 w-4" />}
+                    required
+                  />
+                </Field>
               </div>
-            </div>
-          </div>
 
-          {stage.kind === "error" ? (
-            <p role="alert" className="text-sm text-red-600">
-              {stage.message}
-            </p>
-          ) : null}
+              {stage.kind === "error" ? (
+                <p role="alert" className="text-destructive text-sm font-medium">
+                  {stage.message}
+                </p>
+              ) : null}
 
-          <button
-            type="submit"
-            disabled={busy}
-            className={cn(
-              "bg-foreground text-background inline-flex h-11 w-full items-center justify-center rounded-md text-sm font-medium transition",
-              busy ? "opacity-60" : "hover:opacity-90",
-            )}
-          >
-            {busy ? "Calculating…" : "Estimate my year-one savings"}
-          </button>
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full"
+                loading={busy}
+                loadingText="Calculating your year-one savings…"
+                trailingIcon={<ArrowRightIcon />}
+              >
+                Estimate my year-one savings
+              </Button>
 
-          <ScopeDisclosure compact />
-        </form>
+              <ScopeDisclosure compact />
+            </form>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -154,61 +159,66 @@ function EstimatorResult({
 }) {
   const { result, leadId } = data;
   return (
-    <div className="space-y-6 rounded-2xl border border-zinc-200/70 bg-white p-6 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950">
-      <header className="space-y-2">
-        <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
-          Estimated year-one savings
-        </p>
-        <p className="text-4xl font-semibold tracking-tight">
-          {formatUsdRange(result.savingsLowCents, result.savingsHighCents)}
-        </p>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          at an assumed {(result.assumedBracket * 100).toFixed(0)}% marginal bracket
-        </p>
-      </header>
+    <Card className="border-primary/20 bg-card ring-primary/10 overflow-hidden shadow-lg ring-1">
+      <CardContent className="p-7 sm:p-8">
+        <Kpi
+          label="Estimated year-one savings"
+          value={formatUsdRange(result.savingsLowCents, result.savingsHighCents)}
+          hint={`at an assumed ${(result.assumedBracket * 100).toFixed(0)}% marginal bracket`}
+          size="xl"
+          tone="accent"
+          animate
+        />
 
-      <dl className="grid gap-4 text-sm sm:grid-cols-2">
-        <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-900">
-          <dt className="text-xs tracking-wide text-zinc-500 uppercase">Reclassified basis</dt>
-          <dd className="mt-1 font-medium">
-            {formatUsdRange(result.reclassifiedLowCents, result.reclassifiedHighCents)}
-          </dd>
-          <p className="mt-1 text-xs text-zinc-500">
-            {(result.lowPct * 100).toFixed(0)}–{(result.highPct * 100).toFixed(0)}% of purchase
-            price for {PROPERTY_TYPE_LABELS[inputs.propertyType]}
-          </p>
+        <dl className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="bg-muted/40 rounded-lg p-4">
+            <dt className="text-muted-foreground font-mono text-[11px] tracking-[0.18em] uppercase">
+              Reclassified basis
+            </dt>
+            <dd data-tabular className="mt-1.5 text-lg font-semibold">
+              {formatUsdRange(result.reclassifiedLowCents, result.reclassifiedHighCents)}
+            </dd>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {(result.lowPct * 100).toFixed(0)}–{(result.highPct * 100).toFixed(0)}% of purchase
+              price for {PROPERTY_TYPE_LABELS[inputs.propertyType]}
+            </p>
+          </div>
+          <div className="bg-muted/40 rounded-lg p-4">
+            <dt className="text-muted-foreground font-mono text-[11px] tracking-[0.18em] uppercase">
+              Purchase price
+            </dt>
+            <dd data-tabular className="mt-1.5 text-lg font-semibold">
+              {formatUsd(parseUsdInputToCents(inputs.priceInput) ?? 0)}
+            </dd>
+            {inputs.address ? (
+              <p className="text-muted-foreground mt-1 truncate text-xs">{inputs.address}</p>
+            ) : null}
+          </div>
+        </dl>
+
+        <div className="mt-6">
+          <ScopeDisclosure />
         </div>
-        <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-900">
-          <dt className="text-xs tracking-wide text-zinc-500 uppercase">Purchase price</dt>
-          <dd className="mt-1 font-medium">
-            {formatUsd(parseUsdInputToCents(inputs.priceInput) ?? 0)}
-          </dd>
-          {inputs.address ? (
-            <p className="mt-1 truncate text-xs text-zinc-500">{inputs.address}</p>
-          ) : null}
+
+        <LeadCaptureCard leadId={leadId} />
+
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <Button asChild size="lg" className="flex-1" trailingIcon={<ArrowRightIcon />}>
+            <Link href="/pricing">Start a real study</Link>
+          </Button>
+          <Button
+            type="button"
+            onClick={onReset}
+            variant="outline"
+            size="lg"
+            className="flex-1"
+            leadingIcon={<RotateCwIcon />}
+          >
+            Recalculate
+          </Button>
         </div>
-      </dl>
-
-      <ScopeDisclosure />
-
-      <LeadCaptureCard leadId={leadId} />
-
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <a
-          href="#pricing"
-          className="bg-foreground text-background inline-flex h-10 flex-1 items-center justify-center rounded-md text-sm font-medium transition hover:opacity-90"
-        >
-          Get a real study
-        </a>
-        <button
-          type="button"
-          onClick={onReset}
-          className="inline-flex h-10 flex-1 items-center justify-center rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-        >
-          Recalculate
-        </button>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -232,45 +242,40 @@ function LeadCaptureCard({ leadId }: { leadId: string | null }) {
 
   if (state === "success") {
     return (
-      <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-200">
-        Got it. We&rsquo;ll email you a sample report within a day.
-      </p>
+      <div className="border-success/30 bg-success/5 text-success mt-6 flex items-center gap-3 rounded-md border p-3 text-sm">
+        <CheckCircle2Icon className="h-4 w-4 shrink-0" aria-hidden />
+        <span>Got it — we&rsquo;ll email you a sample report within one business day.</span>
+      </div>
     );
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="space-y-2 border-t border-zinc-200/70 pt-4 dark:border-zinc-800/70"
-    >
-      <label htmlFor="capture-email" className="text-sm font-medium">
-        Email me a sample report
-      </label>
-      <div className="flex gap-2">
-        <input
-          id="capture-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm transition outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-zinc-400"
-          autoComplete="email"
-          required
-        />
-        <button
-          type="submit"
-          disabled={state === "pending"}
-          className="bg-foreground text-background inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition hover:opacity-90 disabled:opacity-60"
-        >
-          {state === "pending" ? "Sending…" : "Send"}
-        </button>
-      </div>
+    <form onSubmit={submit} className="border-border mt-6 space-y-2 border-t pt-6">
+      <Field
+        label="Email me a sample report"
+        hint="No spam. Unsubscribe anytime."
+        htmlFor="capture-email"
+      >
+        <div className="flex gap-2">
+          <Input
+            id="capture-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+            required
+          />
+          <Button type="submit" loading={state === "pending"} loadingText="Sending…">
+            Send
+          </Button>
+        </div>
+      </Field>
       {state === "error" ? (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-destructive text-xs font-medium">
           {message}
         </p>
       ) : null}
-      <p className="text-xs text-zinc-500">No spam. Unsubscribe anytime.</p>
     </form>
   );
 }

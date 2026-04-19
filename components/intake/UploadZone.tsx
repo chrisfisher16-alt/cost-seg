@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { FileIcon, ImageIcon, Loader2Icon, TrashIcon, UploadCloudIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useCallback, useRef, useState, useTransition } from "react";
 
 import {
   createUploadUrlAction,
   finalizeUploadAction,
   removeDocumentAction,
 } from "@/app/(app)/studies/[id]/actions";
+import { Button } from "@/components/ui/button";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +28,12 @@ const CLIENT_ALLOWED: readonly string[] = ["application/pdf", "image/jpeg", "ima
 const MAX_BYTES = 25 * 1024 * 1024;
 const STUDIES_BUCKET = "studies";
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 export function UploadZone({
   studyId,
   kind,
@@ -40,6 +48,7 @@ export function UploadZone({
   const meta = DOCUMENT_KIND_META[kind];
   const router = useRouter();
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startRemoveTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -105,6 +114,7 @@ export function UploadZone({
 
   function onDrop(event: React.DragEvent<HTMLLabelElement>) {
     event.preventDefault();
+    setIsDragOver(false);
     if (disabled) return;
     const file = event.dataTransfer.files[0];
     if (file) void handleFile(file);
@@ -112,6 +122,11 @@ export function UploadZone({
 
   function onDragOver(event: React.DragEvent<HTMLLabelElement>) {
     event.preventDefault();
+    if (!disabled) setIsDragOver(true);
+  }
+
+  function onDragLeave() {
+    setIsDragOver(false);
   }
 
   function onRemove(documentId: string) {
@@ -128,9 +143,14 @@ export function UploadZone({
         htmlFor={`file-${kind}`}
         onDrop={onDrop}
         onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
         className={cn(
-          "flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-zinc-300 bg-zinc-50/40 p-6 text-center text-sm transition dark:border-zinc-700 dark:bg-zinc-950/40",
-          disabled ? "cursor-not-allowed opacity-60" : "hover:border-zinc-400 hover:bg-zinc-50",
+          "group bg-muted/20 relative flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-8 text-center text-sm transition",
+          disabled
+            ? "border-border/60 cursor-not-allowed opacity-60"
+            : isDragOver
+              ? "border-primary bg-primary/5"
+              : "border-border hover:border-primary/60 hover:bg-primary/5",
         )}
       >
         <input
@@ -145,6 +165,20 @@ export function UploadZone({
             if (file) void handleFile(file);
           }}
         />
+        <div
+          className={cn(
+            "inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+            isDragOver
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground group-hover:bg-primary/15 group-hover:text-primary",
+          )}
+        >
+          {isUploading ? (
+            <Loader2Icon className="h-5 w-5 animate-spin" aria-hidden />
+          ) : (
+            <UploadCloudIcon className="h-5 w-5" aria-hidden />
+          )}
+        </div>
         <span className="font-medium">
           {isUploading
             ? "Uploading…"
@@ -152,11 +186,13 @@ export function UploadZone({
               ? "Drop a file or click to browse"
               : "Remove the current file to replace it"}
         </span>
-        <span className="text-xs text-zinc-500">PDF, JPG, or PNG up to 25MB</span>
+        <span className="text-muted-foreground text-xs">
+          PDF, JPG, or PNG · up to {MAX_BYTES / 1024 / 1024}MB
+        </span>
       </label>
 
       {error ? (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-destructive text-xs font-medium">
           {error}
         </p>
       ) : null}
@@ -166,22 +202,34 @@ export function UploadZone({
           {uploaded.map((doc) => (
             <li
               key={doc.id}
-              className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+              className="border-border bg-card flex items-center justify-between gap-3 rounded-md border p-3 text-sm"
             >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{doc.filename}</p>
-                <p className="text-xs text-zinc-500">
-                  {(doc.sizeBytes / 1024).toFixed(0)} KB &middot; {doc.mimeType}
-                </p>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="bg-primary/10 text-primary inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md">
+                  {doc.mimeType.startsWith("image/") ? (
+                    <ImageIcon className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <FileIcon className="h-4 w-4" aria-hidden />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{doc.filename}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {formatBytes(doc.sizeBytes)} ·{" "}
+                    {doc.mimeType.replace("application/", "").replace("image/", "")}
+                  </p>
+                </div>
               </div>
               {locked ? null : (
-                <button
+                <Button
                   type="button"
+                  size="icon-sm"
+                  variant="ghost"
                   onClick={() => onRemove(doc.id)}
-                  className="text-xs text-red-600 underline-offset-2 hover:underline"
+                  aria-label="Remove file"
                 >
-                  Remove
-                </button>
+                  <TrashIcon className="text-muted-foreground hover:text-destructive h-4 w-4" />
+                </Button>
               )}
             </li>
           ))}

@@ -1,31 +1,42 @@
 import { Estimator } from "@/components/marketing/Estimator";
+import { FaqSection } from "@/components/marketing/FaqSection";
+import { FinalCta } from "@/components/marketing/FinalCta";
 import { Hero } from "@/components/marketing/Hero";
 import { HowItWorks } from "@/components/marketing/HowItWorks";
+import { PlatformPreview } from "@/components/marketing/PlatformPreview";
 import { PricingSection } from "@/components/marketing/PricingSection";
+import { SampleReportPreview } from "@/components/marketing/SampleReportPreview";
+import { Testimonials } from "@/components/marketing/Testimonials";
+import { TrustStrip } from "@/components/marketing/TrustStrip";
+import { Container } from "@/components/shared/Container";
+import { Section, SectionHeader } from "@/components/shared/Section";
 
 export default function LandingPage() {
   return (
     <>
       <Hero />
+      <TrustStrip />
       <HowItWorks />
-      <section
-        id="estimator"
-        className="border-t border-zinc-200/60 bg-zinc-50/40 py-20 dark:border-zinc-800/60 dark:bg-zinc-950/40"
-      >
-        <div className="mx-auto max-w-4xl px-6">
-          <div className="mb-10 text-center">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Run a free estimate
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-zinc-600 dark:text-zinc-400">
-              Three inputs, a range-bound number, and a download link when you&rsquo;re ready. No
-              signup for the estimate.
-            </p>
+      <PlatformPreview />
+      <SampleReportPreview />
+
+      <Section id="estimator" tone="muted">
+        <Container size="md">
+          <SectionHeader
+            eyebrow="Free estimator"
+            title="See your year-one savings in 30 seconds."
+            description="Three inputs, a range-bound number, and a downloadable CSV of assumptions. No sign-up. No obligation."
+          />
+          <div className="mt-12">
+            <Estimator />
           </div>
-          <Estimator />
-        </div>
-      </section>
-      <PricingSection />
+        </Container>
+      </Section>
+
+      <PricingSection compact />
+      <Testimonials />
+      <FaqSection limit={6} />
+      <FinalCta />
     </>
   );
 }

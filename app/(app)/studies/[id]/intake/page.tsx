@@ -1,10 +1,17 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { EyeIcon, FileIcon, HelpCircleIcon, ShieldCheckIcon } from "lucide-react";
 
 import { IntakeProgress } from "@/components/intake/IntakeProgress";
 import { PropertyForm } from "@/components/intake/PropertyForm";
 import { UploadZone } from "@/components/intake/UploadZone";
 import { DOCUMENT_KIND_META, DOCUMENT_KIND_ORDER } from "@/components/intake/meta";
+import { Container } from "@/components/shared/Container";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { assertOwnership, requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { CATALOG, formatCents } from "@/lib/stripe/catalog";
@@ -79,99 +86,162 @@ export default async function StudyIntakePage({ params }: Props) {
   }
 
   const rawAddress = study.property.address.startsWith("(provided") ? "" : study.property.address;
+  const processingHref = `/studies/${study.id}/processing` as Route;
 
   return (
-    <main className="mx-auto max-w-3xl space-y-8 px-6 py-10">
-      <header>
-        <Link href="/dashboard" className="hover:text-foreground text-xs text-zinc-500">
-          &larr; Dashboard
-        </Link>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
-          Intake for your {entry.label}
-        </h1>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {formatCents(study.pricePaidCents)} paid &middot; Started{" "}
-          {study.createdAt.toLocaleDateString()}
-        </p>
-      </header>
-
-      <IntakeProgress
-        propertyReady={completeness.propertyReady}
-        missingKinds={completeness.missingKinds}
-        complete={completeness.complete}
-        processing={processing}
+    <Container size="xl" className="py-10 sm:py-14">
+      <PageHeader
+        backHref="/dashboard"
+        backLabel="Dashboard"
+        title={`Intake for your ${entry.label}`}
+        meta={
+          <>
+            <Badge variant={study.tier === "ENGINEER_REVIEWED" ? "success" : "default"} size="sm">
+              {entry.label}
+            </Badge>
+            <span className="text-muted-foreground text-xs">
+              {formatCents(study.pricePaidCents)} paid · Started{" "}
+              {study.createdAt.toLocaleDateString()}
+            </span>
+          </>
+        }
+        actions={
+          processing ? (
+            <Button asChild leadingIcon={<EyeIcon />}>
+              <Link href={processingHref}>Watch the pipeline</Link>
+            </Button>
+          ) : null
+        }
       />
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">Property details</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Everything we couldn&rsquo;t capture at checkout.
-          </p>
-        </div>
-        <PropertyForm
-          studyId={study.id}
-          locked={locked}
-          initial={{
-            address: rawAddress,
-            city: study.property.city,
-            state: study.property.state === "XX" ? "" : study.property.state,
-            zip: study.property.zip,
-            purchasePriceDollars:
-              Number(study.property.purchasePrice) > 0
-                ? Number(study.property.purchasePrice).toString()
-                : "",
-            acquiredAt: toIsoDate(study.property.acquiredAt),
-            propertyType: study.property.propertyType,
-            squareFeet: study.property.squareFeet,
-            yearBuilt: study.property.yearBuilt,
-          }}
-        />
-      </section>
+      <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-10">
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">Property details</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Everything we couldn&rsquo;t capture at checkout. You can save and come back to
+                finish these any time.
+              </p>
+            </div>
+            <Card>
+              <CardContent className="p-7">
+                <PropertyForm
+                  studyId={study.id}
+                  locked={locked}
+                  initial={{
+                    address: rawAddress,
+                    city: study.property.city,
+                    state: study.property.state === "XX" ? "" : study.property.state,
+                    zip: study.property.zip,
+                    purchasePriceDollars:
+                      Number(study.property.purchasePrice) > 0
+                        ? Number(study.property.purchasePrice).toString()
+                        : "",
+                    acquiredAt: toIsoDate(study.property.acquiredAt),
+                    propertyType: study.property.propertyType,
+                    squareFeet: study.property.squareFeet,
+                    yearBuilt: study.property.yearBuilt,
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </section>
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">Documents</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Private to you and the engineer reviewing your study.
-          </p>
+          <section className="space-y-4">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">Documents</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Private to you and the engineer reviewing your study. Encrypted at rest.
+              </p>
+            </div>
+            <ul className="space-y-5">
+              {DOCUMENT_KIND_ORDER.map((kind) => {
+                const meta = DOCUMENT_KIND_META[kind];
+                const uploaded = (docsByKind.get(kind) ?? []).map((d) => ({
+                  id: d.id,
+                  filename: d.filename,
+                  sizeBytes: d.sizeBytes,
+                  mimeType: d.mimeType,
+                }));
+                return (
+                  <li key={kind}>
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            <div className="bg-primary/10 text-primary inline-flex h-9 w-9 items-center justify-center rounded-md">
+                              <FileIcon className="h-4 w-4" aria-hidden />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{meta.label}</p>
+                                {meta.required ? (
+                                  <Badge variant="warning" size="sm">
+                                    Required
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="muted" size="sm">
+                                    Optional
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-muted-foreground mt-1 max-w-xl text-sm">
+                                {meta.description}
+                              </p>
+                            </div>
+                          </div>
+                          {uploaded.length > 0 ? (
+                            <Badge variant="success" size="sm" dot>
+                              {uploaded.length} file{uploaded.length === 1 ? "" : "s"}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <UploadZone
+                          studyId={study.id}
+                          kind={kind}
+                          uploaded={uploaded}
+                          locked={locked}
+                        />
+                      </CardContent>
+                    </Card>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         </div>
-        <ul className="space-y-6">
-          {DOCUMENT_KIND_ORDER.map((kind) => {
-            const meta = DOCUMENT_KIND_META[kind];
-            const uploaded = (docsByKind.get(kind) ?? []).map((d) => ({
-              id: d.id,
-              filename: d.filename,
-              sizeBytes: d.sizeBytes,
-              mimeType: d.mimeType,
-            }));
-            return (
-              <li
-                key={kind}
-                className="rounded-xl border border-zinc-200/70 bg-white p-5 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950"
-              >
-                <div className="mb-3 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-medium">
-                      {meta.label}
-                      {meta.required ? (
-                        <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 font-mono text-[10px] tracking-widest text-zinc-600 uppercase dark:bg-zinc-900 dark:text-zinc-400">
-                          required
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      {meta.description}
-                    </p>
-                  </div>
-                </div>
-                <UploadZone studyId={study.id} kind={kind} uploaded={uploaded} locked={locked} />
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    </main>
+
+        <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+          <IntakeProgress
+            propertyReady={completeness.propertyReady}
+            missingKinds={completeness.missingKinds}
+            complete={completeness.complete}
+            processing={processing}
+          />
+          <Card className="bg-muted/30">
+            <CardContent className="space-y-3 p-5">
+              <ShieldCheckIcon className="text-primary h-4 w-4" aria-hidden />
+              <p className="text-sm font-medium">Privacy by default</p>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Documents are stored encrypted in a private bucket. Only you and your assigned
+                engineer can generate signed links to access them.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-muted/30">
+            <CardContent className="space-y-3 p-5">
+              <HelpCircleIcon className="text-primary h-4 w-4" aria-hidden />
+              <p className="text-sm font-medium">Stuck on a document?</p>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Email <span className="font-mono">support@costseg.app</span> and we&rsquo;ll help
+                you find the right file from your closing packet.
+              </p>
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
+    </Container>
   );
 }
 

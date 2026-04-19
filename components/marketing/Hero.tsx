@@ -1,32 +1,80 @@
+import Link from "next/link";
+import { ArrowRightIcon, SparklesIcon } from "lucide-react";
+
+import { Container } from "@/components/shared/Container";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
 export function Hero() {
   return (
-    <section className="relative overflow-hidden border-b border-zinc-200/60 bg-gradient-to-b from-white to-zinc-50 py-20 dark:border-zinc-800/60 dark:from-zinc-950 dark:to-black">
-      <div className="mx-auto max-w-4xl px-6 text-center">
-        <p className="mb-4 font-mono text-xs tracking-widest text-zinc-500 uppercase">
-          Under the One Big Beautiful Bill Act &middot; 100% bonus depreciation restored
-        </p>
-        <h1 className="text-foreground text-4xl font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl">
-          Cost segregation studies, without the six-week wait.
+    <section className="relative isolate overflow-hidden pt-20 pb-24 sm:pt-28 sm:pb-32">
+      <div className="bg-grid bg-grid-fade absolute inset-0 -z-10" aria-hidden />
+      <div className="brand-gradient-bg absolute inset-0 -z-10" aria-hidden />
+
+      <Container size="lg" className="text-center">
+        <Badge
+          variant="outline"
+          size="default"
+          className="border-primary/30 bg-primary/5 text-primary mx-auto"
+        >
+          <SparklesIcon className="h-3 w-3" />
+          <span>100% bonus depreciation restored under the OBBBA</span>
+        </Badge>
+
+        <h1 className="mt-6 text-4xl leading-[1.05] font-semibold tracking-tight text-balance sm:text-6xl md:text-7xl">
+          Cost segregation studies,{" "}
+          <span className="brand-gradient-text">without the six-week wait.</span>
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-balance text-zinc-600 dark:text-zinc-400">
-          Turn your real-estate basis into year-one tax deductions. Get an AI modeling report in
-          minutes, or an engineer-signed, audit-defensible study in days.
+
+        <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-balance sm:text-xl">
+          Turn your real-estate basis into year-one tax deductions. Modeling reports in minutes.
+          Engineer-signed, audit-defensible studies in days. At a fraction of the traditional
+          $5,000+ engagement.
         </p>
+
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <a
-            href="#estimator"
-            className="bg-foreground text-background inline-flex h-11 items-center justify-center rounded-full px-6 text-sm font-medium transition hover:opacity-90"
-          >
-            Estimate your savings
-          </a>
-          <a
-            href="#pricing"
-            className="text-foreground inline-flex h-11 items-center justify-center rounded-full border border-zinc-200 px-6 text-sm font-medium transition hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-          >
-            See pricing
-          </a>
+          <Button asChild size="xl" trailingIcon={<ArrowRightIcon />}>
+            <Link href="#estimator">Estimate your savings — free</Link>
+          </Button>
+          <Button asChild size="xl" variant="outline">
+            <Link href="/samples">See a real sample report</Link>
+          </Button>
         </div>
-      </div>
+
+        <p className="text-muted-foreground mt-5 text-xs">
+          No signup to estimate. Payment only when you start a real study.
+        </p>
+      </Container>
+
+      <Container size="lg" className="mt-16 sm:mt-24">
+        <HeroProof />
+      </Container>
     </section>
+  );
+}
+
+function HeroProof() {
+  const stats: Array<{ label: string; value: string; hint: string }> = [
+    { label: "Avg year-1 deduction", value: "$92k", hint: "On a $500k STR basis" },
+    { label: "Traditional turnaround", value: "6 weeks", hint: "We do it in minutes to days" },
+    { label: "Traditional cost", value: "$5,000+", hint: "We start at $149" },
+    { label: "IRS guidelines followed", value: "Pub 5653", hint: "ATG-compliant methodology" },
+  ];
+  return (
+    <div className="border-border bg-card/60 relative overflow-hidden rounded-2xl border p-6 shadow-sm backdrop-blur sm:p-8">
+      <dl className="grid grid-cols-2 gap-6 md:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label}>
+            <dt className="text-muted-foreground font-mono text-[11px] tracking-[0.18em] uppercase">
+              {s.label}
+            </dt>
+            <dd data-tabular className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+              {s.value}
+            </dd>
+            <p className="text-muted-foreground mt-1 text-xs">{s.hint}</p>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
