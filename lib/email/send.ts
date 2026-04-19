@@ -2,11 +2,24 @@ import "server-only";
 
 import { render } from "@react-email/render";
 
+import { CpaInviteEmail } from "./templates/CpaInviteEmail";
 import { ReportDeliveredEmail } from "./templates/ReportDeliveredEmail";
 import { WelcomeEmail } from "./templates/WelcomeEmail";
 import { getFromAddress, getResend } from "./resend";
 
 import type { Tier } from "@/lib/stripe/catalog";
+
+const TIER_WELCOME_SUBJECT: Record<Tier, string> = {
+  DIY: "Generate your DIY Self-Serve cost seg study",
+  AI_REPORT: "Upload your documents to start your AI Report",
+  ENGINEER_REVIEWED: "Upload your documents to start your Engineer-Reviewed Study",
+};
+
+const TIER_DELIVERY_SUBJECT: Record<Tier, string> = {
+  DIY: "Your DIY Self-Serve Cost Segregation Report is ready",
+  AI_REPORT: "Your AI Cost Segregation Report is ready",
+  ENGINEER_REVIEWED: "Your Engineer-Reviewed Cost Segregation Study is ready",
+};
 
 interface SendWelcomeArgs {
   to: string;
@@ -30,10 +43,7 @@ export async function sendWelcomeEmail(args: SendWelcomeArgs): Promise<void> {
   });
   const [html, text] = await Promise.all([render(element), render(element, { plainText: true })]);
 
-  const subject =
-    args.tier === "AI_REPORT"
-      ? "Upload your documents to start your AI Report"
-      : "Upload your documents to start your Engineer-Reviewed Study";
+  const subject = TIER_WELCOME_SUBJECT[args.tier];
 
   if (!client) {
     console.info("[email] RESEND_API_KEY unset — welcome email not sent.", {
@@ -68,7 +78,7 @@ interface SendReportDeliveredArgs {
 
 /**
  * Deliver the signed-URL download link to the customer once their report
- * (Tier 1 AI Report or Tier 2 Engineer-Reviewed Study) is ready.
+ * (Tier 1 DIY/AI Report or Tier 2 Engineer-Reviewed Study) is ready.
  */
 export async function sendReportDeliveredEmail(args: SendReportDeliveredArgs): Promise<void> {
   const client = getResend();
@@ -83,10 +93,7 @@ export async function sendReportDeliveredEmail(args: SendReportDeliveredArgs): P
   });
   const [html, text] = await Promise.all([render(element), render(element, { plainText: true })]);
 
-  const subject =
-    args.tier === "AI_REPORT"
-      ? "Your AI Cost Segregation Report is ready"
-      : "Your Engineer-Reviewed Cost Segregation Study is ready";
+  const subject = TIER_DELIVERY_SUBJECT[args.tier];
 
   if (!client) {
     console.info("[email] RESEND_API_KEY unset — delivery email not sent.", {
@@ -106,6 +113,56 @@ export async function sendReportDeliveredEmail(args: SendReportDeliveredArgs): P
   });
   if (error) {
     console.error("[email] resend rejected delivery email", error);
+    throw new Error(`Resend error: ${error.message}`);
+  }
+}
+
+interface SendCpaInviteArgs {
+  to: string;
+  ownerName?: string | null;
+  ownerEmail: string;
+  propertyAddress: string;
+  shareUrl: string;
+  note?: string | null;
+}
+
+/**
+ * Send a CPA / collaborator invite email. The recipient clicks through to
+ * `/share/<token>`, signs in, and is routed to the read-only study view.
+ */
+export async function sendCpaInviteEmail(args: SendCpaInviteArgs): Promise<void> {
+  const client = getResend();
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const element = CpaInviteEmail({
+    ownerName: args.ownerName ?? null,
+    ownerEmail: args.ownerEmail,
+    propertyAddress: args.propertyAddress,
+    shareUrl: args.shareUrl,
+    appUrl,
+    note: args.note ?? null,
+  });
+  const [html, text] = await Promise.all([render(element), render(element, { plainText: true })]);
+
+  const subject = `Review a Cost Seg study for ${args.propertyAddress}`;
+
+  if (!client) {
+    console.info("[email] RESEND_API_KEY unset — CPA invite not sent.", {
+      to: args.to,
+      subject,
+      shareUrl: args.shareUrl,
+    });
+    return;
+  }
+
+  const { error } = await client.emails.send({
+    from: getFromAddress(),
+    to: args.to,
+    subject,
+    html,
+    text,
+  });
+  if (error) {
+    console.error("[email] resend rejected CPA invite", error);
     throw new Error(`Resend error: ${error.message}`);
   }
 }

@@ -8,7 +8,6 @@ import {
   HelpCircleIcon,
   Loader2Icon,
   MailIcon,
-  Share2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
@@ -20,6 +19,7 @@ import {
   type ProcessingStateResult,
 } from "@/app/(app)/studies/[id]/processing/actions";
 import { CelebrationTrigger } from "@/components/shared/Celebration";
+import { ShareStudyDialog } from "@/components/app/ShareStudyDialog";
 import { Kpi } from "@/components/shared/Kpi";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -309,9 +309,13 @@ function DeliveredPanel({
           >
             Download your PDF
           </Button>
-          <Button asChild size="xl" variant="outline" leadingIcon={<Share2Icon />}>
-            <Link href="#share">Share with your CPA</Link>
-          </Button>
+          <ShareStudyDialog
+            studyId={studyId}
+            propertyLabel={propertyLabel}
+            triggerLabel="Share with your CPA"
+            triggerVariant="outline"
+            triggerSize="xl"
+          />
           <Button asChild size="xl" variant="ghost" leadingIcon={<MailIcon />}>
             <Link href="/dashboard">View all studies</Link>
           </Button>

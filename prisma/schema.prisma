@@ -21,17 +21,20 @@ enum UserRole {
   CUSTOMER
   ADMIN
   ENGINEER
+  CPA
 }
 
 model User {
-  id         String     @id @default(uuid()) @db.Uuid
-  email      String     @unique
-  name       String?
-  role       UserRole   @default(CUSTOMER)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  properties Property[]
-  studies    Study[]
+  id               String         @id @default(uuid()) @db.Uuid
+  email            String         @unique
+  name             String?
+  role             UserRole       @default(CUSTOMER)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  properties       Property[]
+  studies          Study[]
+  sharesCreated    StudyShare[]   @relation("InvitedShares")
+  sharesAccepted   StudyShare[]   @relation("AcceptedShares")
 
   @@index([role])
 }
@@ -111,11 +114,45 @@ model Study {
   documents        Document[]
   events           StudyEvent[]
   aiAuditLogs      AiAuditLog[]
+  shares           StudyShare[]
 
   @@index([userId])
   @@index([propertyId])
   @@index([status])
   @@index([tier, status])
+}
+
+// ---------------------------------------------------------------------------
+// CPA / collaborator shares — read-only invitations to a study
+// ---------------------------------------------------------------------------
+
+enum StudyShareStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+model StudyShare {
+  id            String           @id @default(uuid()) @db.Uuid
+  studyId       String           @db.Uuid
+  study         Study            @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  invitedEmail  String
+  invitedById   String           @db.Uuid
+  invitedBy     User             @relation("InvitedShares", fields: [invitedById], references: [id], onDelete: Cascade)
+  acceptedById  String?          @db.Uuid
+  acceptedBy    User?            @relation("AcceptedShares", fields: [acceptedById], references: [id])
+  status        StudyShareStatus @default(PENDING)
+  note          String?
+  /** Opaque 32-byte hex token for the magic-link share URL. */
+  token         String           @unique @db.VarChar(64)
+  createdAt     DateTime         @default(now())
+  acceptedAt    DateTime?
+  revokedAt     DateTime?
+
+  @@index([studyId])
+  @@index([acceptedById])
+  @@index([invitedEmail])
+  @@index([status])
 }
 
 // ---------------------------------------------------------------------------

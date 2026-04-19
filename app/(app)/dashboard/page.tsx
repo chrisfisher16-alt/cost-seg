@@ -5,6 +5,7 @@ import { DownloadIcon, EyeIcon, HomeIcon, PlusIcon, SparklesIcon } from "lucide-
 import { downloadMyDeliverableAction } from "./actions";
 import { Container } from "@/components/shared/Container";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { Section } from "@/components/shared/Section";
 import { StudyStatusBadge } from "@/components/shared/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { CATALOG, type Tier } from "@/lib/stripe/catalog";
+import { listStudiesSharedWith } from "@/lib/studies/share";
 
 export const metadata = { title: "Dashboard" };
 
@@ -46,7 +48,7 @@ async function listStudies(userId: string): Promise<StudyListItem[]> {
 
 export default async function DashboardPage() {
   const { user } = await requireAuth();
-  const studies = await listStudies(user.id);
+  const [studies, sharedRaw] = await Promise.all([listStudies(user.id), safeListShared(user.id)]);
 
   const delivered = studies.filter((s) => s.status === "DELIVERED").length;
   const processing = studies.filter((s) =>
@@ -55,16 +57,28 @@ export default async function DashboardPage() {
   const awaiting = studies.filter((s) => s.status === "AWAITING_DOCUMENTS").length;
 
   const firstName = user.name?.split(" ")[0] ?? null;
+  const isCpa = user.role === "CPA";
 
   return (
     <Container size="xl" className="py-10 sm:py-14">
       <PageHeader
         title={firstName ? `Welcome back, ${firstName}.` : "Welcome back."}
-        description="All of your properties and studies in one place."
+        description={
+          isCpa
+            ? "Your own studies and the ones your clients have shared with you."
+            : "All of your properties and studies in one place."
+        }
         actions={
           <Button asChild size="lg" leadingIcon={<PlusIcon />}>
             <Link href="/pricing">Start a new study</Link>
           </Button>
+        }
+        meta={
+          isCpa ? (
+            <Badge variant="info" size="sm">
+              CPA workspace
+            </Badge>
+          ) : null
         }
       />
 
@@ -81,18 +95,44 @@ export default async function DashboardPage() {
       ) : null}
 
       <section className="mt-10">
-        {studies.length === 0 ? (
+        {studies.length === 0 && sharedRaw.length === 0 ? (
           <EmptyState />
-        ) : (
+        ) : studies.length > 0 ? (
+          <>
+            <h2 className="text-muted-foreground mb-4 font-mono text-sm tracking-[0.18em] uppercase">
+              Your studies
+            </h2>
+            <ul className="space-y-3">
+              {studies.map((study) => (
+                <StudyCard key={study.id} study={study} />
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </section>
+
+      {sharedRaw.length > 0 ? (
+        <Section className="mt-4 !pt-10" divider={false}>
+          <h2 className="text-muted-foreground mb-4 font-mono text-sm tracking-[0.18em] uppercase">
+            Shared with you
+          </h2>
           <ul className="space-y-3">
-            {studies.map((study) => (
-              <StudyCard key={study.id} study={study} />
+            {sharedRaw.map((entry) => (
+              <SharedStudyCard key={entry.id} entry={entry} />
             ))}
           </ul>
-        )}
-      </section>
+        </Section>
+      ) : null}
     </Container>
   );
+}
+
+async function safeListShared(userId: string) {
+  try {
+    return await listStudiesSharedWith(userId);
+  } catch {
+    return [];
+  }
 }
 
 function StatCard({
@@ -227,6 +267,45 @@ function StudyCard({ study }: { study: StudyListItem }) {
               </form>
             ) : null}
           </div>
+        </CardContent>
+      </Card>
+    </li>
+  );
+}
+
+type SharedEntry = Awaited<ReturnType<typeof listStudiesSharedWith>>[number];
+
+function SharedStudyCard({ entry }: { entry: SharedEntry }) {
+  const entryTier = entry.study.tier;
+  const tierLabel = CATALOG[entryTier].label;
+  const viewHref = `/studies/${entry.study.id}/view` as Route;
+  const ownerLabel = entry.study.user.name ?? entry.study.user.email;
+
+  return (
+    <li>
+      <Card className="transition hover:shadow-md">
+        <CardContent className="flex flex-wrap items-center gap-4 p-5">
+          <div className="bg-info/10 text-info inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md">
+            <HomeIcon className="h-4 w-4" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium">
+              {entry.study.property.address}, {entry.study.property.city},{" "}
+              {entry.study.property.state}
+            </p>
+            <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-3 text-xs">
+              <Badge variant="info" size="sm">
+                Shared by {ownerLabel}
+              </Badge>
+              <Badge variant={entryTier === "ENGINEER_REVIEWED" ? "success" : "default"} size="sm">
+                {tierLabel}
+              </Badge>
+              <StudyStatusBadge status={entry.study.status} size="sm" />
+            </div>
+          </div>
+          <Button asChild size="sm" variant="outline">
+            <Link href={viewHref}>Open read-only view</Link>
+          </Button>
         </CardContent>
       </Card>
     </li>

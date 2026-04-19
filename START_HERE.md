@@ -6,12 +6,25 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 + Day 2 + Day 3 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (28 routes) · `pnpm test` 70/70 (5 MACRS + 6 DIY tests)
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (30 routes) · `pnpm test` 73/73 (5 MACRS + 6 DIY + 3 share tests)
 - ⚠️ Not pushed to remote — staying local until you say go
-- ⚠️ **Prisma migration pending** — DIY tier adds `DIY` to the `Tier` enum. Run `pnpm prisma:migrate` once your DB is live (the migration SQL is already written at `prisma/migrations/20260419_add_diy_tier/migration.sql`).
+- ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe: create a DIY price** — one-time $149 price, copy the ID to `STRIPE_PRICE_ID_DIY` in `.env.local`.
+
+**What landed in Day 4 (CPA invite + shared workspace):**
+
+- **Schema** — `UserRole` enum extended with `CPA`; new `StudyShare` model with `PENDING / ACCEPTED / REVOKED` lifecycle, opaque 32-byte token, accepted-by relation. Migration SQL at `prisma/migrations/20260419_02_cpa_shares/migration.sql`.
+- **`lib/studies/access.ts`** — `resolveStudyAccess` / `requireStudyAccess` helpers: owner, ADMIN, or accepted-share can access. Used everywhere a non-owner might legitimately read a study.
+- **`lib/studies/share.ts`** — `createShare`, `listSharesForStudy`, `listStudiesSharedWith`, `revokeShare`, `acceptShareByToken`, `buildShareUrl`. Idempotent createShare, atomic acceptance transaction that auto-promotes CUSTOMER users to CPA role.
+- **Server actions** — `shareStudyAction`, `listSharesAction`, `revokeShareAction` gated by `assertOwnership`. Integrates with Resend to fire invite emails.
+- **`ShareStudyDialog`** — owner-side dialog (email + optional note) showing current invites with per-share "Copy link" and "Revoke" actions. Wired into the delivered-celebration panel on the pipeline-live screen.
+- **`/share/[token]`** — accept route: redirects unauthenticated visitors through sign-in, then calls `acceptShareByToken` and routes to the read-only view.
+- **`/studies/[id]/view`** — read-only study view with Year-1 KPI, asset schedule table, property details sidebar, and PDF download. Respects `resolveStudyAccess` for owner / shared / admin users.
+- **Dashboard** — "Your studies" + "Shared with you" sections. CPA workspace badge in the header for users with CPA role.
+- **`CpaInviteEmail`** — branded email template ("[Owner] invited you to review a cost segregation study for [address]") with owner's note quoted back, CTA to `/share/<token>`.
+- **Tests** — 3 new unit tests for `buildShareUrl`. Prisma-touching code exercised through the lint/typecheck/build flow.
 
 **What landed in Day 3 (DIY Self-Serve tier):**
 
