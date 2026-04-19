@@ -9,10 +9,10 @@ export const deliverAiReport = inngest.createFunction(
   },
   async ({ event, step, logger }) => {
     const data = event.data as { studyId: string; tier: string };
-    if (data.tier !== "AI_REPORT") {
-      // Sanity — finalizeStudy only emits for Tier 1, but belt + suspenders.
-      logger.info("deliver-ai-report skipping non-Tier-1 event", data);
-      return { skipped: true, reason: "not Tier 1" };
+    if (data.tier !== "AI_REPORT" && data.tier !== "DIY") {
+      // Tier 2 engineer-reviewed studies deliver via a separate admin action.
+      logger.info("deliver-ai-report skipping tier", data);
+      return { skipped: true, reason: `tier ${data.tier} handled elsewhere` };
     }
 
     const result = await step.run("render-upload-email-deliver", async () => {

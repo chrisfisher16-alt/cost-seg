@@ -19,16 +19,22 @@ type Props = {
 };
 
 function isTier(value: string | undefined): value is Tier {
-  return value === "AI_REPORT" || value === "ENGINEER_REVIEWED";
+  return value === "DIY" || value === "AI_REPORT" || value === "ENGINEER_REVIEWED";
 }
 
 export const metadata: Metadata = {
   title: "Get started",
   description:
-    "Start your AI Report or Engineer-Reviewed cost segregation study. Secure Stripe checkout.",
+    "Start your DIY Self-Serve, AI Report, or Engineer-Reviewed cost segregation study. Secure Stripe checkout.",
 };
 
 const TIER_HIGHLIGHTS: Record<Tier, string[]> = {
+  DIY: [
+    "Self-serve — you enter basis + land value, we do the allocation",
+    "Full 40-row MACRS schedule with half-year / mid-month conventions",
+    "Branded PDF with methodology appendix (Cover, Exec Summary, Appendix A–D)",
+    "Upgrade to AI Report or Engineer-Reviewed anytime without re-entering data",
+  ],
   AI_REPORT: [
     "Modeling report delivered in minutes",
     "Downloadable branded PDF + exec summary",
@@ -44,6 +50,7 @@ const TIER_HIGHLIGHTS: Record<Tier, string[]> = {
 };
 
 const TIER_TURNAROUNDS: Record<Tier, string> = {
+  DIY: "Delivered instantly",
   AI_REPORT: "Delivered in minutes",
   ENGINEER_REVIEWED: "Delivered in 3–7 business days",
 };

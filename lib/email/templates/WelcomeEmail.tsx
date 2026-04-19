@@ -21,6 +21,10 @@ interface WelcomeEmailProps {
 }
 
 const TIER_COPY: Record<Tier, { label: string; eta: string }> = {
+  DIY: {
+    label: "DIY Self-Serve",
+    eta: "Enter your basis and land value on the intake page — your report generates instantly.",
+  },
   AI_REPORT: {
     label: "AI Report",
     eta: "Your report will be ready within minutes of upload.",

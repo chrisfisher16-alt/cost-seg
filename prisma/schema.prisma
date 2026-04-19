@@ -73,6 +73,7 @@ model Property {
 // ---------------------------------------------------------------------------
 
 enum Tier {
+  DIY
   AI_REPORT
   ENGINEER_REVIEWED
 }

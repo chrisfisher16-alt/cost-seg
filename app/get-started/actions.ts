@@ -11,7 +11,7 @@ import { isStripeConfigured } from "@/lib/stripe/client";
 export type StartCheckoutResult = { ok: true; url: string } | { ok: false; error: string };
 
 const inputSchema = z.object({
-  tier: z.enum(["AI_REPORT", "ENGINEER_REVIEWED"]),
+  tier: z.enum(["DIY", "AI_REPORT", "ENGINEER_REVIEWED"]),
   propertyType: z.enum(PROPERTY_TYPES),
   email: z.string().trim().toLowerCase().min(3).max(254).email(),
   addressLine: z.string().trim().max(480).optional(),

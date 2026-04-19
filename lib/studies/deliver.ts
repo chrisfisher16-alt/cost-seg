@@ -126,8 +126,8 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
   if (study.status === "DELIVERED") {
     return { ok: true, skippedReason: "already delivered" };
   }
-  if (study.tier !== "AI_REPORT") {
-    return { ok: false, skippedReason: "deliverAiReport only handles Tier 1" };
+  if (study.tier !== "AI_REPORT" && study.tier !== "DIY") {
+    return { ok: false, skippedReason: "deliverAiReport handles only DIY and AI_REPORT tiers" };
   }
   if (!study.assetSchedule) {
     return { ok: false, skippedReason: "study has no assetSchedule" };

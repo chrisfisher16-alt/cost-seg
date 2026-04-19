@@ -11,13 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
-import { CATALOG } from "@/lib/stripe/catalog";
+import { CATALOG, type Tier } from "@/lib/stripe/catalog";
 
 export const metadata = { title: "Dashboard" };
 
 type StudyListItem = {
   id: string;
-  tier: "AI_REPORT" | "ENGINEER_REVIEWED";
+  tier: Tier;
   status: string;
   createdAt: Date;
   deliverableUrl: string | null;
@@ -165,8 +165,14 @@ function EmptyState() {
 function StudyCard({ study }: { study: StudyListItem }) {
   const entry = CATALOG[study.tier];
 
+  // DIY studies go to the simpler self-serve form; AI / Engineer-Reviewed use
+  // the full intake wizard with document upload.
   const intakeHref =
-    study.status === "AWAITING_DOCUMENTS" ? (`/studies/${study.id}/intake` as Route) : null;
+    study.status === "AWAITING_DOCUMENTS"
+      ? study.tier === "DIY"
+        ? (`/studies/${study.id}/diy` as Route)
+        : (`/studies/${study.id}/intake` as Route)
+      : null;
   const processingHref =
     study.status === "PROCESSING" ||
     study.status === "AI_COMPLETE" ||

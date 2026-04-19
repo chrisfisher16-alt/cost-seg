@@ -6,10 +6,24 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 + Day 2 + one polish fix committed** — 3 clean commits, `git log` / `git show HEAD`
+- ✅ **Day 1 + Day 2 + Day 3 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (27 routes) · `pnpm test` 64/64 (5 new MACRS tests)
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (28 routes) · `pnpm test` 70/70 (5 MACRS + 6 DIY tests)
 - ⚠️ Not pushed to remote — staying local until you say go
+- ⚠️ **Prisma migration pending** — DIY tier adds `DIY` to the `Tier` enum. Run `pnpm prisma:migrate` once your DB is live (the migration SQL is already written at `prisma/migrations/20260419_add_diy_tier/migration.sql`).
+- ⚠️ **Stripe: create a DIY price** — one-time $149 price, copy the ID to `STRIPE_PRICE_ID_DIY` in `.env.local`.
+
+**What landed in Day 3 (DIY Self-Serve tier):**
+
+- **Schema** — `DIY` added to the `Tier` enum. Migration SQL at `prisma/migrations/20260419_add_diy_tier/migration.sql` (safe additive enum extension, no row rewrites).
+- **Stripe catalog** — `DIY` tier at $149, env var `STRIPE_PRICE_ID_DIY`.
+- **Marketing** — `/pricing` DIY card is no longer waitlist-only; CTA goes to `/get-started?tier=DIY`.
+- **Checkout** — `get-started` page handles all three tiers with its own highlights + turnaround copy per tier. Stripe metadata validators + Zod schemas updated.
+- **`lib/studies/diy-pipeline.ts`** — pure `buildDiySchedule` function. Consumes user-declared basis + land value, applies property-type-default allocations from the asset library, normalizes so line-item totals reconcile to building basis exactly. 6 unit tests.
+- **DIY intake page** — `/studies/[id]/diy` with a guided two-section form (Property / Basis + Land) and a smart sidebar (how-it-works, where-to-find-the-numbers, upgrade-path). "Use suggested land value" hint uses property-type defaults.
+- **Submit action** — persists property, builds schedule, flips study to `AI_COMPLETE`, emits `study.ai.complete` for the existing delivery Inngest function to pick up (now accepts DIY).
+- **Delivery** — `deliver-ai-report` + `deliverAiReport` extended to handle DIY the same way it handles AI_REPORT (same PDF template, same email template, same storage path).
+- **Dashboard** — DIY studies route to `/studies/[id]/diy` (not the full intake wizard).
 
 **What landed in Day 2 (PDF v2 rebuild):**
 

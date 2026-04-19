@@ -26,6 +26,13 @@ export interface ReportDeliveredEmailProps {
 
 const TIER_COPY: Record<Tier, { heading: string; subhead: string; caveat: string; badge: string }> =
   {
+    DIY: {
+      heading: "Your DIY Self-Serve report is ready.",
+      subhead: "Property-type-default allocation with full MACRS schedule.",
+      badge: "DIY Self-Serve",
+      caveat:
+        "DIY uses property-type-default allocations from the numbers you supplied. For a study built from your closing disclosure and receipts, upgrade to AI Report. For an audit-defensible engineer-signed study, reply to this email and we'll upgrade you without re-entering any data.",
+    },
     AI_REPORT: {
       heading: "Your AI Report is ready.",
       subhead: "Modeling report + full MACRS schedule.",

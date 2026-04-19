@@ -2,17 +2,25 @@
  * Single source of truth for tier pricing. See ADR 0005.
  * Stripe Price IDs come from env so Stripe remains swappable per environment.
  */
-export type Tier = "AI_REPORT" | "ENGINEER_REVIEWED";
+export type Tier = "DIY" | "AI_REPORT" | "ENGINEER_REVIEWED";
 
 export interface TierCatalogEntry {
   tier: Tier;
   label: string;
   priceCents: number;
-  stripePriceIdEnv: "STRIPE_PRICE_ID_TIER_1" | "STRIPE_PRICE_ID_TIER_2";
+  stripePriceIdEnv: "STRIPE_PRICE_ID_DIY" | "STRIPE_PRICE_ID_TIER_1" | "STRIPE_PRICE_ID_TIER_2";
   blurb: string;
 }
 
 export const CATALOG: Record<Tier, TierCatalogEntry> = {
+  DIY: {
+    tier: "DIY",
+    label: "DIY Self-Serve",
+    priceCents: 14900,
+    stripePriceIdEnv: "STRIPE_PRICE_ID_DIY",
+    blurb:
+      "Self-serve cost segregation. Enter your basis and land value; we apply property-type-default allocations and generate the MACRS schedule + branded PDF instantly.",
+  },
   AI_REPORT: {
     tier: "AI_REPORT",
     label: "AI Report",

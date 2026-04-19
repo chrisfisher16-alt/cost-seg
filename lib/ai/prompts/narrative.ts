@@ -61,7 +61,12 @@ export const narrativeOutputSchema = z.object({
 export type NarrativeOutput = z.infer<typeof narrativeOutputSchema>;
 
 export interface NarrativePromptInput {
-  tier: "AI_REPORT" | "ENGINEER_REVIEWED";
+  /**
+   * DIY studies don't reach the narrative prompt — they build narrative inline in
+   * lib/studies/diy-pipeline. The type stays wide so LoadedStudy.tier can flow in
+   * without a cast from the pipeline caller.
+   */
+  tier: "DIY" | "AI_REPORT" | "ENGINEER_REVIEWED";
   propertyType: string;
   address: string;
   squareFeet: number | null;

@@ -43,7 +43,7 @@ export function decodeCheckoutMetadata(raw: Stripe.Metadata | null): CheckoutMet
   if (!raw) return null;
   const tier = raw.tier;
   const propertyType = raw.propertyType;
-  if (tier !== "AI_REPORT" && tier !== "ENGINEER_REVIEWED") return null;
+  if (tier !== "DIY" && tier !== "AI_REPORT" && tier !== "ENGINEER_REVIEWED") return null;
   if (
     propertyType !== "SINGLE_FAMILY_RENTAL" &&
     propertyType !== "SHORT_TERM_RENTAL" &&
