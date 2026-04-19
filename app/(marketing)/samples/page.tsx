@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRightIcon, FileTextIcon, HomeIcon } from "lucide-react";
+import { ArrowRightIcon, DownloadIcon, FileTextIcon, HomeIcon } from "lucide-react";
 
 import { FinalCta } from "@/components/marketing/FinalCta";
 import { SampleDownloadForm } from "@/components/marketing/SampleDownloadForm";
@@ -187,9 +187,21 @@ function SampleCard({ sample }: { sample: Sample }) {
           size="lg"
           tone="primary"
         />
-        <Button asChild variant="outline" className="w-full" leadingIcon={<FileTextIcon />}>
-          <Link href={`/samples/${sample.id}` as never}>View sample</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="flex-1" leadingIcon={<FileTextIcon />}>
+            <Link href={`/samples/${sample.id}` as never}>View</Link>
+          </Button>
+          <Button asChild variant="secondary" className="flex-1" leadingIcon={<DownloadIcon />}>
+            <a
+              href={`/api/samples/${sample.id}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+            >
+              PDF
+            </a>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

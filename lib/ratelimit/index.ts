@@ -79,3 +79,12 @@ export function estimatorLimiter(): Limiter {
 export function leadCaptureLimiter(): Limiter {
   return getLimiter("lead-capture", 3, "60 s");
 }
+
+/**
+ * 10 sample-PDF downloads per minute per IP. Prevents anyone from hammering
+ * the render route — rendering a PDF is CPU-bound and blocks the server
+ * process for a few hundred ms each call.
+ */
+export function samplePdfLimiter(): Limiter {
+  return getLimiter("sample-pdf", 10, "60 s");
+}
