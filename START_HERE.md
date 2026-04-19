@@ -6,12 +6,24 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + Day 6 + Day 7 + Day 8 + Day 9 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 10 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (35 routes) · `pnpm test` 89/89
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (35 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 56/56 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
-- ⚠️ **Stripe: create a DIY price** — one-time $149 price, copy the ID to `STRIPE_PRICE_ID_DIY` in `.env.local`.
+- ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
+- ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 10 (Playwright e2e coverage):**
+
+- **Four new spec files** covering every Day 3–9 surface that had no e2e signal:
+  - `tests/e2e/a11y.spec.ts` — skip-to-content link is the first focusable element and targets `#main-content`; every public route exposes a `<main id="main-content">` landmark; every marketing route has exactly one h1.
+  - `tests/e2e/coverage.spec.ts` — 15 public routes all return 200 with their expected h1 (home, pricing, 3 samples, compare, faq, about, partners, contact, 4 legal pages). Header nav hrefs all resolve.
+  - `tests/e2e/access-control.spec.ts` — unauthenticated visits to DIY intake, read-only study view, share-accept, processing, admin routes, and the portfolio CSV API all gate correctly without leaking data.
+  - `tests/e2e/infra.spec.ts` — sample PDF endpoints return real PDFs (magic-byte check on `%PDF-`); unknown sample IDs 404; `/robots.txt` disallows `/api`; `/sitemap.xml` lists marketing routes; the root layout advertises `og:image` metadata.
+- **Refreshed drift-y pre-existing specs** (smoke / marketing / checkout / auth / intake / estimator) — copy had moved on from what the tests asserted (e.g. "Start a AI Report" → "Start your AI Report", eyebrow text mistaken for a heading, Radix Select treated as an HTML `<select>`). Every pre-existing spec now matches current reality.
+- **Playwright config tuning** — dropped local workers from unlimited → 2 (CI stays at 1). Turbopack compiles routes on-demand; 8-way parallelism was thrashing the compiler into 30-second timeouts.
+- **Result** — 56/56 passing in ≈60 seconds locally. Full-suite command: `pnpm test:e2e`. Run a single file: `pnpm test:e2e tests/e2e/a11y.spec.ts`.
 
 **What landed in Day 9 (a11y polish — WCAG 2.2 AA):**
 
