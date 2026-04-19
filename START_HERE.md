@@ -6,12 +6,19 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + Day 6 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (34 routes) · `pnpm test` 73/73
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (34 routes) · `pnpm test` 79/79
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe: create a DIY price** — one-time $149 price, copy the ID to `STRIPE_PRICE_ID_DIY` in `.env.local`.
+
+**What landed in Day 6 (Form 3115 CPA worksheet — Appendix E):**
+
+- **`lib/pdf/form-3115.ts`** — pure `computeForm3115Worksheet`. Decides whether the taxpayer needs Form 3115 (prior-year filing, DCN 7 automatic consent) vs Form 4562 (year-of-acquisition filing); computes the net §481(a) catch-up adjustment by running both schedules (old SL vs new cost-seg) and summing deltas for every prior year; emits per-class Form 4562 pre-fills. 6 unit tests.
+- **Appendix E in the delivered PDF** — every study now ships with a CPA Filing Worksheet as its final appendix. Emerald callout with the recommended form + DCN, six-row key-numbers grid, per-year method-change analysis table (or a year-of-acquisition paragraph when §481(a) doesn't apply), per-class Form 4562 pre-fills, six-item procedural checklist for the filing CPA, and a decision-support disclosure.
+- **TOC** — Table of Contents lists Appendix E with three sub-entries.
+- **Competitive wedge** — CostSegregation.com, Cost Seg EZ, Segtax, FIXR.ai all produce the depreciation schedule and stop. Form 3115 / §481(a) math is what CPAs actually wrestle with at filing time. Nobody else surfaces it.
 
 **What landed in Day 5 (launch-readiness hygiene):**
 
