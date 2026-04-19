@@ -6,12 +6,20 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (30 routes) · `pnpm test` 73/73 (5 MACRS + 6 DIY + 3 share tests)
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (34 routes) · `pnpm test` 73/73
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe: create a DIY price** — one-time $149 price, copy the ID to `STRIPE_PRICE_ID_DIY` in `.env.local`.
+
+**What landed in Day 5 (launch-readiness hygiene):**
+
+- **Real sample-PDF downloads** — the `/samples` pages used to promise a PDF and deliver nothing. Now `/api/samples/[id]/pdf` renders on-demand using the production Tier-1 template + MACRS pipeline. Every sample card on `/samples` has a "PDF" button; the deep-dive at `/samples/[id]` has "Download PDF" in the header; the lead-capture form opens the PDF in a new tab after capturing the email (and offers a "skip the email" link).
+- **`lib/samples/catalog.ts`** — single source of truth for the three synthetic samples (Oak Ridge / Magnolia / Riverside). Exports `SAMPLES`, `SAMPLE_IDS`, `DEFAULT_SAMPLE_ID`, `getSample`, and `buildSampleSchedule` which transforms a Sample into the `StoredSchedule` shape the PDF template expects.
+- **Rate limiting** — `samplePdfLimiter` caps PDF rendering at 10 requests/min/IP. Falls back to in-memory limiter when Upstash isn't configured.
+- **OpenGraph image** — `app/opengraph-image.tsx` renders a branded 1200×630 PNG at the edge (emerald gradient + hero tagline + tier prices). Auto-applied to every page without its own `og:image`.
+- **SEO** — dynamic `robots.txt` and `sitemap.xml` at `app/robots.ts` and `app/sitemap.ts`. Marketing routes enumerated with priorities; authenticated/API routes disallowed.
 
 **What landed in Day 4 (CPA invite + shared workspace):**
 
