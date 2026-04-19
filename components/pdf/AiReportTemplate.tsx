@@ -1,6 +1,11 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 
 import { TIER_1_SCOPE_DISCLOSURE } from "@/lib/pdf/disclosure";
+import {
+  computeForm3115Worksheet,
+  form3115InputFromLineItems,
+  type Form3115Worksheet,
+} from "@/lib/pdf/form-3115";
 import { aggregateBasisByClass, computeMacrsSchedule, type MacrsSchedule } from "@/lib/pdf/macrs";
 import {
   DEPRECIATION_CLASS_LABEL,
@@ -158,6 +163,16 @@ export function AiReportTemplate(props: AiReportProps) {
     realPropertyYears,
   });
 
+  const form3115 = computeForm3115Worksheet(
+    form3115InputFromLineItems(props.schedule.lineItems, {
+      placedInServiceYear: placedInServiceDate.getFullYear(),
+      placedInServiceMonth: placedInServiceDate.getMonth() + 1,
+      taxYear,
+      bonusEligible: props.bonusEligible ?? true,
+      realPropertyYears,
+    }),
+  );
+
   return (
     <Document
       title={`Cost Segregation Study — ${props.property.address}`}
@@ -210,6 +225,19 @@ export function AiReportTemplate(props: AiReportProps) {
         studyId={props.studyId}
       />
       <AppendixDContent {...props} />
+
+      <AppendixCover
+        letter="E"
+        title="CPA Filing Worksheet"
+        subtitle="Pre-filled inputs for Form 3115 (or Form 4562), including the §481(a) adjustment and recommended DCN"
+        studyId={props.studyId}
+      />
+      <AppendixEContent
+        {...props}
+        worksheet={form3115}
+        taxYear={taxYear}
+        placedInServiceIso={placedInServiceIso}
+      />
     </Document>
   );
 }
@@ -353,6 +381,10 @@ function TableOfContents(props: AiReportProps) {
     { label: "Appendix B — Detailed Asset Schedule", indent: 0 },
     { label: "Appendix C — Reference Documentation", indent: 0 },
     { label: "Appendix D — Expenditure Classification Schedule", indent: 0 },
+    { label: "Appendix E — CPA Filing Worksheet", indent: 0 },
+    { label: "Recommended form + §481(a) adjustment", indent: 1 },
+    { label: "Prior-year method-change analysis", indent: 1 },
+    { label: "Per-class Form 4562 pre-fills", indent: 1 },
   ];
   return (
     <Page size="LETTER" style={baseStyles.page}>
@@ -1371,5 +1403,250 @@ function AppendixDContent(props: AiReportProps) {
 
       <PageFooter studyId={props.studyId} />
     </Page>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Appendix E: CPA Filing Worksheet — §481(a) adjustment + Form 4562 pre-fills
+// -----------------------------------------------------------------------------
+
+function AppendixEContent(
+  props: AiReportProps & {
+    worksheet: Form3115Worksheet;
+    taxYear: number;
+    placedInServiceIso: string;
+  },
+) {
+  const { worksheet, taxYear, placedInServiceIso } = props;
+
+  return (
+    <Page size="LETTER" style={baseStyles.page} wrap>
+      <Text style={baseStyles.eyebrow}>Appendix E</Text>
+      <Text style={baseStyles.h2}>CPA Filing Worksheet</Text>
+      <Text style={baseStyles.lead}>
+        Decision support for the tax filing that applies this cost segregation study. This is{" "}
+        <Text style={{ fontFamily: "Helvetica-Bold" }}>not</Text> a substitute for Form 3115 or Form
+        4562 — it is the numerical work a CPA would otherwise have to reconstruct from scratch. The
+        taxpayer&rsquo;s preparer must independently verify every figure against their own records
+        before filing.
+      </Text>
+
+      <View
+        style={{
+          marginTop: 14,
+          padding: 16,
+          borderRadius: 6,
+          backgroundColor: pdfColors.primarySoft,
+          borderColor: pdfColors.primarySoftBorder,
+          borderWidth: 1,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 8,
+            fontFamily: "Helvetica-Bold",
+            letterSpacing: 1.4,
+            color: pdfColors.primaryInk,
+            textTransform: "uppercase",
+          }}
+        >
+          Recommended filing
+        </Text>
+        <Text
+          style={{
+            fontSize: 24,
+            fontFamily: "Helvetica-Bold",
+            letterSpacing: -0.4,
+            marginTop: 6,
+            color: pdfColors.primaryInk,
+          }}
+        >
+          {worksheet.recommendedForm}
+          {worksheet.designatedChangeNumber ? ` · DCN ${worksheet.designatedChangeNumber}` : ""}
+        </Text>
+        <Text
+          style={{ fontSize: 10, color: pdfColors.primaryInk, marginTop: 10, lineHeight: 1.55 }}
+        >
+          {worksheet.summaryParagraph}
+        </Text>
+      </View>
+
+      <SectionHeader title="Key numbers" />
+      <KeyValueGrid
+        columns={2}
+        entries={[
+          { k: "Year of change", v: String(taxYear) },
+          { k: "Placed in service", v: fmtDate(placedInServiceIso) },
+          {
+            k: "Prior-year old method (SL)",
+            v: fmtCents(worksheet.priorYearTotals.oldMethodCents),
+          },
+          {
+            k: "Prior-year new method (cost seg)",
+            v: fmtCents(worksheet.priorYearTotals.newMethodCents),
+          },
+          {
+            k: "§481(a) catch-up adjustment",
+            v: fmtCents(worksheet.section481AdjustmentCents),
+          },
+          {
+            k: `${taxYear} depreciation (new method)`,
+            v: fmtCents(worksheet.yearOfChangeDepreciationCents),
+          },
+        ]}
+      />
+
+      {worksheet.form3115Applies ? (
+        <>
+          <SectionHeader title="Prior-year method-change analysis" />
+          <Text style={baseStyles.muted}>
+            Year-by-year depreciation under both methods. The §481(a) adjustment is the sum of the
+            Delta column — the cumulative catch-up deduction the taxpayer claims in {taxYear}.
+          </Text>
+          <DataTable
+            columns={[
+              {
+                key: "year",
+                header: "Year",
+                flex: 1,
+                render: (r: Form3115Worksheet["priorYearBreakdown"][number]) => String(r.year),
+              },
+              {
+                key: "old",
+                header: "Old method (SL)",
+                flex: 1.5,
+                align: "right",
+                render: (r) => fmtCents(r.oldMethodCents),
+                boldInFooter: true,
+              },
+              {
+                key: "new",
+                header: "New method (cost seg)",
+                flex: 1.5,
+                align: "right",
+                render: (r) => fmtCents(r.newMethodCents),
+                boldInFooter: true,
+              },
+              {
+                key: "delta",
+                header: "Δ (new − old)",
+                flex: 1.5,
+                align: "right",
+                render: (r) => fmtCents(r.deltaCents),
+                boldInFooter: true,
+              },
+            ]}
+            rows={worksheet.priorYearBreakdown}
+            footer={{
+              year: "Total",
+              old: fmtCents(worksheet.priorYearTotals.oldMethodCents),
+              new: fmtCents(worksheet.priorYearTotals.newMethodCents),
+              delta: fmtCents(worksheet.section481AdjustmentCents),
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <SectionHeader title="Year-of-acquisition filing" />
+          <Text style={baseStyles.p}>
+            The study is applied in the same tax year the property was placed in service, so there
+            is no prior-method depreciation to adjust. The CPA claims the accelerated MACRS classes
+            directly on Form 4562 without a §481(a) catch-up.
+          </Text>
+        </>
+      )}
+
+      <SectionHeader title="Per-class depreciation input for Form 4562" />
+      <DataTable
+        columns={[
+          {
+            key: "label",
+            header: "Asset class",
+            flex: 2.5,
+            render: (r: Form3115Worksheet["classSummary"][number]) => r.label,
+          },
+          {
+            key: "basis",
+            header: "Basis",
+            flex: 1.2,
+            align: "right",
+            render: (r) => fmtCents(r.basisCents),
+            boldInFooter: true,
+          },
+          {
+            key: "recovery",
+            header: "Recovery",
+            flex: 1,
+            align: "right",
+            render: (r) => r.recoveryPeriod,
+          },
+          {
+            key: "convention",
+            header: "Convention",
+            flex: 1.1,
+            align: "right",
+            render: (r) => r.convention,
+          },
+          { key: "method", header: "Method", flex: 1.5, align: "right", render: (r) => r.method },
+        ]}
+        rows={worksheet.classSummary}
+      />
+
+      <View style={[baseStyles.hr, { marginTop: 20 }]} />
+
+      <Text style={baseStyles.h3}>Procedural checklist for the filing CPA</Text>
+      <View style={{ gap: 5 }}>
+        <Form3115Checkbox
+          label={`Confirm the year of change (${taxYear}) matches the taxpayer's tax year on the return.`}
+        />
+        <Form3115Checkbox
+          label={
+            worksheet.form3115Applies
+              ? `File Form 3115 with DCN ${worksheet.designatedChangeNumber} under Rev. Proc. 2015-13 (automatic consent). Attach one copy to the return and mail the duplicate to the IRS Ogden or Covington address per the current instructions.`
+              : "File Form 4562 with the accelerated classes shown above. Skip Form 3115 — no prior-method adjustment applies."
+          }
+        />
+        <Form3115Checkbox label="Verify the taxpayer's identifying information (EIN/SSN, legal name, address, filing status) before submitting." />
+        <Form3115Checkbox
+          label={`Recalculate bonus depreciation eligibility against the taxpayer's actual acquisition date (we used ${fmtDate(
+            placedInServiceIso,
+          )}).`}
+        />
+        <Form3115Checkbox label="Confirm the real-property classification (27.5-year residential vs 39-year nonresidential) matches the taxpayer's facts." />
+        <Form3115Checkbox label="Retain this study, the asset schedule, and source documentation for the life of the depreciation schedule." />
+      </View>
+
+      <View style={baseStyles.disclosureBox}>
+        <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>
+          Decision-support only.
+        </Text>
+        <Text>
+          This worksheet is computed from the cost-seg study inputs. It is not tax advice; in the
+          Tier-1 tier it is not reviewed by a CPA or EA. A credentialed preparer must independently
+          verify every figure, confirm the taxpayer&rsquo;s facts, and apply professional judgment
+          before filing.
+        </Text>
+      </View>
+
+      <PageFooter studyId={props.studyId} />
+    </Page>
+  );
+}
+
+function Form3115Checkbox({ label }: { label: string }) {
+  return (
+    <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
+      <View
+        style={{
+          width: 10,
+          height: 10,
+          marginTop: 2,
+          borderColor: pdfColors.softBorder,
+          borderWidth: 1,
+          borderRadius: 2,
+        }}
+      />
+      <Text style={{ flex: 1, fontSize: 10, lineHeight: 1.5 }}>{label}</Text>
+    </View>
   );
 }
