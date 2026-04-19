@@ -6,12 +6,20 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + Day 6 + Day 7 + Day 8 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + Day 6 + Day 7 + Day 8 + Day 9 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (35 routes) · `pnpm test` 89/89
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe: create a DIY price** — one-time $149 price, copy the ID to `STRIPE_PRICE_ID_DIY` in `.env.local`.
+
+**What landed in Day 9 (a11y polish — WCAG 2.2 AA):**
+
+- **`components/shared/SkipLink.tsx`** — new sr-only/focus-visible "Skip to content" link injected at the top of `<body>` by the root layout. Targets `#main-content`; satisfies WCAG 2.4.1 (Bypass Blocks) for keyboard users — tab once from any page, hit enter, and the focus jumps past the header into the main region.
+- **`<main id="main-content">` landmarks** — added to all four route-group layouts (`(app)`, `(marketing)`, `(admin)`, `(auth)`) and the three pages that live outside a group (`/share/[token]`, `/get-started`, `/get-started/success`). Removed the now-redundant inner `<main>` on admin detail/queue pages so we don't nest landmarks.
+- **AppHeader dropdown a11y** — the avatar-pill account menu used to render as an unlabeled button on mobile (text hidden below `sm:`). Added `aria-label="Account menu for <name|email>"` and marked the avatar + chevron icons `aria-hidden`. Screen readers now announce the trigger correctly across every viewport.
+- **OKLCH contrast bump** — `--muted-foreground` tuned to meet WCAG AA (≥ 4.5:1) on both `--background` and `--muted` surfaces. Light mode `0.52 → 0.45` (darker); dark mode `0.65 → 0.72` (lighter). Affects every `text-muted-foreground` helper across the app — form hints, timestamps, descriptions, `StatusBadge` captions, table column headers.
+- **What we verified was already solid:** Radix handles focus trapping for Dialog/Sheet/Select/DropdownMenu; `prefers-reduced-motion` handling in globals.css disables all animations + the Celebration confetti respects it too; every form error uses `role="alert"`; all icon-only buttons (ThemeToggle, Sheet mobile-nav trigger, Revoke/Copy in ShareStudyDialog, Remove file in UploadZone) already carry `aria-label`; no `<div onClick>` button-impostors.
 
 **What landed in Day 8 (admin workbench operational tooling):**
 
