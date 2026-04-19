@@ -2,6 +2,9 @@
 
 import { assertOwnership, requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
+import { DEFAULT_BRACKET } from "@/lib/estimator/compute";
+import { aggregateBasisByClass } from "@/lib/pdf/macrs";
+import { computeYearOneProjection } from "@/lib/pdf/year-one";
 
 export type PipelineStepState = "pending" | "active" | "done" | "error";
 
@@ -25,8 +28,10 @@ export interface ProcessingStateResult {
     deliverableUrl: string | null;
     acceleratedCents?: number;
     year1DeductionCents?: number;
+    year1TaxSavingsCents?: number;
     depreciableBasisCents?: number;
     fiveYearCents?: number;
+    sevenYearCents?: number;
     fifteenYearCents?: number;
     thirtyNineYearCents?: number;
     totalAssetCount?: number;
@@ -160,18 +165,25 @@ export async function pollProcessingStateAction(
     const eventKinds = new Set(events.map((e) => e.kind));
     const steps = buildSteps(study.status, eventKinds, study.failedReason ?? null);
 
-    // Extract summary numbers from the asset schedule JSON if present.
-    const schedule = (study.assetSchedule ?? {}) as {
+    // Extract summary numbers from the asset schedule JSON when present. The schema
+    // we persist is {decomposition, schedule: {lineItems, assumptions}, narrative,
+    // totalCents} — mirrors StoredSchedule in lib/studies/deliver.ts.
+    const stored = (study.assetSchedule ?? {}) as {
       decomposition?: { buildingValueCents?: number };
-      totals?: {
-        acceleratedCents?: number;
-        year1DeductionCents?: number;
-        fiveYearCents?: number;
-        fifteenYearCents?: number;
-        thirtyNineYearCents?: number;
+      schedule?: {
+        lineItems?: Array<{ category: string; amountCents: number }>;
       };
-      schedule?: Array<unknown>;
+      totalCents?: number;
     };
+
+    const lineItems = stored.schedule?.lineItems ?? [];
+    const basis = aggregateBasisByClass(lineItems);
+    const acceleratedCents =
+      basis.fiveYrBasisCents + basis.sevenYrBasisCents + basis.fifteenYrBasisCents;
+    const projection = lineItems.length > 0 ? computeYearOneProjection(lineItems) : null;
+    const year1DeductionCents = projection
+      ? projection.bonusEligibleCents + projection.longLifeYear1Cents
+      : undefined;
 
     return {
       ok: true,
@@ -187,13 +199,18 @@ export async function pollProcessingStateAction(
       })),
       summary: {
         deliverableUrl: study.deliverableUrl ?? null,
-        acceleratedCents: schedule.totals?.acceleratedCents,
-        year1DeductionCents: schedule.totals?.year1DeductionCents,
-        depreciableBasisCents: schedule.decomposition?.buildingValueCents,
-        fiveYearCents: schedule.totals?.fiveYearCents,
-        fifteenYearCents: schedule.totals?.fifteenYearCents,
-        thirtyNineYearCents: schedule.totals?.thirtyNineYearCents,
-        totalAssetCount: schedule.schedule?.length,
+        acceleratedCents: acceleratedCents || undefined,
+        year1DeductionCents,
+        year1TaxSavingsCents: year1DeductionCents
+          ? Math.round(year1DeductionCents * DEFAULT_BRACKET)
+          : undefined,
+        depreciableBasisCents: stored.decomposition?.buildingValueCents,
+        fiveYearCents: basis.fiveYrBasisCents || undefined,
+        sevenYearCents: basis.sevenYrBasisCents || undefined,
+        fifteenYearCents: basis.fifteenYrBasisCents || undefined,
+        thirtyNineYearCents:
+          (basis.twentySevenHalfCents || 0) + (basis.thirtyNineCents || 0) || undefined,
+        totalAssetCount: lineItems.length || undefined,
       },
     };
   } catch (err) {

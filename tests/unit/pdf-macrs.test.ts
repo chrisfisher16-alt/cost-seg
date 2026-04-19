@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { aggregateBasisByClass, computeMacrsSchedule, type MacrsLine } from "@/lib/pdf/macrs";
+import { aggregateBasisByClass, computeMacrsSchedule } from "@/lib/pdf/macrs";
 
 describe("aggregateBasisByClass", () => {
   it("sums by category and ignores unknowns", () => {

@@ -227,8 +227,13 @@ function DeliveredPanel({
   propertyLabel: string;
 }) {
   const year1 = state.summary.year1DeductionCents ?? state.summary.acceleratedCents ?? 0;
+  const taxSavings = state.summary.year1TaxSavingsCents ?? 0;
   const basis = state.summary.depreciableBasisCents ?? 0;
   const assetCount = state.summary.totalAssetCount ?? 0;
+  const hintParts: string[] = [];
+  if (assetCount) hintParts.push(`${assetCount} classified line items`);
+  if (taxSavings) hintParts.push(`≈ ${formatCents(taxSavings)} tax savings at 37% bracket`);
+  const hint = hintParts.length ? hintParts.join(" · ") : "Review your full schedule in the PDF.";
 
   async function downloadReport() {
     const res = await getDeliverableUrlAction(studyId);
@@ -258,11 +263,7 @@ function DeliveredPanel({
           <Kpi
             label="Year-one deduction identified"
             value={year1 ? formatCents(year1) : "See report"}
-            hint={
-              assetCount
-                ? `Across ${assetCount} classified line items. Review your full schedule in the PDF.`
-                : "Review your full schedule in the PDF."
-            }
+            hint={hint}
             size="xl"
             tone="accent"
             animate
