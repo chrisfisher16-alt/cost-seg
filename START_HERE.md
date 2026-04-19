@@ -6,10 +6,18 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ Day-1 work is **committed** (one slice) — you can review with `git log` / `git show HEAD`
+- ✅ **Day 1 + Day 2 + one polish fix committed** — 3 clean commits, `git log` / `git show HEAD`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (27 routes) · `pnpm test` 59/59
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (27 routes) · `pnpm test` 64/64 (5 new MACRS tests)
 - ⚠️ Not pushed to remote — staying local until you say go
+
+**What landed in Day 2 (PDF v2 rebuild):**
+
+- `lib/pdf/macrs.ts` — full IRS-tables MACRS schedule computation (Rev. Proc. 87-57): half-year 200%/150% DB for 5/7/15-year, mid-month straight-line for 27.5/39-year, explicit bonus row respecting TCJA/OBBBA eligibility. 5 unit tests covering all branches.
+- `components/pdf/shared.tsx` — emerald-aligned print palette, BrandMarkPdf (SVG gradient lockup), generic DataTable, SoftKpi, KeyValueGrid, SectionHeader, Markdownish, PageFooter.
+- `components/pdf/AiReportTemplate.tsx` — rebuilt to match the 214-page reference structure: **Cover** · **TOC** · body (Exec Summary, Property Info, Property Description, Land Value, Cost Basis, Depreciable Basis, Asset Summary, Depreciation Schedule, Methodology) · **Appendix A** (full methodology deep-dive) · **Appendix B** (per-asset detail cards) · **Appendix C** (reference docs) · **Appendix D** (expenditure classification schedule).
+- `lib/studies/deliver.ts` — now passes ownerLabel, taxYear, realPropertyYears (derived from PropertyType — 27.5 for residential, 39 for STR/commercial), placedInServiceIso, bonusEligible (TCJA/OBBBA window check).
+- **Polish fix (`f90f7ed`)** — the pipeline-live celebration screen now shows the real year-one deduction + tax-savings hint + per-class basis numbers, computed on the fly from `lineItems` using the same function the PDF uses.
 
 ---
 
