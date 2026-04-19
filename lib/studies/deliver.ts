@@ -10,7 +10,43 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { renderAiReportPdf } from "@/lib/pdf/render";
 import { computeYearOneProjection, groupByDepreciationClass } from "@/lib/pdf/year-one";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type PropertyType } from "@prisma/client";
+
+/**
+ * Maps our internal property types to the MACRS real-property life per §168(e):
+ * residential rental uses 27.5-year life; short-term rental (transient) and
+ * commercial/mixed-use use 39-year nonresidential.
+ */
+function realPropertyYearsFor(type: PropertyType): 27.5 | 39 {
+  switch (type) {
+    case "SINGLE_FAMILY_RENTAL":
+    case "SMALL_MULTIFAMILY":
+    case "MID_MULTIFAMILY":
+      return 27.5;
+    case "SHORT_TERM_RENTAL":
+    case "COMMERCIAL":
+      return 39;
+    default:
+      return 39;
+  }
+}
+
+/**
+ * Bonus depreciation eligibility based on acquisition date.
+ *
+ * Simplified to the two common cases today:
+ *   • Acquired on or after 2025-01-19 → 100% (OBBBA §70306 restoration).
+ *   • Acquired after 2017-09-27 → 100% (TCJA peak through late 2022).
+ *   • Anything earlier → 0%.
+ *
+ * A future refinement can phase down 80/60/40% for 2023-2024 acquisitions.
+ * This is stated explicitly on the depreciation-schedule page of the report.
+ */
+function isBonusEligible(acquiredAt: Date): boolean {
+  const acquiredMs = acquiredAt.getTime();
+  const TCJA_START = Date.UTC(2017, 8, 28); // 2017-09-28
+  return acquiredMs >= TCJA_START;
+}
 
 const DELIVERABLE_EXPIRY_SECONDS = 7 * 24 * 60 * 60;
 
@@ -98,20 +134,28 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
   }
 
   const stored = study.assetSchedule as unknown as StoredSchedule;
+  const now = new Date();
+  const realPropertyYears = realPropertyYearsFor(study.property.propertyType);
+  const bonusEligible = isBonusEligible(study.property.acquiredAt);
+  const acquiredAtIso = study.property.acquiredAt.toISOString().slice(0, 10);
 
   const buffer = await renderAiReportPdf({
     studyId: study.id,
-    generatedAt: new Date(),
+    generatedAt: now,
     tierLabel: CATALOG[study.tier].label,
+    ownerLabel: study.user.name ?? null,
+    taxYear: now.getFullYear() - 1,
     property: {
       address: study.property.address,
       city: study.property.city,
       state: study.property.state,
       zip: study.property.zip,
       propertyTypeLabel: PROPERTY_TYPE_LABELS[study.property.propertyType],
+      realPropertyYears,
       squareFeet: study.property.squareFeet,
       yearBuilt: study.property.yearBuilt,
-      acquiredAtIso: study.property.acquiredAt.toISOString().slice(0, 10),
+      acquiredAtIso,
+      placedInServiceIso: acquiredAtIso,
     },
     decomposition: stored.decomposition,
     narrative: stored.narrative,
@@ -125,6 +169,7 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
     },
     projection: computeYearOneProjection(stored.schedule.lineItems),
     assumedBracket: DEFAULT_BRACKET,
+    bonusEligible,
   });
 
   const storagePath = `${studyId}/deliverables/ai-report.pdf`;
