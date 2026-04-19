@@ -46,6 +46,54 @@ export async function adminRerunPipelineAction(studyId: string): Promise<ActionR
 }
 
 /**
+ * Manually flip a study to FAILED with an admin-supplied reason. Use for edge
+ * cases that don't recover via retry (bad closing disclosure, refund initiated,
+ * etc.). Writes a StudyEvent for audit.
+ */
+export async function adminMarkFailedAction(
+  studyId: string,
+  reason: string,
+): Promise<ActionResult> {
+  const { user } = await requireRole(["ADMIN"]);
+  const trimmed = reason.trim();
+  if (trimmed.length < 3 || trimmed.length > 500) {
+    return { ok: false, error: "Reason must be 3–500 characters." };
+  }
+
+  const prisma = getPrisma();
+  const study = await prisma.study.findUnique({
+    where: { id: studyId },
+    select: { id: true, status: true },
+  });
+  if (!study) return { ok: false, error: "Study not found" };
+  if (study.status === "DELIVERED") {
+    return {
+      ok: false,
+      error: "Study is already DELIVERED — use refund flow instead of marking failed.",
+    };
+  }
+
+  await prisma.$transaction([
+    prisma.study.update({
+      where: { id: studyId },
+      data: { status: "FAILED", failedReason: trimmed },
+    }),
+    prisma.studyEvent.create({
+      data: {
+        studyId,
+        kind: "admin.marked_failed",
+        actorId: user.id,
+        payload: { priorStatus: study.status, reason: trimmed } as Prisma.InputJsonValue,
+      },
+    }),
+  ]);
+
+  revalidatePath(`/admin/studies/${studyId}`);
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/**
  * Resend the delivery email with a fresh 7-day signed URL.
  */
 export async function adminResendDeliveryEmailAction(studyId: string): Promise<ActionResult> {

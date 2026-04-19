@@ -1,15 +1,22 @@
 import type { Route } from "next";
 import Link from "next/link";
+import { SearchIcon } from "lucide-react";
 
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import { Container } from "@/components/shared/Container";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { getPrisma } from "@/lib/db/client";
-import { formatCents } from "@/lib/stripe/catalog";
+import { CATALOG, formatCents, type Tier } from "@/lib/stripe/catalog";
+import { cn } from "@/lib/utils";
 import type { StudyStatus } from "@prisma/client";
 
 export const metadata = { title: "Admin · Pipeline" };
 
 type Props = {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; tier?: string; q?: string }>;
 };
 
 const STATUSES: StudyStatus[] = [
@@ -24,14 +31,37 @@ const STATUSES: StudyStatus[] = [
   "REFUNDED",
 ];
 
+const TIERS: Tier[] = ["DIY", "AI_REPORT", "ENGINEER_REVIEWED"];
+
 function isStatus(value: string | undefined): value is StudyStatus {
   return !!value && (STATUSES as string[]).includes(value);
 }
 
-async function loadRows(filter: StudyStatus | null) {
+function isTier(value: string | undefined): value is Tier {
+  return !!value && (TIERS as string[]).includes(value);
+}
+
+async function loadRows(filter: {
+  status: StudyStatus | null;
+  tier: Tier | null;
+  q: string | null;
+}) {
   try {
     return await getPrisma().study.findMany({
-      where: filter ? { status: filter } : undefined,
+      where: {
+        ...(filter.status ? { status: filter.status } : {}),
+        ...(filter.tier ? { tier: filter.tier } : {}),
+        ...(filter.q
+          ? {
+              OR: [
+                { user: { email: { contains: filter.q, mode: "insensitive" } } },
+                { user: { name: { contains: filter.q, mode: "insensitive" } } },
+                { property: { address: { contains: filter.q, mode: "insensitive" } } },
+                { property: { city: { contains: filter.q, mode: "insensitive" } } },
+              ],
+            }
+          : {}),
+      },
       orderBy: { createdAt: "desc" },
       take: 200,
       select: {
@@ -74,94 +104,195 @@ function hoursSince(date: Date): string {
 
 export default async function AdminPipelinePage({ searchParams }: Props) {
   const params = await searchParams;
-  const filter = isStatus(params.status) ? params.status : null;
-  const [rows, counts] = await Promise.all([loadRows(filter), loadCounts()]);
+  const status = isStatus(params.status) ? params.status : null;
+  const tier = isTier(params.tier) ? params.tier : null;
+  const q = params.q?.trim() ? params.q.trim() : null;
+
+  const [rows, counts] = await Promise.all([loadRows({ status, tier, q }), loadCounts()]);
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
+  function buildHref(overrides: Partial<{ status: string; tier: string; q: string }>) {
+    const next = new URLSearchParams();
+    const eff = {
+      status: "status" in overrides ? overrides.status : (status ?? undefined),
+      tier: "tier" in overrides ? overrides.tier : (tier ?? undefined),
+      q: "q" in overrides ? overrides.q : (q ?? undefined),
+    };
+    for (const [k, v] of Object.entries(eff)) {
+      if (v) next.set(k, v);
+    }
+    const qs = next.toString();
+    return (qs ? `/admin?${qs}` : "/admin") as Route;
+  }
+
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <Container size="full" className="py-10">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Every study, across all customers.
-          </p>
+          <p className="text-muted-foreground mt-1 text-sm">Every study across every customer.</p>
         </div>
-        <Link
-          href="/admin/engineer-queue"
-          className="inline-flex h-9 items-center justify-center rounded-md border border-zinc-300 px-3 text-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-        >
-          Engineer queue ({counts.AWAITING_ENGINEER})
-        </Link>
+        <Button asChild variant="outline">
+          <Link href="/admin/engineer-queue">
+            Engineer queue
+            <Badge variant="muted" size="sm" className="ml-2">
+              {counts.AWAITING_ENGINEER}
+            </Badge>
+          </Link>
+        </Button>
       </header>
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        <FilterChip href="/admin" label="All" count={total} active={!filter} />
-        {STATUSES.map((s) => (
-          <FilterChip
-            key={s}
-            href={{ pathname: "/admin", query: { status: s } }}
-            label={s.replace(/_/g, " ").toLowerCase()}
-            count={counts[s]}
-            active={filter === s}
-          />
-        ))}
-      </div>
+      <Card className="mb-6">
+        <CardContent className="space-y-4 p-5">
+          <form method="get" action="/admin" className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[240px] flex-1">
+              <label
+                htmlFor="admin-search"
+                className="text-muted-foreground mb-1 block text-xs font-medium"
+              >
+                Search
+              </label>
+              <Input
+                id="admin-search"
+                name="q"
+                defaultValue={q ?? ""}
+                placeholder="Email, name, address, city"
+                leadingAdornment={<SearchIcon className="h-4 w-4" />}
+              />
+            </div>
+            {status ? <input type="hidden" name="status" value={status} /> : null}
+            {tier ? <input type="hidden" name="tier" value={tier} /> : null}
+            <Button type="submit" size="default">
+              Search
+            </Button>
+            {q ? (
+              <Button asChild variant="ghost" size="default">
+                <Link href={buildHref({ q: undefined })}>Clear search</Link>
+              </Button>
+            ) : null}
+          </form>
+
+          <div className="flex flex-wrap items-start gap-6">
+            <div className="space-y-1.5">
+              <p className="text-muted-foreground font-mono text-[11px] tracking-[0.18em] uppercase">
+                Status
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                <FilterChip
+                  href={buildHref({ status: undefined })}
+                  label="All"
+                  count={total}
+                  active={!status}
+                />
+                {STATUSES.map((s) => (
+                  <FilterChip
+                    key={s}
+                    href={buildHref({ status: s })}
+                    label={s.replace(/_/g, " ").toLowerCase()}
+                    count={counts[s]}
+                    active={status === s}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-muted-foreground font-mono text-[11px] tracking-[0.18em] uppercase">
+                Tier
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                <FilterChip
+                  href={buildHref({ tier: undefined })}
+                  label="All tiers"
+                  count={null}
+                  active={!tier}
+                />
+                {TIERS.map((t) => (
+                  <FilterChip
+                    key={t}
+                    href={buildHref({ tier: t })}
+                    label={CATALOG[t].label}
+                    count={null}
+                    active={tier === t}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          No studies match.
-        </div>
+        <Card className="border-dashed">
+          <CardContent className="text-muted-foreground p-10 text-center text-sm">
+            No studies match these filters.
+          </CardContent>
+        </Card>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-zinc-200/70 dark:border-zinc-800/70">
-          <table className="min-w-full text-sm">
-            <thead className="bg-zinc-50/80 text-left text-xs tracking-wide text-zinc-500 uppercase dark:bg-zinc-950/60">
-              <tr>
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Property</th>
-                <th className="px-4 py-3 font-medium">Tier</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Price</th>
-                <th className="px-4 py-3 font-medium">Since</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200/70 dark:divide-zinc-800/70">
-              {rows.map((row) => (
-                <tr key={row.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-950/60">
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/studies/${row.id}` as Route}
-                      className="font-medium hover:underline"
-                    >
-                      {row.user.email}
-                    </Link>
-                    {row.user.name ? (
-                      <div className="text-xs text-zinc-500">{row.user.name}</div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="truncate">{row.property.address}</div>
-                    <div className="text-xs text-zinc-500">
-                      {row.property.city}, {row.property.state}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {row.tier === "AI_REPORT" ? "AI Report" : "Engineer-Reviewed"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={row.status} />
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {formatCents(row.pricePaidCents)}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-zinc-500">{hoursSince(row.updatedAt)}</td>
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead className="border-border bg-muted/40 text-muted-foreground border-b text-left text-xs tracking-wide uppercase">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Customer</th>
+                  <th className="px-4 py-3 font-medium">Property</th>
+                  <th className="px-4 py-3 font-medium">Tier</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 text-right font-medium">Price</th>
+                  <th className="px-4 py-3 font-medium">Updated</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((row, idx) => (
+                  <tr
+                    key={row.id}
+                    className={cn(
+                      "border-border/60 hover:bg-muted/40 border-b transition-colors",
+                      idx % 2 === 0 ? "bg-card" : "bg-muted/15",
+                    )}
+                  >
+                    <td className="px-4 py-3 align-top">
+                      <Link
+                        href={`/admin/studies/${row.id}` as Route}
+                        className="text-foreground font-medium hover:underline"
+                      >
+                        {row.user.email}
+                      </Link>
+                      {row.user.name ? (
+                        <div className="text-muted-foreground text-xs">{row.user.name}</div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="truncate">{row.property.address}</div>
+                      <div className="text-muted-foreground text-xs">
+                        {row.property.city}, {row.property.state}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <Badge
+                        variant={row.tier === "ENGINEER_REVIEWED" ? "success" : "default"}
+                        size="sm"
+                      >
+                        {CATALOG[row.tier].label}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <StatusBadge status={row.status} />
+                    </td>
+                    <td data-tabular className="px-4 py-3 text-right align-top">
+                      {formatCents(row.pricePaidCents)}
+                    </td>
+                    <td className="text-muted-foreground px-4 py-3 align-top text-xs">
+                      {hoursSince(row.updatedAt)} ago
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
-    </main>
+    </Container>
   );
 }
 
@@ -171,24 +302,25 @@ function FilterChip({
   count,
   active,
 }: {
-  href: string | { pathname: string; query: Record<string, string> };
+  href: Route;
   label: string;
-  count: number;
+  count: number | null;
   active: boolean;
 }) {
   return (
     <Link
-      href={href as Route}
-      className={
+      href={href}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
         active
-          ? "bg-foreground text-background inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs"
-          : "inline-flex items-center gap-2 rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
-      }
+          ? "bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:bg-muted border",
+      )}
     >
       <span>{label}</span>
-      <span className={active ? "text-background/70" : "text-zinc-500 dark:text-zinc-500"}>
-        {count}
-      </span>
+      {count !== null ? (
+        <span className={cn(active ? "opacity-70" : "text-muted-foreground")}>{count}</span>
+      ) : null}
     </Link>
   );
 }
