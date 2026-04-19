@@ -6,12 +6,19 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + Day 6 + Day 7 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 + Day 2 + Day 3 + Day 4 + Day 5 + Day 6 + Day 7 + Day 8 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (35 routes) · `pnpm test` 89/89
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe: create a DIY price** — one-time $149 price, copy the ID to `STRIPE_PRICE_ID_DIY` in `.env.local`.
+
+**What landed in Day 8 (admin workbench operational tooling):**
+
+- **`adminMarkFailedAction`** — new server action in `app/(admin)/admin/studies/[id]/actions.ts` with 3-500 character reason validation. Runs an atomic transaction that flips the study to `FAILED` and writes an `admin.marked_failed` StudyEvent with actor + reason. Revalidates the study detail + pipeline list. Pre-flight guards (`DELIVERED` / `FAILED` / `REFUNDED` blocked at the action layer, not just UI).
+- **`components/admin/AdminActionsPanel.tsx`** — full rewrite on the Day-1 design system: shadcn Card + Button + Dialog + Field components, loading states on every action, icons from lucide-react. Three operational controls: **Re-run pipeline** (with confirm), **Resend delivery email**, **Mark as failed** (destructive-tone dialog with required reason textarea, live character validation). Upload-engineer-signed form still lives inline on the same panel for `ENGINEER_REVIEWED` studies awaiting handoff.
+- **Admin pipeline page (`app/(admin)/admin/page.tsx`)** — rewrote the top-level workbench with Container + Card layout. Added **full-text search** (case-insensitive, across customer email/name + property address/city) with `SearchIcon`-adorned input + hidden filter preservation. Added **Tier filter chips** ("All tiers", DIY, AI Report, Engineer-Reviewed) alongside existing status chips. Status chips now show live counts from a dedicated `groupBy` query. Results table gets zebra striping, truncated address column, per-row `updatedAt` freshness badges (e.g. `12m ago`).
+- **Competitive wedge** — none of the competitors show an admin-side view at all. This is infrastructure for scaling ops; not a marketing feature, but it's what lets us handle 1→100 customers without burning time on manual triage.
 
 **What landed in Day 7 (Portfolio rollup + CSV export):**
 
