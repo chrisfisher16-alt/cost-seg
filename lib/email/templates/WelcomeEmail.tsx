@@ -20,17 +20,29 @@ interface WelcomeEmailProps {
   appUrl: string;
 }
 
-const TIER_COPY: Record<Tier, { label: string; eta: string }> = {
+const TIER_COPY: Record<
+  Tier,
+  { label: string; intakeBlurb: string; intakeCta: string; eta: string }
+> = {
   DIY: {
     label: "DIY Self-Serve",
-    eta: "Enter your basis and land value on the intake page — your report generates instantly.",
+    intakeBlurb:
+      "Your DIY Self-Serve is ready to run as soon as you enter your basis and land value — no document upload required. It takes about 90 seconds.",
+    intakeCta: "Enter the numbers →",
+    eta: "Your report generates instantly once you submit the form.",
   },
   AI_REPORT: {
     label: "AI Report",
+    intakeBlurb:
+      "Your AI Report is ready to begin as soon as you upload three documents: your closing disclosure, any improvement receipts, and a few property photos.",
+    intakeCta: "Upload documents →",
     eta: "Your report will be ready within minutes of upload.",
   },
   ENGINEER_REVIEWED: {
     label: "Engineer-Reviewed Study",
+    intakeBlurb:
+      "Your Engineer-Reviewed study is ready to begin as soon as you upload three documents: your closing disclosure, any improvement receipts, and a few property photos.",
+    intakeCta: "Upload documents →",
     eta: "A licensed PE will review and sign within 3–7 days of upload.",
   },
 };
@@ -45,14 +57,10 @@ export function WelcomeEmail({ firstName, tier, intakeUrl, appUrl }: WelcomeEmai
         <Container style={container}>
           <Text style={brand}>Cost Seg</Text>
           <Text style={heading}>{firstName ? `Hi ${firstName},` : "Hi there,"}</Text>
-          <Text style={paragraph}>
-            Thanks for your purchase. Your {copy.label} is ready to begin as soon as you upload
-            three documents: your closing disclosure, any improvement receipts, and a few property
-            photos.
-          </Text>
+          <Text style={paragraph}>Thanks for your purchase. {copy.intakeBlurb}</Text>
           <Section style={{ textAlign: "center", marginTop: 32 }}>
             <Button style={button} href={intakeUrl}>
-              Upload documents &rarr;
+              {copy.intakeCta}
             </Button>
           </Section>
           <Text style={paragraphSmall}>
@@ -64,12 +72,12 @@ export function WelcomeEmail({ firstName, tier, intakeUrl, appUrl }: WelcomeEmai
           </Text>
           <Hr style={hr} />
           <Text style={paragraphSmall}>{copy.eta}</Text>
-          {tier === "AI_REPORT" ? (
+          {tier === "AI_REPORT" || tier === "DIY" ? (
             <Text style={disclosure}>
-              Important: the AI Report is a planning and modeling tool produced by software. It is
-              not a complete cost segregation study under IRS Pub 5653. Do not file a return relying
-              on it without CPA review. If you need an audit-defensible study, reply and we can
-              upgrade you.
+              Important: {tier === "DIY" ? "DIY Self-Serve" : "the AI Report"} is a planning and
+              modeling tool produced by software. It is not a complete cost segregation study under
+              IRS Pub 5653. Do not file a return relying on it without CPA review. If you need an
+              audit-defensible study, reply and we can upgrade you.
             </Text>
           ) : null}
           <Text style={paragraphSmall}>Questions? Just reply to this email.</Text>

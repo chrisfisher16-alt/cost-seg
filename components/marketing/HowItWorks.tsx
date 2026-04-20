@@ -14,8 +14,8 @@ const STEPS = [
   {
     n: "02",
     icon: UploadCloudIcon,
-    title: "Upload three documents",
-    body: "Closing disclosure, improvement receipts, and a few property photos. We extract what we need automatically.",
+    title: "Hand over the basis",
+    body: "DIY tier: type in the numbers from your closing disclosure. AI and Engineer-Reviewed: upload the closing disclosure plus improvement receipts and a few photos — we extract everything automatically.",
   },
   {
     n: "03",

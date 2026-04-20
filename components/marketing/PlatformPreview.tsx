@@ -29,7 +29,7 @@ export function PlatformPreview() {
         <SectionHeader
           eyebrow="The Pipeline, live"
           title="Every step in view. Nothing behind a loading spinner."
-          description="Cost seg is a trust business. We show you exactly what the AI is doing, what it just decided, and why — in plain language, the whole way through."
+          description="See the parsing, the land-value split, and the per-asset classification as they happen. Every decision is logged with an IRS citation — no black-box numbers to defend later."
         />
 
         <div className="mt-14 grid items-center gap-8 lg:grid-cols-[1.1fr_1fr]">
@@ -53,15 +53,17 @@ export function PlatformPreview() {
               <li className="flex gap-3">
                 <CheckIcon className="text-primary mt-[3px] h-4 w-4 shrink-0" aria-hidden />
                 <span>
-                  <strong className="text-foreground">Per-asset rationale</strong> — click any line
-                  in your report to see the comparable, adjustments, and IRS citation behind it.
+                  <strong className="text-foreground">Per-asset rationale</strong> — every line in
+                  your report shows the comparable, the adjustments, and the IRS citation behind the
+                  classification. Appendix B ships with every study.
                 </span>
               </li>
               <li className="flex gap-3">
                 <CheckIcon className="text-primary mt-[3px] h-4 w-4 shrink-0" aria-hidden />
                 <span>
                   <strong className="text-foreground">Share with your CPA</strong> — one click to
-                  send a read-only view; they see the same schedule and methodology you do.
+                  send a read-only view; they see the same schedule and methodology you do, no
+                  account required on their end.
                 </span>
               </li>
             </ul>

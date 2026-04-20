@@ -13,8 +13,8 @@ export function FinalCta() {
           Make filing day feel easy.
         </h2>
         <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg leading-relaxed">
-          Three inputs, a year-one deduction, and a branded PDF — in the time it takes to make a
-          pour-over. No sign-up required to estimate.
+          Free estimate in 30 seconds. Full AI Report delivered in minutes. Engineer-signed study in
+          3–7 days. No sign-up required to estimate.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button asChild size="xl" trailingIcon={<ArrowRightIcon />}>

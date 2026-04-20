@@ -86,8 +86,8 @@ const ROWS: Row[] = [
   },
   {
     feature: "CPA collaboration surface",
-    note: "Share read-only, per-client rollups",
-    us: { value: "Day-3 launch" },
+    note: "Share read-only, per-client rollups, CSV export",
+    us: true,
     costSegregation: { value: "Handoff only" },
     costSegEz: { value: "Handoff only" },
     segtax: { value: "Handoff only" },

@@ -2,9 +2,8 @@ import { CATALOG, formatCents, type Tier } from "@/lib/stripe/catalog";
 
 /**
  * Marketing-facing tier catalog. Extends the DB-backed CATALOG with the DIY
- * self-serve tier, which launches Day 2 with its own pipeline and Stripe SKU.
- * Until then, the DIY card renders a waitlist CTA that captures email via the
- * existing Lead table (no schema changes required).
+ * self-serve tier — DIY has its own deterministic pipeline (lib/studies/
+ * diy-pipeline.ts) and its own Stripe SKU.
  */
 export type MarketingTier = "DIY" | Tier;
 

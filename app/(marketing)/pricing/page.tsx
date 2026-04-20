@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRightIcon, CheckIcon, ShieldCheckIcon } from "lucide-react";
 
-import { DiyWaitlistForm } from "@/components/marketing/DiyWaitlistForm";
 import { FaqSection } from "@/components/marketing/FaqSection";
 import { FinalCta } from "@/components/marketing/FinalCta";
 import { PricingSection } from "@/components/marketing/PricingSection";
 import { Container } from "@/components/shared/Container";
-import { Section, SectionHeader } from "@/components/shared/Section";
+import { Section } from "@/components/shared/Section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,7 +24,6 @@ export default function PricingPage() {
       <PricingHero />
       <PricingSection compact />
       <AuditProtectionBlock />
-      <DiyWaitlistBlock />
       <PricingFaqBridge />
       <FaqSection limit={5} />
       <FinalCta />
@@ -110,23 +108,6 @@ function AuditProtectionBlock() {
               </Button>
             </CardContent>
           </Card>
-        </div>
-      </Container>
-    </Section>
-  );
-}
-
-function DiyWaitlistBlock() {
-  return (
-    <Section id="diy-waitlist">
-      <Container size="md">
-        <SectionHeader
-          eyebrow="DIY Self-Serve · early access"
-          title="Be first when the $149 self-serve tier launches."
-          description="Day-2 on our roadmap. We&rsquo;ll email you the moment it&rsquo;s live — and the first 100 signups get their first property free."
-        />
-        <div className="mt-10">
-          <DiyWaitlistForm />
         </div>
       </Container>
     </Section>

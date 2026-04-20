@@ -24,12 +24,12 @@ export default function AboutPage() {
             About
           </Badge>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-            Trust infrastructure for real-estate tax.
+            Cost segregation, rebuilt for how investors actually file.
           </h1>
           <p className="text-muted-foreground mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-balance">
-            Cost segregation has been dominated by $5,000 engagements with six-week turnarounds. We
-            believe AI + a licensed engineer on review can deliver the same (often better) result in
-            minutes to days, at a fraction of the cost — without compromising on IRS defensibility.
+            The industry has been stuck at $5,000 engagements and six-week turnarounds for a decade.
+            We think an AI that shows its work, paired with a licensed PE on Tier 2, delivers the
+            same audit-defensible result in minutes to days — at a tenth of the cost.
           </p>
         </Container>
       </section>

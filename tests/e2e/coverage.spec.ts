@@ -15,7 +15,7 @@ const PUBLIC_ROUTES = [
   { path: "/samples/riverside-commercial", heading: /sample report/i },
   { path: "/compare", heading: /how we stack up/i },
   { path: "/faq", heading: /answers, in plain english/i },
-  { path: "/about", heading: /trust infrastructure/i },
+  { path: "/about", heading: /cost segregation, rebuilt/i },
   { path: "/partners", heading: /cost seg your clients/i },
   { path: "/contact", heading: /we read every message/i },
   { path: "/legal/scope-disclosure", heading: /scope disclosure/i },

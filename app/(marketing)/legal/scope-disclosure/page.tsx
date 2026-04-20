@@ -13,25 +13,38 @@ export default function ScopeDisclosurePage() {
         description="What this software produces, what it doesn&rsquo;t, and how to file responsibly."
       />
       <div className="prose prose-neutral dark:prose-invert mt-10 max-w-none">
-        <h2>What a Cost Seg AI Report is</h2>
+        <h2>The three tiers, in plain terms</h2>
         <p>
-          Your AI Report is a software-generated modeling and planning tool. It applies the Residual
+          <strong>DIY Self-Serve ($149)</strong> is a self-guided calculator. You enter the basis
+          and land value; we apply property-type-default asset allocations from our library and
+          produce a branded PDF with the full MACRS schedule. No AI extraction, no engineer review.
+          Planning only — have your CPA verify the inputs.
+        </p>
+        <p>
+          <strong>AI Report ($295)</strong> is a software-generated modeling and planning study. An
+          AI pipeline reads your closing disclosure and improvement receipts, decomposes the basis,
+          and classifies each asset into its MACRS life. The methodology follows the Residual
           Estimation Method combined with Replacement Cost New Less Depreciation (RCNLD), as
-          outlined in the IRS Cost Segregation Audit Techniques Guide (Publication 5653, 2-2025), to
-          allocate your property basis across MACRS classes.
+          outlined in the IRS Cost Segregation Audit Techniques Guide (Publication 5653, 2-2025).
         </p>
-        <h2>What it is not</h2>
         <p>
-          It is <strong>not</strong> a complete engineered cost segregation study signed by a
-          Professional Engineer. It does not include a physical site inspection. It should not be
-          attached to a filed tax return or relied upon in an IRS examination without the review of
-          a credentialed tax professional.
+          <strong>Engineer-Reviewed ($1,495)</strong> is the AI Report plus review and signature by
+          a US-licensed Professional Engineer, plus a 13-element compliance checklist aligned with
+          Chapter 4 of Publication 5653. This is the tier intended for audit-defensible filing.
         </p>
-        <h2>The Engineer-Reviewed tier</h2>
+        <h2>What none of the tiers are</h2>
         <p>
-          Our Engineer-Reviewed tier adds review and signature by a US-licensed Professional
-          Engineer, plus a 13-element compliance checklist aligned with Chapter 4 of Publication
-          5653. That is the tier intended for audit-defensible filing.
+          DIY and AI Report are <strong>not</strong> complete engineered cost segregation studies
+          signed by a Professional Engineer. They do not include a physical site inspection. They
+          should not be attached to a filed tax return or relied upon in an IRS examination without
+          the review of a credentialed tax professional. The Engineer-Reviewed tier is the one
+          intended for attaching to a return.
+        </p>
+        <h2>Upgrade paths</h2>
+        <p>
+          Your inputs carry forward. A DIY study can be upgraded to AI Report or Engineer-Reviewed
+          without re-entering anything, and AI Report upgrades to Engineer-Reviewed without
+          re-uploading documents. You pay the delta.
         </p>
         <h2>Bonus depreciation eligibility</h2>
         <p>

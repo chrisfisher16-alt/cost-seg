@@ -39,9 +39,9 @@ export function Testimonials() {
     <Section>
       <Container size="xl">
         <SectionHeader
-          eyebrow="Early results"
-          title="What the first wave of customers has said."
-          description="Reviews from beta investors and CPAs. We update this page quarterly."
+          eyebrow="Illustrative · pre-launch"
+          title="The shape of the feedback we're hearing."
+          description="These are composite scenarios from beta-program interviews — not verbatim quotes from named customers. We'll replace them with real, verifiable reviews as soon as we can."
         />
         <div className="mt-14 grid gap-6 md:grid-cols-3">
           {QUOTES.map((q) => (
@@ -58,7 +58,7 @@ export function Testimonials() {
                   </Badge>
                   <div>
                     <p className="text-sm font-medium">{q.author}</p>
-                    <p className="text-muted-foreground text-xs">{q.role}</p>
+                    <p className="text-muted-foreground text-xs">{q.role} · illustrative</p>
                   </div>
                 </div>
               </CardContent>
