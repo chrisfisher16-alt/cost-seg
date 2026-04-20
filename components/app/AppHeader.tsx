@@ -3,6 +3,7 @@ import { ChevronDownIcon, LogOutIcon, UserIcon } from "lucide-react";
 
 import { signOutAction } from "@/app/(auth)/actions";
 import { BrandMark } from "@/components/shared/BrandMark";
+import { NavLink } from "@/components/shared/NavLink";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,27 +33,14 @@ export function AppHeader({ ctx }: { ctx: AuthContext }) {
             ) : null}
           </div>
           <nav className="hidden items-center gap-6 text-sm sm:flex">
-            <Link
-              href="/dashboard"
-              className="text-muted-foreground hover:text-foreground font-medium transition-colors"
-            >
-              Dashboard
-            </Link>
+            <NavLink href="/dashboard">Dashboard</NavLink>
             {user.role === "ADMIN" ? (
-              <Link
-                href="/admin"
-                className="text-muted-foreground hover:text-foreground font-medium transition-colors"
-              >
+              <NavLink href="/admin" match="exact">
                 Admin
-              </Link>
+              </NavLink>
             ) : null}
             {user.role === "ENGINEER" ? (
-              <Link
-                href="/admin/engineer-queue"
-                className="text-muted-foreground hover:text-foreground font-medium transition-colors"
-              >
-                Engineer queue
-              </Link>
+              <NavLink href="/admin/engineer-queue">Engineer queue</NavLink>
             ) : null}
           </nav>
         </div>

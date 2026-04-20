@@ -3,6 +3,7 @@ import { ArrowLeftIcon, LogOutIcon } from "lucide-react";
 
 import { signOutAction } from "@/app/(auth)/actions";
 import { BrandMark } from "@/components/shared/BrandMark";
+import { NavLink } from "@/components/shared/NavLink";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,18 +20,15 @@ export function AdminHeader({ ctx }: { ctx: AuthContext }) {
             Admin
           </Badge>
           <nav className="hidden items-center gap-5 text-sm sm:flex">
-            <Link
-              href="/admin"
-              className="text-muted-foreground hover:text-foreground font-medium transition-colors"
-            >
+            {/*
+             * /admin matches /admin AND any nested admin route under startsWith.
+             * Force exact so "Pipeline" doesn't light up when on
+             * /admin/engineer-queue or /admin/studies/[id].
+             */}
+            <NavLink href="/admin" match="exact">
               Pipeline
-            </Link>
-            <Link
-              href="/admin/engineer-queue"
-              className="text-muted-foreground hover:text-foreground font-medium transition-colors"
-            >
-              Engineer queue
-            </Link>
+            </NavLink>
+            <NavLink href="/admin/engineer-queue">Engineer queue</NavLink>
             <Link
               href="/dashboard"
               className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium transition-colors"

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpIcon, MailIcon } from "lucide-react";
 
 import { BrandMark } from "@/components/shared/BrandMark";
 import { Container } from "@/components/shared/Container";
@@ -47,6 +48,15 @@ export function Footer() {
               Cost segregation studies in minutes, not six weeks. Modeling reports for planning,
               engineer-signed studies for filing.
             </p>
+            <div className="space-y-2 text-sm">
+              <a
+                href="mailto:support@costseg.app"
+                className="text-foreground/80 hover:text-foreground inline-flex items-center gap-2 transition-colors"
+              >
+                <MailIcon className="h-3.5 w-3.5" aria-hidden />
+                support@costseg.app
+              </a>
+            </div>
             <p className="text-muted-foreground text-xs">
               © {new Date().getFullYear()} Cost Seg. All rights reserved.
             </p>
@@ -73,8 +83,8 @@ export function Footer() {
             ))}
           </div>
         </div>
-        <div className="border-border/60 text-muted-foreground mt-12 border-t pt-6 text-xs leading-relaxed">
-          <p className="max-w-4xl">
+        <div className="border-border/60 mt-12 flex flex-wrap items-start justify-between gap-6 border-t pt-6">
+          <p className="text-muted-foreground max-w-4xl text-xs leading-relaxed">
             Estimates and AI Reports are planning tools produced by software. They are not
             engineered cost segregation studies under IRS Publication 5653 and should not be relied
             on for tax filings without CPA review. Engineer-Reviewed studies are signed by a
@@ -82,6 +92,13 @@ export function Footer() {
             trademarks referenced on this site are property of their respective owners; no
             affiliation or endorsement is implied.
           </p>
+          <a
+            href="#main-content"
+            className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1.5 text-xs font-medium underline-offset-4 transition-colors hover:underline"
+          >
+            <ArrowUpIcon className="h-3 w-3" aria-hidden />
+            Back to top
+          </a>
         </div>
       </Container>
     </footer>

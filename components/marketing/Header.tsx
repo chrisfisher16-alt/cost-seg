@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { MenuIcon } from "lucide-react";
+import { LogOutIcon, MenuIcon } from "lucide-react";
 
 import { signOutAction } from "@/app/(auth)/actions";
 import { BrandMark } from "@/components/shared/BrandMark";
+import { NavLink } from "@/components/shared/NavLink";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,13 +33,9 @@ export async function Header() {
         <BrandMark size="default" />
         <nav className="hidden items-center gap-7 text-sm md:flex">
           {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href as never}
-              className="text-muted-foreground hover:text-foreground font-medium transition-colors"
-            >
+            <NavLink key={link.href} href={link.href}>
               {link.label}
-            </Link>
+            </NavLink>
           ))}
         </nav>
         <div className="flex items-center gap-2">
@@ -77,31 +74,46 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
           <MenuIcon className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="p-0">
+      <SheetContent side="right" className="flex flex-col p-0">
         <SheetHeader>
           <SheetTitle>
             <BrandMark asLink={false} />
           </SheetTitle>
           <SheetDescription>AI cost segregation studies.</SheetDescription>
         </SheetHeader>
-        <nav className="flex flex-col gap-1 p-4">
+        <nav className="flex flex-1 flex-col gap-1 p-4">
           {NAV_LINKS.map((link) => (
-            <Link
+            <NavLink
               key={link.href}
-              href={link.href as never}
-              className="hover:bg-secondary rounded-md px-3 py-2 text-sm font-medium"
+              href={link.href}
+              className="rounded-md px-3 py-2 text-sm"
+              activeClassName="bg-secondary text-foreground"
+              inactiveClassName="text-foreground hover:bg-secondary"
             >
               {link.label}
-            </Link>
+            </NavLink>
           ))}
           <div className="border-border my-2 border-t" />
           {signedIn ? (
-            <Link
-              href="/dashboard"
-              className="hover:bg-secondary rounded-md px-3 py-2 text-sm font-medium"
-            >
-              Dashboard
-            </Link>
+            <>
+              <NavLink
+                href="/dashboard"
+                className="rounded-md px-3 py-2 text-sm"
+                activeClassName="bg-secondary text-foreground"
+                inactiveClassName="text-foreground hover:bg-secondary"
+              >
+                Dashboard
+              </NavLink>
+              <form action={signOutAction}>
+                <button
+                  type="submit"
+                  className="text-destructive hover:bg-destructive/5 inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium"
+                >
+                  <LogOutIcon className="h-4 w-4" aria-hidden />
+                  Sign out
+                </button>
+              </form>
+            </>
           ) : (
             <Link
               href="/sign-in"
@@ -116,6 +128,13 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
           >
             Get started
           </Link>
+
+          {/* Theme toggle pinned to the bottom so the menu doesn't shift when
+              the user swaps modes while scanning nav items. */}
+          <div className="border-border/60 mt-auto flex items-center justify-between border-t pt-4">
+            <span className="text-muted-foreground text-xs font-medium">Theme</span>
+            <ThemeToggle />
+          </div>
         </nav>
       </SheetContent>
     </Sheet>
