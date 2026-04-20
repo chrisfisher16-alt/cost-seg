@@ -90,4 +90,87 @@ describe("classifyMagicLinkError", () => {
     });
     expect(r.kind).toBe("rate-limited");
   });
+
+  // ---- edges that aren't Supabase's official contract but show up in the wild ----
+
+  it("survives non-string message types without crashing", () => {
+    // Old SDKs + transport layers sometimes serialize message as a number
+    // or object. The function must treat those as "no message" rather than
+    // throw on a .match / .test call.
+    expect(() => classifyMagicLinkError({ message: 429 })).not.toThrow();
+    expect(() => classifyMagicLinkError({ message: null })).not.toThrow();
+    expect(() => classifyMagicLinkError({ message: {} })).not.toThrow();
+    expect(() => classifyMagicLinkError({ message: ["not a string"] })).not.toThrow();
+    // All of these collapse to generic since there's no signal.
+    expect(classifyMagicLinkError({ message: 429 }).kind).toBe("generic");
+    expect(classifyMagicLinkError({ message: {} }).kind).toBe("generic");
+  });
+
+  it("treats status as number-only — string '429' does not count", () => {
+    // Some fetch-based error wrappers stringify the status code. We
+    // don't match those because we'd also match random strings like
+    // '429' in a message body. Caller should convert before passing.
+    const r = classifyMagicLinkError({ status: "429", message: "" });
+    expect(r.kind).toBe("generic");
+  });
+
+  it("handles whitespace between 'after' and seconds", () => {
+    // Supabase's exact phrasing has a single space, but we shouldn't
+    // care about Unicode spacing or extra whitespace.
+    const r = classifyMagicLinkError({
+      status: 429,
+      message: "For security purposes, you can only request this after 30 seconds.",
+    });
+    expect(r.retryAfterSec).toBe(30);
+  });
+
+  it("clamps nothing — a 10-minute cooldown surfaces verbatim", () => {
+    // If Supabase ever extends the throttle (e.g. for repeated abuse),
+    // we want the full number in the copy — not clamped to 60.
+    const r = classifyMagicLinkError({
+      status: 429,
+      code: "over_email_send_rate_limit",
+      message: "For security purposes, you can only request this after 600 seconds.",
+    });
+    expect(r.retryAfterSec).toBe(600);
+    expect(r.message).toContain("600 seconds");
+  });
+
+  it("picks the first 'after N seconds' when the message has multiple", () => {
+    // Pathological but plausible if Supabase ever templates two limits
+    // in one message. First match wins by regex semantics.
+    const r = classifyMagicLinkError({
+      status: 429,
+      message: "Retry after 12 seconds. If that fails, wait after 300 seconds.",
+    });
+    expect(r.retryAfterSec).toBe(12);
+  });
+
+  it("matches 'rate limit' prose even without the exact code", () => {
+    // Safety net for message-body variations we haven't seen yet.
+    expect(classifyMagicLinkError({ message: "You've hit the rate limit." }).kind).toBe(
+      "rate-limited",
+    );
+    expect(classifyMagicLinkError({ message: "Request throttled by the rate limiter." }).kind).toBe(
+      "rate-limited",
+    );
+  });
+
+  it("treats a bare empty object as generic without NaN or undefined leaking through", () => {
+    const r = classifyMagicLinkError({});
+    expect(r.kind).toBe("generic");
+    expect(r.retryAfterSec).toBeNull();
+    expect(r.message).not.toContain("undefined");
+    expect(r.message).not.toContain("NaN");
+  });
+
+  it("detects invalid email via 'invalid email' phrase without the code", () => {
+    // Supabase sometimes returns the phrase in the message while leaving
+    // `code` unset — e.g. from the older `gotrue-js` layer.
+    const r = classifyMagicLinkError({
+      status: 400,
+      message: "The provided Invalid Email address was rejected.",
+    });
+    expect(r.kind).toBe("invalid-email");
+  });
 });
