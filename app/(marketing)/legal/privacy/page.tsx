@@ -87,12 +87,10 @@ export default function PrivacyPage() {
             <strong>Vercel</strong> — web hosting and edge functions.
           </li>
           <li>
-            <strong>Anthropic</strong> — the Claude AI model that reads your documents and
-            classifies assets. Source documents are sent via Anthropic&rsquo;s API; per their terms,
-            inputs are not used to train Anthropic&rsquo;s models.
-          </li>
-          <li>
-            <strong>AWS Textract</strong> — OCR for document parsing (AWS Sub-processor).
+            <strong>Anthropic</strong> — the Claude AI model that reads your documents directly
+            (vision-capable, no separate OCR step) and classifies assets. Source documents are sent
+            via Anthropic&rsquo;s API; per their terms, inputs are not used to train
+            Anthropic&rsquo;s models.
           </li>
           <li>
             <strong>Stripe</strong> — payments processing.

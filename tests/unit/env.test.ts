@@ -19,11 +19,6 @@ const baseValidEnv = {
   DATABASE_URL: "postgres://user:pass@host:5432/db",
   DIRECT_URL: "postgres://user:pass@host:5432/db",
   ANTHROPIC_API_KEY: "sk-ant-0123456789abcdef",
-  // AWS Textract keys are declared required in lib/env.ts today (see ADR 0006
-  // for the planned removal) — include placeholders so the schema parses.
-  AWS_ACCESS_KEY_ID: "AKIA0123456789",
-  AWS_SECRET_ACCESS_KEY: "secret-0123456789",
-  AWS_REGION: "us-east-1",
   STRIPE_SECRET_KEY: "sk_test_abc",
   STRIPE_WEBHOOK_SECRET: "whsec_abc",
   STRIPE_PRICE_ID_DIY: "price_diy",
@@ -60,8 +55,8 @@ describe("env()", () => {
 
   it("throws a helpful error when STRIPE_PRICE_ID_DIY is missing", async () => {
     for (const k of Object.keys(process.env)) delete process.env[k];
-    const { STRIPE_PRICE_ID_DIY: _omit, ...rest } = baseValidEnv;
-    Object.assign(process.env, rest);
+    Object.assign(process.env, baseValidEnv);
+    delete process.env.STRIPE_PRICE_ID_DIY;
 
     const { env } = await import("@/lib/env");
     expect(() => env()).toThrow(/STRIPE_PRICE_ID_DIY/);

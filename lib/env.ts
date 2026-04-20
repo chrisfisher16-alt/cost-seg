@@ -26,11 +26,6 @@ const serverEnvSchema = z.object({
   // Anthropic
   ANTHROPIC_API_KEY: z.string().min(20),
 
-  // AWS Textract
-  AWS_ACCESS_KEY_ID: z.string().min(10),
-  AWS_SECRET_ACCESS_KEY: z.string().min(10),
-  AWS_REGION: z.string().default("us-east-1"),
-
   // Stripe
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),

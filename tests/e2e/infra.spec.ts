@@ -137,6 +137,27 @@ test.describe("Stripe webhook endpoint", () => {
   });
 });
 
+test.describe("legal pages — sub-processor accuracy (ADR 0006)", () => {
+  // ADR 0006 retired AWS Textract in favor of Claude vision reading PDFs
+  // directly. The privacy policy lists our data sub-processors, and the
+  // methodology page describes how customer uploads are parsed. Both must
+  // stay accurate — a user-facing claim that we send data to a sub-processor
+  // we don't use is a compliance problem, not a copy nit.
+
+  test("privacy page does not list AWS Textract as a sub-processor", async ({ page }) => {
+    await page.goto("/legal/privacy");
+    const body = (await page.locator("body").textContent()) ?? "";
+    expect(body, "privacy page still mentions Textract").not.toMatch(/textract/i);
+    expect(body, "privacy page still mentions AWS as a sub-processor").not.toMatch(/\bAWS\b/);
+  });
+
+  test("methodology page describes Claude vision (not AWS Textract OCR)", async ({ page }) => {
+    await page.goto("/legal/methodology");
+    const body = (await page.locator("body").textContent()) ?? "";
+    expect(body, "methodology page still references Textract").not.toMatch(/textract/i);
+  });
+});
+
 test.describe("SEO endpoints (Day 5)", () => {
   test("/robots.txt is served and disallows authenticated paths", async ({ request }) => {
     const res = await request.get("/robots.txt");

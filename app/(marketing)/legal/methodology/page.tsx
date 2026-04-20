@@ -67,10 +67,10 @@ export default function MethodologyPage() {
         <h2>Tier 2 — AI Report (also foundational to Tier 3)</h2>
         <h3>Document ingestion</h3>
         <p>
-          The closing disclosure, improvement receipts, and property photos you upload are OCR-ed
-          via AWS Textract, then the normalized text is handed to a Claude model. Claude extracts
-          purchase price, acquisition date, property type, and line items from construction receipts
-          or settlement statements.
+          The closing disclosure, improvement receipts, and property photos you upload are sent
+          directly to a vision-capable Claude model — no separate OCR pre-processing step. Claude
+          reads the document pages natively and extracts purchase price, acquisition date, property
+          type, and line items from construction receipts or settlement statements.
         </p>
         <h3>Valuation method — Residual Estimation + RCNLD</h3>
         <p>

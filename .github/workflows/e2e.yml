@@ -39,11 +39,9 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
       ANTHROPIC_API_KEY: ci-placeholder-anthropic-key-at-least-twenty-chars
-      AWS_ACCESS_KEY_ID: ci-placeholder-aws-access
-      AWS_SECRET_ACCESS_KEY: ci-placeholder-aws-secret-key
-      AWS_REGION: us-east-1
       STRIPE_SECRET_KEY: sk_test_ci_placeholder
       STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+      STRIPE_PRICE_ID_DIY: price_ci_diy
       STRIPE_PRICE_ID_TIER_1: price_ci_tier_one
       STRIPE_PRICE_ID_TIER_2: price_ci_tier_two
       RESEND_API_KEY: re_ci_placeholder
