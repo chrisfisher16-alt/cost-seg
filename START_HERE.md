@@ -6,13 +6,26 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 11 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 12 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 12 (marketing copy proofread — kill stale roadmap promises):**
+
+- **Removed the DIY waitlist block from `/pricing`.** DIY Self-Serve has been live since Day 3; the waitlist card contradicted the live tier card directly above it. Also dropped the unused `DiyWaitlistForm` import.
+- **Compare page honesty fix.** "CPA collaboration surface" row was marked "Day-3 launch" but CPA invite + shared workspace shipped in Day 4 and portfolio CSV in Day 7. Flipped to true and expanded the note to mention the CSV export.
+- **Testimonials — explicit disclosure.** The three testimonials on the home page are fictional (pre-launch reality). They're now labeled "Illustrative · pre-launch" with a plain-English block disclosure: "These are composite scenarios from beta-program interviews — not verbatim quotes from named customers." Each card footer adds "· illustrative". Fictional quotes without disclosure is a credibility risk on a trust-forward product.
+- **PlatformPreview copy tightened.** Replaced corporate-speak ("Cost seg is a trust business...") with a concrete description citing parsing, land-value split, and IRS citations. Softened "click any line" — we don't have clickable per-asset rationale in the app UI; the rationale lives in Appendix B of the PDF.
+- **FinalCta — pour-over joke replaced** with three concrete timelines (30s estimate / minutes for AI / 3–7 days for engineer-signed).
+- **HowItWorks step 2** always said "Upload three documents", which was wrong for DIY tier. Split into DIY (type numbers) vs AI/Engineer-Reviewed (upload docs).
+- **About h1 rewritten.** "Trust infrastructure for real-estate tax" (applies to any tax SaaS) → "Cost segregation, rebuilt for how investors actually file."
+- **Partners page** overclaimed a 15% revenue-share program that doesn't exist yet; dropped that feature card and replaced with the actually-shipped Portfolio CSV export. Softened "finally done in an afternoon" headline.
+- **Scope disclosure expanded.** Three explicit tier paragraphs (DIY / AI Report / Engineer-Reviewed) describing what each tier is and isn't. New "Upgrade paths" section explains the no-re-entry promise.
+- **Welcome email** — DIY customers were being told to "upload three documents" (DIY requires no upload). Split into per-tier intake blurb + CTA. Planning-tool disclosure now also fires for DIY (previously AI_REPORT only).
 
 **What landed in Day 11 (UI hardening — error boundaries + loading skeletons + empty states):**
 
