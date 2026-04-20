@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HomeIcon } from "lucide-react";
+import { ClockIcon, HomeIcon, InfoIcon } from "lucide-react";
 
 import { Container } from "@/components/shared/Container";
 import { Kpi } from "@/components/shared/Kpi";
@@ -21,6 +21,8 @@ import { computeYearOneProjection } from "@/lib/pdf/year-one";
 import { CATALOG, formatCents } from "@/lib/stripe/catalog";
 import { resolveStudyAccess } from "@/lib/studies/access";
 import { ViewDownloadButton } from "./ViewDownloadButton";
+
+const BRACKET_PCT = Math.round(DEFAULT_BRACKET * 100);
 
 export const metadata = { title: "Study view" };
 
@@ -123,21 +125,21 @@ export default async function StudyViewPage({ params }: Props) {
       />
 
       {year1 > 0 ? (
-        <div className="mt-8">
+        <div className="mt-8 space-y-4">
           <Card className="border-primary/30 ring-primary/20 shadow-lg ring-1">
             <CardContent className="p-7">
               <div className="grid gap-6 sm:grid-cols-3">
                 <Kpi
                   label="Year-1 deduction"
                   value={formatCents(year1)}
-                  hint={`≈ ${formatCents(Math.round(year1 * DEFAULT_BRACKET))} tax savings @ 37%`}
+                  hint={`≈ ${formatCents(Math.round(year1 * DEFAULT_BRACKET))} tax savings @ ${BRACKET_PCT}%`}
                   size="lg"
                   tone="accent"
                 />
                 <Kpi
                   label="Accelerated property"
                   value={formatCents(accelerated)}
-                  hint="5/7/15-year classes"
+                  hint="5-, 7-, and 15-year combined"
                   size="lg"
                   tone="primary"
                 />
@@ -150,6 +152,20 @@ export default async function StudyViewPage({ params }: Props) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Per-class breakdown — the number a CPA wants to see next. 39-year
+              is the long-life residual; shown alongside the three accelerated
+              classes for a full view of how basis landed. */}
+          <div className="grid gap-3 sm:grid-cols-4">
+            <ClassBreakdownTile label="5-year" cents={basis.fiveYrBasisCents} tone="primary" />
+            <ClassBreakdownTile label="7-year" cents={basis.sevenYrBasisCents} tone="primary" />
+            <ClassBreakdownTile label="15-year" cents={basis.fifteenYrBasisCents} tone="info" />
+            <ClassBreakdownTile
+              label="27.5/39-year"
+              cents={basis.twentySevenHalfCents + basis.thirtyNineCents}
+              tone="muted"
+            />
+          </div>
         </div>
       ) : null}
 
@@ -166,7 +182,7 @@ export default async function StudyViewPage({ params }: Props) {
               <Card>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[560px] text-sm">
                       <thead className="border-border bg-muted/40 border-b">
                         <tr>
                           <th className="px-4 py-3 text-left font-medium">Class</th>
@@ -214,9 +230,25 @@ export default async function StudyViewPage({ params }: Props) {
                 </CardContent>
               </Card>
             ) : (
-              <Card>
-                <CardContent className="text-muted-foreground p-10 text-center text-sm">
-                  The asset schedule isn&rsquo;t ready yet — come back once the pipeline finishes.
+              <Card className="border-dashed">
+                <CardContent className="space-y-3 p-8 text-center">
+                  <div className="bg-muted text-muted-foreground mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full">
+                    <ClockIcon className="h-5 w-5" aria-hidden />
+                  </div>
+                  <p className="text-foreground text-sm font-medium">
+                    The asset schedule isn&rsquo;t ready yet.
+                  </p>
+                  <p className="text-muted-foreground mx-auto max-w-sm text-xs leading-relaxed">
+                    Come back once the pipeline finishes — it usually takes a few minutes. You can
+                    watch progress live from the pipeline page.
+                  </p>
+                  {access === "owner" ? (
+                    <div className="pt-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/studies/${id}/processing` as Route}>Watch pipeline</Link>
+                      </Button>
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
             )}
@@ -224,10 +256,19 @@ export default async function StudyViewPage({ params }: Props) {
 
           <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
             <Card>
-              <CardContent className="space-y-3 p-5">
-                <HomeIcon className="text-primary h-4 w-4" aria-hidden />
-                <p className="text-sm font-medium">Property details</p>
-                <dl className="space-y-2 text-xs">
+              <CardContent className="p-5">
+                <div className="flex items-start gap-3">
+                  <div className="bg-primary/10 text-primary mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
+                    <HomeIcon className="h-4 w-4" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm leading-tight font-medium">Property details</p>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      {study.property.city}, {study.property.state} {study.property.zip}
+                    </p>
+                  </div>
+                </div>
+                <dl className="mt-4 space-y-2 text-xs">
                   <Row
                     label="Type"
                     value={study.property.propertyType.replace(/_/g, " ").toLowerCase()}
@@ -251,7 +292,7 @@ export default async function StudyViewPage({ params }: Props) {
                     <Row label="Year built" value={String(study.property.yearBuilt)} />
                   ) : null}
                 </dl>
-                <Separator />
+                <Separator className="my-4" />
                 <p className="text-muted-foreground text-xs">
                   Owner:{" "}
                   <span className="text-foreground font-medium">
@@ -260,6 +301,31 @@ export default async function StudyViewPage({ params }: Props) {
                 </p>
               </CardContent>
             </Card>
+
+            {/* When a customer shares a study BEFORE it's delivered, the CPA
+                lands here without a PDF yet. Surface the reason so they're
+                not left wondering why the download button is missing. */}
+            {access === "shared" && !canDownload ? (
+              <Card className="bg-muted/30">
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-muted text-muted-foreground mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
+                      <InfoIcon className="h-4 w-4" aria-hidden />
+                    </div>
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="text-sm leading-tight font-medium">PDF not ready yet.</p>
+                      <p className="text-muted-foreground text-xs leading-relaxed">
+                        The study is still in{" "}
+                        <span className="text-foreground font-medium">
+                          {study.status.replace(/_/g, " ").toLowerCase()}
+                        </span>
+                        . Once delivered, the owner can re-share and the download will appear here.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
 
             {access === "shared" ? (
               <Card className="bg-muted/30">
@@ -299,6 +365,40 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
     <div className="flex items-center justify-between gap-2">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className={mono ? "font-mono font-medium tabular-nums" : "font-medium"}>{value}</dd>
+    </div>
+  );
+}
+
+/**
+ * Small tile in the per-class breakdown row below the headline KPIs.
+ * Zero-basis classes render grayed-out so the eye skips straight to the
+ * classes that matter for this property.
+ */
+function ClassBreakdownTile({
+  label,
+  cents,
+  tone,
+}: {
+  label: string;
+  cents: number;
+  tone: "primary" | "info" | "muted";
+}) {
+  const empty = cents === 0;
+  const valueColor = empty
+    ? "text-muted-foreground/60"
+    : tone === "primary"
+      ? "text-primary"
+      : tone === "info"
+        ? "text-info"
+        : "text-foreground";
+  return (
+    <div className="border-border bg-card rounded-md border p-4">
+      <p className="text-muted-foreground font-mono text-[10px] tracking-[0.18em] uppercase">
+        {label}
+      </p>
+      <p data-tabular className={`mt-1.5 text-xl font-semibold tracking-tight ${valueColor}`}>
+        {empty ? "—" : formatCents(cents)}
+      </p>
     </div>
   );
 }
