@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-import { DOCUMENT_KIND_META } from "./meta";
+import { DOCUMENT_KIND_META, EXT_TO_MIME, acceptAttrForExts } from "./meta";
 
 import type { DocumentKind } from "@prisma/client";
 
@@ -33,7 +33,6 @@ interface UploadedDoc {
   mimeType: string;
 }
 
-const CLIENT_ALLOWED: readonly string[] = ["application/pdf", "image/jpeg", "image/png"];
 const MAX_BYTES = 25 * 1024 * 1024;
 const STUDIES_BUCKET = "studies";
 
@@ -56,13 +55,19 @@ export function UploadZone({
 }) {
   const meta = DOCUMENT_KIND_META[kind];
   const router = useRouter();
-  const [isUploading, setIsUploading] = useState(false);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startRemoveTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const isUploading = uploadingCount > 0;
   const disabled = locked || isUploading || (!meta.allowMultiple && uploaded.length > 0);
+
+  // Build the per-kind MIME allowlist from meta once — used by both the drop
+  // handler and the client-side validation path. Server re-validates.
+  const acceptedMimes = meta.acceptedExts.map((e) => EXT_TO_MIME[e]);
+  const acceptedLabels = meta.acceptedExts.map((e) => e.toUpperCase());
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -71,11 +76,19 @@ export function UploadZone({
         setError(`File exceeds ${MAX_BYTES / 1024 / 1024}MB limit.`);
         return;
       }
-      if (!CLIENT_ALLOWED.includes(file.type)) {
-        setError("Use PDF, JPG, or PNG.");
+      // Some browsers leave file.type empty for esoteric types; fall back to
+      // extension matching so a genuine .xlsx from Safari still goes through.
+      const extMatch = file.name.toLowerCase().match(/\.([a-z0-9]+)$/);
+      const extOk =
+        extMatch &&
+        meta.acceptedExts.some(
+          (e) => `.${e}` === `.${extMatch[1]}` || (e === "jpg" && extMatch[1] === "jpeg"),
+        );
+      if (!acceptedMimes.includes(file.type) && !extOk) {
+        setError(`Unsupported type for this field. Use ${acceptedLabels.join(", ")}.`);
         return;
       }
-      setIsUploading(true);
+      setUploadingCount((n) => n + 1);
       try {
         const step1 = await createUploadUrlAction(studyId, {
           kind,
@@ -118,19 +131,34 @@ export function UploadZone({
         });
         router.refresh();
       } finally {
-        setIsUploading(false);
+        setUploadingCount((n) => Math.max(0, n - 1));
         if (inputRef.current) inputRef.current.value = "";
       }
     },
-    [kind, router, studyId],
+    [acceptedLabels, acceptedMimes, kind, meta.acceptedExts, router, studyId],
   );
+
+  async function handleFiles(files: FileList | File[]) {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    // Single-file kinds reject extras before any upload starts so the user
+    // gets a clear error instead of silently dropping later files.
+    if (!meta.allowMultiple && list.length > 1) {
+      setError("Only one file for this field. Remove the current file first.");
+      return;
+    }
+    // Uploads run sequentially — the Property / Supabase storage signed URLs
+    // don't love 10 parallel PUTs, and serial gives a predictable toast order.
+    for (const file of list) {
+      await handleFile(file);
+    }
+  }
 
   function onDrop(event: React.DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     setIsDragOver(false);
     if (disabled) return;
-    const file = event.dataTransfer.files[0];
-    if (file) void handleFile(file);
+    void handleFiles(event.dataTransfer.files);
   }
 
   function onDragOver(event: React.DragEvent<HTMLLabelElement>) {
@@ -180,12 +208,12 @@ export function UploadZone({
           id={`file-${kind}`}
           ref={inputRef}
           type="file"
-          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          accept={acceptAttrForExts(meta.acceptedExts)}
+          multiple={meta.allowMultiple}
           className="sr-only"
           disabled={disabled}
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleFile(file);
+            if (e.target.files) void handleFiles(e.target.files);
           }}
         />
         <div
@@ -204,22 +232,25 @@ export function UploadZone({
         </div>
         <span className="font-medium">
           {isUploading
-            ? "Uploading…"
+            ? uploadingCount > 1
+              ? `Uploading ${uploadingCount}…`
+              : "Uploading…"
             : meta.allowMultiple || uploaded.length === 0
-              ? "Drop a file or tap to upload"
+              ? meta.allowMultiple
+                ? "Drop files or tap to upload"
+                : "Drop a file or tap to upload"
               : "Remove the current file to replace it"}
         </span>
         <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
-          <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-mono tracking-wide">
-            PDF
-          </span>
-          <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-mono tracking-wide">
-            JPG
-          </span>
-          <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-mono tracking-wide">
-            PNG
-          </span>
-          <span className="text-muted-foreground">up to {MAX_BYTES / 1024 / 1024}MB</span>
+          {acceptedLabels.map((ext) => (
+            <span
+              key={ext}
+              className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-mono tracking-wide"
+            >
+              {ext}
+            </span>
+          ))}
+          <span className="text-muted-foreground">up to {MAX_BYTES / 1024 / 1024}MB each</span>
         </div>
         <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
           <LockIcon className="h-3 w-3" aria-hidden />

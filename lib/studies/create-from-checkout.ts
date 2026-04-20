@@ -53,14 +53,23 @@ export async function handleCheckoutSessionCompleted(
     ? Number.parseInt(meta.purchasePriceCents, 10)
     : 0;
 
+  // Prefer the structured Places fields when we have them — the Property
+  // table wants real city/state/zip, not a single freeform line. Fall back
+  // to the raw address line (or the "(provided during intake)" placeholder
+  // when nothing was captured) so the row is always creatable.
+  const streetAddress = meta.streetAddress ?? meta.addressLine ?? "(provided during intake)";
+  const city = meta.city ?? "";
+  const state = meta.state ?? "XX"; // XX is the sentinel PropertyForm treats as "empty"
+  const zip = meta.zip ?? "";
+
   const study = await prisma.$transaction(async (tx) => {
     const property = await tx.property.create({
       data: {
         userId,
-        address: meta.addressLine ?? "(provided during intake)",
-        city: "",
-        state: "XX",
-        zip: "",
+        address: streetAddress,
+        city,
+        state,
+        zip,
         purchasePrice: purchasePriceCents ? purchasePriceCents / 100 : 0,
         acquiredAt: new Date(),
         propertyType: meta.propertyType,

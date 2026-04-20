@@ -20,6 +20,11 @@ const inputSchema = z.object({
   propertyType: z.enum(PROPERTY_TYPES),
   email: z.string().trim().toLowerCase().min(3).max(254).email(),
   addressLine: z.string().trim().max(480).optional(),
+  /** Structured address parts populated when Places autocomplete fires. */
+  streetAddress: z.string().trim().max(240).optional(),
+  city: z.string().trim().max(120).optional(),
+  state: z.string().trim().max(16).optional(),
+  zip: z.string().trim().max(16).optional(),
   purchasePriceRaw: z.string().optional(),
   /** Optional bypass code. Matched against FISHER_PROMO_CODE in the env. */
   promoCode: z.string().trim().max(128).optional(),
@@ -31,7 +36,18 @@ export async function startCheckoutAction(input: unknown): Promise<StartCheckout
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const { tier, propertyType, email, addressLine, purchasePriceRaw, promoCode } = parsed.data;
+  const {
+    tier,
+    propertyType,
+    email,
+    addressLine,
+    streetAddress,
+    city,
+    state,
+    zip,
+    purchasePriceRaw,
+    promoCode,
+  } = parsed.data;
   const ctx = await getOptionalAuth();
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -59,6 +75,10 @@ export async function startCheckoutAction(input: unknown): Promise<StartCheckout
         propertyType,
         email: buyerEmail,
         addressLine: addressLine || undefined,
+        streetAddress: streetAddress || undefined,
+        city: city || undefined,
+        state: state || undefined,
+        zip: zip || undefined,
         purchasePriceCents: purchasePriceCents ?? undefined,
         fullName: ctx?.user.name ?? undefined,
       });
@@ -94,6 +114,10 @@ export async function startCheckoutAction(input: unknown): Promise<StartCheckout
         propertyType,
         userId: ctx?.user.id,
         addressLine: addressLine || undefined,
+        streetAddress: streetAddress || undefined,
+        city: city || undefined,
+        state: state || undefined,
+        zip: zip || undefined,
         purchasePriceCents: purchasePriceCents ? String(purchasePriceCents) : undefined,
       },
     });

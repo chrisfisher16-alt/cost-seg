@@ -22,8 +22,13 @@ export interface CheckoutMetadata {
     | "COMMERCIAL";
   /** Supabase/Prisma User.id when the buyer was signed in at checkout. */
   userId?: string;
-  /** Free-text address captured on /get-started. Optional. */
+  /** Free-text or Google-formatted address captured on /get-started. */
   addressLine?: string;
+  /** Structured parts — populated when the Places autocomplete fired. */
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   /** Purchase price in cents, captured on /get-started. Optional. */
   purchasePriceCents?: string; // Stripe metadata values must be strings
 }
@@ -35,6 +40,10 @@ export function encodeCheckoutMetadata(meta: CheckoutMetadata): Record<string, s
   };
   if (meta.userId) out.userId = meta.userId;
   if (meta.addressLine) out.addressLine = meta.addressLine.slice(0, 480);
+  if (meta.streetAddress) out.streetAddress = meta.streetAddress.slice(0, 240);
+  if (meta.city) out.city = meta.city.slice(0, 120);
+  if (meta.state) out.state = meta.state.slice(0, 16);
+  if (meta.zip) out.zip = meta.zip.slice(0, 16);
   if (meta.purchasePriceCents) out.purchasePriceCents = meta.purchasePriceCents;
   return out;
 }
@@ -58,6 +67,10 @@ export function decodeCheckoutMetadata(raw: Stripe.Metadata | null): CheckoutMet
     propertyType,
     userId: raw.userId || undefined,
     addressLine: raw.addressLine || undefined,
+    streetAddress: raw.streetAddress || undefined,
+    city: raw.city || undefined,
+    state: raw.state || undefined,
+    zip: raw.zip || undefined,
     purchasePriceCents: raw.purchasePriceCents || undefined,
   };
 }

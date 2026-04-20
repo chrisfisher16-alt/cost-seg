@@ -14,6 +14,11 @@ interface BypassInput {
   email: string;
   /** Optional metadata forwarded the same way a real checkout would carry it. */
   addressLine?: string;
+  /** Structured address parts (from Places autocomplete), if the caller has them. */
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   purchasePriceCents?: number;
   /** When true we log the amount as charged on the StudyEvent (for traceable testing). */
   chargedAmountCents?: number;
@@ -48,6 +53,10 @@ export async function bypassCheckoutAndCreateStudy(
     tier: input.tier,
     propertyType: input.propertyType,
     addressLine: input.addressLine,
+    streetAddress: input.streetAddress,
+    city: input.city,
+    state: input.state,
+    zip: input.zip,
     purchasePriceCents: input.purchasePriceCents ? String(input.purchasePriceCents) : undefined,
   });
   // Flag-only marker so admin/analytics can tell promo studies from real

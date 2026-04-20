@@ -4,7 +4,7 @@ import { ArrowRightIcon, DollarSignIcon, LockIcon, MailIcon, TicketIcon } from "
 import { useState, useTransition } from "react";
 
 import { startCheckoutAction } from "@/app/get-started/actions";
-import { AddressInput } from "@/components/marketing/AddressInput";
+import { AddressInput, type StructuredAddress } from "@/components/marketing/AddressInput";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -36,6 +36,12 @@ export function GetStartedForm({
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [propertyType, setPropertyType] = useState<PropertyType>("SHORT_TERM_RENTAL");
   const [addressLine, setAddressLine] = useState("");
+  /**
+   * Structured address captured when the user picks an autocomplete
+   * suggestion. Cleared when they retype so we don't send stale parts
+   * alongside a hand-edited address line.
+   */
+  const [structured, setStructured] = useState<StructuredAddress | null>(null);
   const [purchasePrice, setPurchasePrice] = useState("");
   const [promoCode, setPromoCode] = useState("");
   const [promoOpen, setPromoOpen] = useState(false);
@@ -43,6 +49,13 @@ export function GetStartedForm({
   const [isPending, startTransition] = useTransition();
 
   const usingPromo = promoOpen && promoCode.trim().length > 0;
+
+  function handleAddressChange(value: string) {
+    setAddressLine(value);
+    // If the user edits after picking, the structured parts no longer
+    // describe what's in the input — drop them to avoid mismatch.
+    if (structured && value !== structured.formatted) setStructured(null);
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,6 +66,10 @@ export function GetStartedForm({
         propertyType,
         email,
         addressLine: addressLine.trim() || undefined,
+        streetAddress: structured?.streetAddress || undefined,
+        city: structured?.city || undefined,
+        state: structured?.state || undefined,
+        zip: structured?.zip || undefined,
         purchasePriceRaw: purchasePrice.trim() || undefined,
         promoCode: usingPromo ? promoCode.trim() : undefined,
       });
@@ -121,7 +138,8 @@ export function GetStartedForm({
         <AddressInput
           id="addressLine"
           value={addressLine}
-          onChange={setAddressLine}
+          onChange={handleAddressChange}
+          onPlace={setStructured}
           placeholder="Start typing an address…"
         />
       </Field>

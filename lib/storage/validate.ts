@@ -4,7 +4,24 @@ import { fileTypeFromBuffer } from "file-type";
 
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
-export const ALLOWED_MIMES = ["application/pdf", "image/jpeg", "image/png"] as const;
+/**
+ * MIME allowlist across every intake DocumentKind. Specific kinds may narrow
+ * this further in the client (e.g. property photos block PDFs), but this is
+ * the maximum surface the server will validate against.
+ *
+ *   - application/pdf         — closing disclosures, appraisals, receipts
+ *   - image/jpeg, image/png   — property photos
+ *   - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+ *                             — modern Excel (xlsx) receipts / ledgers
+ *   - application/vnd.ms-excel — legacy Excel (xls) receipts / ledgers
+ */
+export const ALLOWED_MIMES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+] as const;
 
 export type AllowedMime = (typeof ALLOWED_MIMES)[number];
 
@@ -42,7 +59,7 @@ export async function validateUploadedFile(
   if (!isAllowedMime(declaredMime)) {
     return {
       ok: false,
-      error: `File type ${declaredMime} is not accepted. Use PDF, JPG, or PNG.`,
+      error: `File type ${declaredMime} is not accepted. Use PDF, JPG, PNG, or XLSX/XLS.`,
     };
   }
 
