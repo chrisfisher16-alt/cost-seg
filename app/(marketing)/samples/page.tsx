@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { SAMPLES, SAMPLE_IDS, type Sample } from "@/lib/samples/catalog";
 
 export const metadata: Metadata = {
   title: "Sample reports",
@@ -18,67 +19,26 @@ export const metadata: Metadata = {
     "Real AI-generated cost segregation reports — anonymized, clickable, and fully representative of what you get.",
 };
 
-type Sample = {
-  id: string;
-  propertyLabel: string;
-  propertyType: string;
-  basis: string;
-  tier: "AI Report" | "Engineer-Reviewed";
-  turnaround: string;
-  headlineKpi: { label: string; value: string; hint: string };
-  accent: string;
-  gradient: string;
+const fmtUsd = (n: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(n);
+
+/**
+ * Gradient background per sample. Keyed on sample.id so a future catalog
+ * entry without an explicit gradient falls back to the brand default.
+ */
+const GRADIENTS: Record<string, string> = {
+  "oak-ridge": "from-primary/15 via-info/10 to-accent/20",
+  "magnolia-duplex": "from-info/15 via-primary/10 to-primary/15",
+  "riverside-commercial": "from-accent/30 via-primary/10 to-info/10",
 };
 
-const SAMPLES: Sample[] = [
-  {
-    id: "oak-ridge",
-    propertyLabel: "123 Oak Ridge Dr · Nashville, TN",
-    propertyType: "Short-term rental (single-family)",
-    basis: "$476,703",
-    tier: "AI Report",
-    turnaround: "Delivered in 11 minutes",
-    headlineKpi: {
-      label: "Year-1 deduction",
-      value: "$147,200",
-      hint: "at 37% marginal bracket",
-    },
-    accent: "text-primary",
-    gradient: "from-primary/15 via-info/10 to-accent/20",
-  },
-  {
-    id: "magnolia-duplex",
-    propertyLabel: "412 Magnolia Ave · Austin, TX",
-    propertyType: "Small multifamily (duplex)",
-    basis: "$892,500",
-    tier: "Engineer-Reviewed",
-    turnaround: "Engineer-signed, day 4",
-    headlineKpi: {
-      label: "Year-1 deduction",
-      value: "$238,600",
-      hint: "PE-reviewed, ATG checklist complete",
-    },
-    accent: "text-info",
-    gradient: "from-info/15 via-primary/10 to-primary/15",
-  },
-  {
-    id: "riverside-commercial",
-    propertyLabel: "88 Riverside Blvd · Boise, ID",
-    propertyType: "Commercial (mixed-use retail)",
-    basis: "$1,420,000",
-    tier: "Engineer-Reviewed",
-    turnaround: "Engineer-signed, day 6",
-    headlineKpi: {
-      label: "Year-1 deduction",
-      value: "$391,800",
-      hint: "bonus depreciation applied under OBBBA",
-    },
-    accent: "text-accent-foreground",
-    gradient: "from-accent/30 via-primary/10 to-info/10",
-  },
-];
-
 export default function SamplesPage() {
+  const samples = SAMPLE_IDS.map((id) => SAMPLES[id]);
+
   return (
     <>
       <section className="relative overflow-hidden pt-20 pb-6 sm:pt-28">
@@ -89,25 +49,28 @@ export default function SamplesPage() {
             size="default"
             className="border-primary/30 bg-primary/5 text-primary mx-auto"
           >
-            Sample reports
+            Sample reports · fictional data
           </Badge>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             Exactly what you&rsquo;ll get.
           </h1>
           <p className="text-muted-foreground mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-balance">
             Three anonymized reports spanning a single-family STR, a small multifamily, and a
-            mixed-use commercial property. Open any of them — every number is traceable.
+            mixed-use commercial property. Open any of them — every number is traceable to a source
+            document and a rationale.
           </p>
-          <p className="text-muted-foreground mt-4 text-xs">
-            Fictional properties and buyers. Numbers are realistic but synthetic.
-          </p>
+          <div className="border-warning/40 bg-warning/5 text-warning-foreground mx-auto mt-8 max-w-xl rounded-md border px-4 py-3 text-xs leading-relaxed">
+            <strong>Fictional properties and owners.</strong> Addresses, LLC names, and buyers are
+            made up. The dollar amounts, MACRS math, and classification rationales are all real —
+            drawn from the same pipeline that generates customer reports.
+          </div>
         </Container>
       </section>
 
       <Section>
         <Container size="xl">
           <div className="grid gap-8 md:grid-cols-3">
-            {SAMPLES.map((sample) => (
+            {samples.map((sample) => (
               <SampleCard key={sample.id} sample={sample} />
             ))}
           </div>
@@ -153,41 +116,60 @@ export default function SamplesPage() {
 }
 
 function SampleCard({ sample }: { sample: Sample }) {
+  const gradient = GRADIENTS[sample.id] ?? "from-primary/15 via-info/10 to-accent/20";
+  const taxSavings = Math.round(sample.year1Deduction * 0.37);
   return (
-    <Card className="group overflow-hidden transition hover:-translate-y-0.5 hover:shadow-lg">
-      <div className={`aspect-[4/3] bg-gradient-to-br ${sample.gradient} relative`}>
+    <Card className="group flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-lg">
+      <div className={`relative aspect-[4/3] bg-gradient-to-br ${gradient}`}>
         <div className="absolute inset-0 flex items-center justify-center opacity-60 transition-opacity group-hover:opacity-100">
-          <HomeIcon className="text-foreground/30 h-16 w-16" />
+          <HomeIcon className="text-foreground/30 h-16 w-16" aria-hidden />
         </div>
         <div className="absolute top-5 left-5">
           <Badge variant={sample.tier === "Engineer-Reviewed" ? "success" : "default"} size="sm">
             {sample.tier}
           </Badge>
         </div>
+        <div className="absolute right-5 bottom-5 left-5 flex justify-between text-xs">
+          <span className="bg-background/80 text-foreground/80 rounded-full px-2.5 py-0.5 font-mono tracking-wide backdrop-blur">
+            {sample.squareFeet.toLocaleString()} sqft
+          </span>
+          <span className="bg-background/80 text-foreground/80 rounded-full px-2.5 py-0.5 font-mono tracking-wide backdrop-blur">
+            Built {sample.yearBuilt}
+          </span>
+        </div>
       </div>
-      <CardContent className="space-y-5 p-6">
+      <CardContent className="flex flex-1 flex-col gap-5 p-6">
         <div>
           <p className="text-muted-foreground font-mono text-xs tracking-[0.18em] uppercase">
             {sample.propertyType}
           </p>
-          <h3 className="mt-1.5 text-base leading-tight font-semibold">{sample.propertyLabel}</h3>
+          <h3 className="mt-1.5 text-base leading-tight font-semibold">{sample.address}</h3>
           <p className="text-muted-foreground mt-0.5 text-xs">
             Basis{" "}
             <span data-tabular className="text-foreground font-medium">
-              {sample.basis}
+              {fmtUsd(sample.acquisitionPrice)}
             </span>{" "}
             · {sample.turnaround}
           </p>
         </div>
+
         <Separator />
+
         <Kpi
-          label={sample.headlineKpi.label}
-          value={sample.headlineKpi.value}
-          hint={sample.headlineKpi.hint}
+          label="Year-1 deduction"
+          value={fmtUsd(sample.year1Deduction)}
+          hint={`≈ ${fmtUsd(taxSavings)} tax savings at 37% bracket`}
           size="lg"
           tone="primary"
         />
-        <div className="flex gap-2">
+
+        <div className="bg-muted/40 grid grid-cols-3 gap-2 rounded-md p-3 text-center">
+          <MiniStat label="5-year" value={fmtUsd(sample.accelerated.fiveYear)} />
+          <MiniStat label="15-year" value={fmtUsd(sample.accelerated.fifteenYear)} />
+          <MiniStat label="Accelerated" value={`${sample.accelerated.pct.toFixed(1)}%`} accent />
+        </div>
+
+        <div className="mt-auto flex gap-2">
           <Button asChild variant="outline" className="flex-1" leadingIcon={<FileTextIcon />}>
             <Link href={`/samples/${sample.id}` as never}>View</Link>
           </Button>
@@ -204,5 +186,21 @@ function SampleCard({ sample }: { sample: Sample }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function MiniStat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div>
+      <p className="text-muted-foreground font-mono text-[9px] tracking-[0.15em] uppercase">
+        {label}
+      </p>
+      <p
+        data-tabular
+        className={`mt-0.5 text-xs font-semibold tracking-tight ${accent ? "text-primary" : "text-foreground"}`}
+      >
+        {value}
+      </p>
+    </div>
   );
 }

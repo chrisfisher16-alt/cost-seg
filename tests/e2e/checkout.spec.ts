@@ -3,16 +3,20 @@ import { expect, test } from "@playwright/test";
 test.describe("get-started + checkout", () => {
   test("AI Report CTA routes to /get-started?tier=AI_REPORT", async ({ page }) => {
     await page.goto("/");
-    await page.locator("#pricing").scrollIntoViewIfNeeded();
-    await page.getByRole("link", { name: /start an ai report/i }).click();
+    // Anchor on the CTA link itself — #pricing re-renders during hydration
+    // and scrollIntoView can race the detach. Playwright auto-scrolls on click.
+    const cta = page.getByRole("link", { name: /start an ai report/i });
+    await cta.waitFor();
+    await cta.click();
     await expect(page).toHaveURL(/\/get-started\?tier=AI_REPORT/);
     await expect(page.getByRole("heading", { name: /start your ai report/i })).toBeVisible();
   });
 
   test("Engineer-Reviewed CTA routes to /get-started?tier=ENGINEER_REVIEWED", async ({ page }) => {
     await page.goto("/");
-    await page.locator("#pricing").scrollIntoViewIfNeeded();
-    await page.getByRole("link", { name: /start an engineered study/i }).click();
+    const cta = page.getByRole("link", { name: /start an engineered study/i });
+    await cta.waitFor();
+    await cta.click();
     await expect(page).toHaveURL(/\/get-started\?tier=ENGINEER_REVIEWED/);
     await expect(
       page.getByRole("heading", { name: /start your engineer-reviewed study/i }),

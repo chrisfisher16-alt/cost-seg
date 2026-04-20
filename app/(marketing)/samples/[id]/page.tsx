@@ -115,14 +115,21 @@ export default async function SampleDetailPage({ params }: { params: Promise<{ i
                 <Kpi
                   label="Year-1 deduction"
                   value={fmtUsd(sample.year1Deduction)}
+                  hint={`≈ ${fmtUsd(Math.round(sample.year1Deduction * 0.37))} tax savings at 37% bracket`}
                   tone="accent"
                   size="xl"
                   animate
                 />
-                <Kpi label="Depreciable basis" value={fmtUsd(sample.depreciableBasis)} size="lg" />
+                <Kpi
+                  label="Depreciable basis"
+                  value={fmtUsd(sample.depreciableBasis)}
+                  hint={`Net of ${fmtUsd(sample.landValue)} land value`}
+                  size="lg"
+                />
                 <Kpi
                   label={`Accelerated @ ${sample.accelerated.pct.toFixed(1)}%`}
                   value={fmtUsd(sample.accelerated.value)}
+                  hint="5-, 7-, and 15-year property combined"
                   size="lg"
                   tone="primary"
                 />
@@ -138,7 +145,11 @@ export default async function SampleDetailPage({ params }: { params: Promise<{ i
                 {sample.accelerated.sevenYear > 0 ? (
                   <DlRow label="7-year property" value={fmtUsd(sample.accelerated.sevenYear)} />
                 ) : null}
-                <DlRow label="Bonus depreciation" value={`${sample.bonusRate}%`} />
+                <DlRow
+                  label="Bonus depreciation"
+                  value={`${sample.bonusRate}%`}
+                  hint={sample.bonusRate === 100 ? "OBBBA window" : "TCJA phase-down"}
+                />
               </dl>
             </CardContent>
           </Card>
@@ -289,7 +300,7 @@ export default async function SampleDetailPage({ params }: { params: Promise<{ i
   );
 }
 
-function DlRow({ label, value }: { label: string; value: string }) {
+function DlRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div>
       <dt className="text-muted-foreground font-mono text-[11px] tracking-[0.18em] uppercase">
@@ -298,6 +309,7 @@ function DlRow({ label, value }: { label: string; value: string }) {
       <dd data-tabular className="mt-1 text-lg font-semibold tracking-tight">
         {value}
       </dd>
+      {hint ? <p className="text-muted-foreground mt-0.5 text-[11px]">{hint}</p> : null}
     </div>
   );
 }
