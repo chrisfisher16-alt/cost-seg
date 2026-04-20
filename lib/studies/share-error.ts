@@ -1,3 +1,5 @@
+import { BRAND } from "@/lib/brand";
+
 /**
  * Translates a raw error message from `acceptShareByToken` into user-facing
  * copy with a specific recovery hint. Same shape/intent as
@@ -89,7 +91,7 @@ export function classifyShareError(raw: unknown): ClassifiedShareError {
     title: "We couldn't open that share.",
     hint:
       message ||
-      "Something went wrong accepting the invite. If it keeps happening, email support@costseg.app with the URL.",
+      `Something went wrong accepting the invite. If it keeps happening, email ${BRAND.email.support} with the URL.`,
     recoveryLabel: "Back to dashboard",
     recoveryHref: "/dashboard",
   };

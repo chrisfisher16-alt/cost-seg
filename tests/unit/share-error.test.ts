@@ -43,7 +43,9 @@ describe("classifyShareError", () => {
   it("uses a friendly fallback hint when the message is empty", () => {
     const r = classifyShareError(new Error(""));
     expect(r.kind).toBe("generic");
-    expect(r.hint).toContain("support@costseg.app");
+    // Pulls from BRAND.email.support — future rebrands stay in sync via
+    // the single source of truth in lib/brand.ts.
+    expect(r.hint).toContain("support@segra.tax");
   });
 
   it("accepts plain strings and non-Error objects without crashing", () => {
