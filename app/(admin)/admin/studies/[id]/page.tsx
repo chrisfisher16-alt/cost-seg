@@ -5,6 +5,7 @@ import { DownloadIcon, FileTextIcon, UserIcon } from "lucide-react";
 import { AdminActionsPanel } from "@/components/admin/AdminActionsPanel";
 import { JsonViewer } from "@/components/admin/JsonViewer";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import { DOCUMENT_KIND_META } from "@/components/intake/meta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -131,7 +132,7 @@ export default async function AdminStudyInspector({ params }: Props) {
                             <p className="truncate font-medium">{doc.filename}</p>
                             <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-xs">
                               <Badge variant="muted" size="sm">
-                                {doc.kind.replace(/_/g, " ").toLowerCase()}
+                                {DOCUMENT_KIND_META[doc.kind]?.label ?? doc.kind}
                               </Badge>
                               <span>{(doc.sizeBytes / 1024).toFixed(0)} KB</span>
                               <span className="font-mono">{doc.mimeType}</span>

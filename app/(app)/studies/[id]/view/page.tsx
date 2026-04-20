@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { DEFAULT_BRACKET } from "@/lib/estimator/compute";
+import { PROPERTY_TYPE_LABELS } from "@/lib/estimator/types";
 import { aggregateBasisByClass } from "@/lib/pdf/macrs";
 import { DEPRECIATION_CLASS_LABEL, type DepreciationClassKey } from "@/lib/pdf/types";
 import { computeYearOneProjection } from "@/lib/pdf/year-one";
@@ -270,10 +271,7 @@ export default async function StudyViewPage({ params }: Props) {
                   </div>
                 </div>
                 <dl className="mt-4 space-y-2 text-xs">
-                  <Row
-                    label="Type"
-                    value={study.property.propertyType.replace(/_/g, " ").toLowerCase()}
-                  />
+                  <Row label="Type" value={PROPERTY_TYPE_LABELS[study.property.propertyType]} />
                   <Row
                     label="Acquired"
                     value={study.property.acquiredAt.toISOString().slice(0, 10)}

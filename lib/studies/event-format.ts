@@ -1,4 +1,6 @@
+import { DOCUMENT_KIND_META } from "@/components/intake/meta";
 import { statusLabel } from "@/lib/studies/status-label";
+import type { DocumentKind } from "@prisma/client";
 
 /**
  * Human-readable renderer for StudyEvent rows on the admin inspector.
@@ -204,6 +206,13 @@ function formatIso(iso: string): string {
   return date.toLocaleString();
 }
 
+/**
+ * Prefer the intake meta's human label (e.g. "Closing disclosure", "Property
+ * photos") over a mechanical underscore-strip. Unknown kinds fall through to
+ * the humanized + lowercased form so the function stays total.
+ */
 function humanizeKind(k: string): string {
+  const meta = DOCUMENT_KIND_META[k as DocumentKind];
+  if (meta) return meta.label;
   return k.replace(/_/g, " ").toLowerCase();
 }

@@ -28,8 +28,8 @@ describe("formatStudyEvent", () => {
       requiredKinds: ["CLOSING_DISCLOSURE", "PROPERTY_PHOTO"],
     });
     expect(r.title).toMatch(/pipeline queued/i);
-    expect(r.detail).toContain("closing disclosure");
-    expect(r.detail).toContain("property photo");
+    expect(r.detail).toContain("Closing disclosure");
+    expect(r.detail).toContain("Property photos");
     expect(r.tone).toBe("primary");
   });
 
