@@ -22,8 +22,8 @@ schema from scratch into a single Prisma `schema.prisma` and emitted the
 two additive migrations above against a clean baseline. The live DB
 therefore has:
 
-- **Schema rows** for whatever "init" + "add*manual_improvements" defined
-  (which \_should* be structurally identical to today's schema minus the
+- **Schema rows** for whatever `init` + `add_manual_improvements` defined
+  (which _should_ be structurally identical to today's schema minus the
   two new migrations, but needs verification).
 - **History rows** pointing at migration names Prisma no longer knows about.
 
