@@ -326,6 +326,36 @@ export default async function StudyViewPage({ params }: Props) {
               </Card>
             ) : null}
 
+            {/* Owner-side mirror of the above. Day 32 added this for shared
+                CPAs but left owners with no explanation — just a missing
+                download button. An owner visiting this page mid-pipeline
+                now sees the same status + a direct link to watch progress. */}
+            {access === "owner" && !canDownload ? (
+              <Card className="bg-muted/30">
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-muted text-muted-foreground mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
+                      <InfoIcon className="h-4 w-4" aria-hidden />
+                    </div>
+                    <div className="min-w-0 space-y-2">
+                      <p className="text-sm leading-tight font-medium">PDF not ready yet.</p>
+                      <p className="text-muted-foreground text-xs leading-relaxed">
+                        Your study is in{" "}
+                        <span className="text-foreground font-medium">
+                          {statusLabel(study.status)}
+                        </span>
+                        . The download button will appear here as soon as delivery completes — and
+                        we&rsquo;ll email you the moment it does.
+                      </p>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/studies/${id}/processing` as Route}>Watch pipeline</Link>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
             {access === "shared" ? (
               <Card className="bg-muted/30">
                 <CardContent className="space-y-3 p-5">
