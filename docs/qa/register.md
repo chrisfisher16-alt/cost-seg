@@ -138,7 +138,27 @@ bucket.
 
 ## Bucket 5 — Pipeline + delivery + state machine
 
-_(not started)_
+| ID   | Severity | Surface                        | Finding                                                                                                                                                                                                                                                                                            | Status | Commit                                                                                                                                            | Regression test                                                                                                                                                                                  |
+| ---- | -------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| B5-1 | P1       | `Study.status` write sites (9) | Every in-flight Study.status write was direct-to-Prisma — 9 call sites each re-derived the legal-transition rules locally or not at all. A rerun from FAILED, an admin mark-failed on DELIVERED, a DIY-only edge being taken by Tier 1/2: no structural guard. §4 Bucket 5 required a single SSOT. | fixed  | [c64dcbe](https://github.com/chrisfisher16-alt/cost-seg/commit/c64dcbe) · [a952a21](https://github.com/chrisfisher16-alt/cost-seg/commit/a952a21) | `tests/unit/transitions.test.ts` — 20 cases covering every legal edge, every tier-gate, FAILED/REFUNDED/recovery semantics, terminal-state bounds, no-op rejection, runtime refused-error guard. |
+
+### Audits that surfaced no findings (Bucket 5)
+
+| Audit                                                      | Result                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `process-study.ts` AiAuditLog idempotency (§4)             | `step.run` wraps every AI call; the AiAuditLog cache in `lib/ai/call.ts` keys on `(operation, inputHash)` so retries return prior output. No changes needed.                                                                             |
+| `process-study.ts` PII scrub                               | Confirmed in earlier sweeps — `lib/ai/scrub.ts` strips names/emails before prompt submission; unit-tested in `tests/unit/ai-scrub.test.ts`.                                                                                              |
+| `process-study.ts` retry / FAILED-on-exhausted             | Function declared `retries: 2`; `NonRetriableError` thrown for domain failures (no CD, unbalanced schedule); `markStudyFailed` called before throwing so the row reaches FAILED even without another retry.                              |
+| `deliver.ts` Tier 1 vs Tier 2 handler boundaries           | `deliverAiReport` accepts DIY + AI_REPORT only (line 129-131); `deliverEngineeredStudy` rejects non-Tier-2 (line 264-266). Both guard already-DELIVERED.                                                                                 |
+| `deliver.ts` 7-day signed URL                              | `DELIVERABLE_EXPIRY_SECONDS = 7 * 24 * 60 * 60` (line 51), used for both Tier 1 and Tier 2 and the resend path.                                                                                                                          |
+| `resendDeliveryEmail` no status change (Day 68)            | `if (study.status !== "DELIVERED") return { ok: false }` — never writes a status; regenerates signed URL and re-sends the email only.                                                                                                    |
+| `safeInngestSend` (Day 28)                                 | Header comment explicitly documents the "use from user-action entry points; don't use inside Inngest functions" split. DIY action + admin-rerun use `safeInngestSend`; the pipeline itself lets errors throw for durable retry. Correct. |
+| Initial-state row creation at `create-from-checkout.ts:83` | Intentionally NOT routed through `transitionStudy` — it's a `prisma.study.create(…, status: "AWAITING_DOCUMENTS")` on a brand-new row, not a transition from any prior state.                                                            |
+
+### Running totals after Bucket 5
+
+- **Unit tests:** 271 → **291** (+20 — new `tests/unit/transitions.test.ts`).
+- **E2E tests:** 112 → **112**.
 
 ## Bucket 6 — Admin + bulk actions
 
