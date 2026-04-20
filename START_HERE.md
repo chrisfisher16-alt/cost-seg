@@ -6,13 +6,22 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 16 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 17 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 17 (engineer-queue workflow — SLA buckets + filters):**
+
+- **SLA buckets on every row** — age > 0-3d is Fresh (green), 3-5d is Aging (amber), 5d+ is Overdue (red). Matches the public "3–7 business days" promise. Age pill on each row has a clock icon and tabular numerals showing "Waiting 3.2d" etc.
+- **Queue-level headline badge** — depending on the worst bucket present: "N overdue" (red), "N aging" (amber), or "All fresh" (green). Admin can triage at a glance before scrolling.
+- **Filter chips** — All / Fresh / Aging / Overdue with live counts. Active chip adopts the bucket's tone (selecting "Overdue" turns destructive-red). URL state via `?bucket=<value>` so the filter is linkable.
+- **Row polish** — property-type mini-badge (STR / Small multifamily / Commercial), customer name preferred over email with null-safe fallback, original created-date alongside price paid, "Open inspector" CTA is now a proper Button with trailing arrow instead of raw `bg-foreground` classes.
+- **Full design-system rewrite** — the page was still using raw Tailwind (`bg-white`, `dark:bg-zinc-950`, `border-zinc-200/70`, `text-zinc-500`). Now uses Card, CardContent, Badge, Button, and cn + theme tokens — consistent with /admin and the rest of the app.
+- **Empty-state copy branches on filter** — "Queue is empty." for All, "No overdue studies right now." for specific buckets.
 
 **What landed in Day 16 (samples gallery polish):**
 
