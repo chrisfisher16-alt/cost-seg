@@ -26,6 +26,7 @@ import {
   type PortfolioTotals,
 } from "@/lib/studies/aggregate";
 import { CATALOG, formatCents, type Tier } from "@/lib/stripe/catalog";
+import { sortStudiesByWorkPriority } from "@/lib/studies/dashboard-sort";
 import { computeNextAction, formatRelativeAge } from "@/lib/studies/next-action";
 import { listStudiesSharedWith } from "@/lib/studies/share";
 import { cn } from "@/lib/utils";
@@ -125,10 +126,15 @@ async function listStudies(userId: string): Promise<{
 
 export default async function DashboardPage() {
   const { user } = await requireAuth();
-  const [{ listItems: studies, aggregateInput }, sharedResult] = await Promise.all([
+  const [{ listItems: rawStudies, aggregateInput }, sharedResult] = await Promise.all([
     listStudies(user.id),
     safeListShared(user.id),
   ]);
+  // Sort actionable-then-done-then-failed so a user with 10 delivered
+  // studies and 1 awaiting-docs study sees the one they need to act on
+  // first. Prisma returns `createdAt desc` as the stable base order; this
+  // re-ranks by work priority while preserving newest-within-bucket.
+  const studies = sortStudiesByWorkPriority(rawStudies);
   const sharedStudies = sharedResult.ok ? sharedResult.shares : [];
   const sharedError = sharedResult.ok ? null : sharedResult.error;
   // Pinned to the request timestamp in the server component; pass to cards
