@@ -22,6 +22,7 @@ import { CelebrationTrigger } from "@/components/shared/Celebration";
 import { ShareStudyDialog } from "@/components/app/ShareStudyDialog";
 import { Kpi } from "@/components/shared/Kpi";
 import { useCountUp } from "@/components/shared/useCountUp";
+import { classifyFailure } from "@/lib/studies/failure-reason";
 import { estimatePipelineEta, type EtaStep, type EtaStepId } from "@/lib/studies/pipeline-eta";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +94,7 @@ export function PipelineLive({ studyId, initial, propertyLabel, tierLabel }: Pro
       {state.isDelivered ? (
         <DeliveredPanel state={state} studyId={studyId} propertyLabel={propertyLabel} />
       ) : state.isFailed ? (
-        <FailedPanel state={state} />
+        <FailedPanel state={state} studyId={studyId} />
       ) : (
         <ProcessingPanel
           state={state}
@@ -372,30 +373,30 @@ function DeliveredPanel({
   );
 }
 
-function FailedPanel({ state }: { state: ProcessingStateResult }) {
+function FailedPanel({ state, studyId }: { state: ProcessingStateResult; studyId: string }) {
+  const failure = classifyFailure(state.failureReason, studyId);
+  const mailto = `mailto:support@costseg.app?subject=${encodeURIComponent(failure.supportSubject)}`;
+
   return (
     <Card className="border-destructive/40 bg-destructive/5">
       <CardContent className="p-7">
         <Alert variant="destructive" className="border-0 bg-transparent p-0">
           <AlertCircleIcon />
-          <AlertTitle>We couldn&rsquo;t finish your report.</AlertTitle>
-          <AlertDescription className="mt-2">
-            <p>{state.failureReason ?? "An unexpected error interrupted the pipeline."}</p>
-            <p className="mt-2">
-              We&rsquo;ve notified our team and paused the job. You haven&rsquo;t been charged — any
-              payment will be refunded. Email <span className="font-mono">support@costseg.app</span>{" "}
-              if you&rsquo;d like to chat about what happened.
+          <AlertTitle>{failure.title}</AlertTitle>
+          <AlertDescription className="mt-2 space-y-3">
+            <p>{failure.explanation}</p>
+            <p>{failure.recovery}</p>
+            <p className="text-muted-foreground pt-1 font-mono text-[11px] tracking-wide">
+              Study ref {studyId.slice(0, 8)}
             </p>
           </AlertDescription>
         </Alert>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-          <Button asChild variant="outline" trailingIcon={<ArrowRightIcon />}>
-            <Link href="/dashboard">Back to dashboard</Link>
+          <Button asChild variant="default" trailingIcon={<ArrowRightIcon />}>
+            <a href={mailto}>Email support</a>
           </Button>
-          <Button asChild variant="ghost">
-            <a href="mailto:support@costseg.app?subject=Cost%20Seg%20pipeline%20failure">
-              Email support
-            </a>
+          <Button asChild variant="outline">
+            <Link href="/dashboard">Back to dashboard</Link>
           </Button>
         </div>
       </CardContent>
