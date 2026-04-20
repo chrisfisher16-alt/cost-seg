@@ -26,6 +26,9 @@ test.describe("sample PDF endpoint (Day 5)", () => {
       const disposition = res.headers()["content-disposition"] ?? "";
       expect(disposition).toMatch(/attachment|inline/i);
       expect(disposition).toMatch(/\.pdf/);
+      // Filename must use the Segra brand slug — no regression to `cost-seg-*`.
+      expect(disposition).toContain(`segra-sample-${id}.pdf`);
+      expect(disposition).not.toMatch(/cost-seg-sample-/);
       const body = await res.body();
       expect(body.byteLength, `${id} pdf body empty`).toBeGreaterThan(1000);
       expect(body.subarray(0, 5).toString("ascii")).toBe("%PDF-");
