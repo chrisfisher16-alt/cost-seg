@@ -6,13 +6,21 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 15 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 16 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 16 (samples gallery polish):**
+
+- **Killed the parallel hardcoded SAMPLES array** in `app/(marketing)/samples/page.tsx` — the gallery now reads from `lib/samples/catalog.ts` (single source of truth with `/samples/[id]` and `/api/samples/[id]/pdf`). Three places → one. Future sample additions touch one file instead of three.
+- **Gallery cards are richer.** Each card now surfaces square footage + year built in the corners of the gradient thumbnail, the year-1 deduction KPI gains a "≈ $X tax savings at 37% bracket" hint, and a new 3-column mini-stat strip shows 5-year property / 15-year property / accelerated-percent at a glance. Three concrete numbers beat one headline when visitors compare the three samples.
+- **Fictional-data disclosure promoted** from a buried 12px muted line to a warning-tinted callout directly under the hero. Hero badge reads "Sample reports · fictional data" so the disclaimer is visible even without scroll. The callout is specific about what IS real: "Addresses, LLC names, and buyers are made up. The dollar amounts, MACRS math, and classification rationales are all real — drawn from the same pipeline that generates customer reports."
+- **Sample detail page KPIs contextualized.** Year-1 KPI now carries the 37%-bracket tax-savings hint, depreciable basis shows "Net of $X land value", accelerated percentage explains "5-, 7-, and 15-year property combined", and the bonus-depreciation row labels the 100% rate as "OBBBA window" vs "TCJA phase-down".
+- **Two brittle checkout tests** re-anchored on CTA links instead of `#pricing.scrollIntoView` — same hydration detach pattern we fixed in the estimator spec on Day 12.
 
 **What landed in Day 15 (dashboard UX hardening):**
 
