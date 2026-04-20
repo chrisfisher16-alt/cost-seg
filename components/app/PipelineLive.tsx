@@ -95,6 +95,13 @@ export function PipelineLive({ studyId, initial, propertyLabel, tierLabel }: Pro
         <DeliveredPanel state={state} studyId={studyId} propertyLabel={propertyLabel} />
       ) : state.isFailed ? (
         <FailedPanel state={state} studyId={studyId} />
+      ) : isQueued(state) ? (
+        <QueuedPanel
+          state={state}
+          elapsedSec={elapsedSec}
+          propertyLabel={propertyLabel}
+          tierLabel={tierLabel}
+        />
       ) : (
         <ProcessingPanel
           state={state}
@@ -142,6 +149,123 @@ export function PipelineLive({ studyId, initial, propertyLabel, tierLabel }: Pro
         </Card>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * True when the pipeline hasn't actually started yet. Two scenarios:
+ *   1. Study is AWAITING_DOCUMENTS — ready-check hasn't fired
+ *      study.documents.ready yet (docs might still be uploading, or the
+ *      emit failed and will retry on the next finalize).
+ *   2. Study is PROCESSING but no pipeline.started event has been written —
+ *      Inngest emitted but the worker hasn't picked up (common in dev
+ *      when inngest-dev is restarting).
+ *
+ * In both cases showing "Parsing your documents" as active is a lie —
+ * the QueuedPanel honestly says "waiting for the worker."
+ */
+function isQueued(state: ProcessingStateResult): boolean {
+  if (state.status === "AWAITING_DOCUMENTS") return true;
+  if (state.status === "PROCESSING") {
+    const hasPipelineActivity = state.events.some(
+      (e) =>
+        e.kind === "pipeline.started" ||
+        e.kind === "documents.classified" ||
+        e.kind === "decomposition.complete" ||
+        e.kind === "assets.classified",
+    );
+    if (!hasPipelineActivity) return true;
+  }
+  return false;
+}
+
+function QueuedPanel({
+  state,
+  elapsedSec,
+  propertyLabel,
+  tierLabel,
+}: {
+  state: ProcessingStateResult;
+  elapsedSec: number;
+  propertyLabel: string;
+  tierLabel: string;
+}) {
+  // Staleness thresholds in seconds. The 60s mark flips copy to "this is
+  // taking longer than usual"; 180s escalates to "something's probably
+  // wrong — email support." These are soft signals — the work may still
+  // complete successfully, we're just managing expectations.
+  const overdue = elapsedSec > 60;
+  const stuck = elapsedSec > 180;
+
+  return (
+    <Card className="border-primary/30 bg-card relative overflow-hidden">
+      <div className="brand-gradient-bg absolute inset-0 -z-10 opacity-40" aria-hidden />
+      <CardContent className="p-7 sm:p-9">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Badge variant="muted" size="sm" dot>
+              Queued
+            </Badge>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+              Waiting to start your {tierLabel}.
+            </h2>
+            <p className="text-muted-foreground mt-2 text-sm">{propertyLabel}</p>
+          </div>
+          <div className="bg-muted text-muted-foreground mt-1 hidden h-9 w-9 shrink-0 items-center justify-center rounded-full sm:inline-flex">
+            <Loader2Icon className="h-4 w-4 animate-spin" aria-hidden />
+          </div>
+        </div>
+
+        <div className="border-border bg-card/70 mt-8 rounded-md border p-4 text-sm shadow-sm">
+          {stuck ? (
+            <>
+              <p className="text-foreground font-medium">Queue is running long.</p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                It&rsquo;s been more than three minutes and the worker still hasn&rsquo;t picked up
+                the job. Email{" "}
+                <a
+                  href="mailto:support@costseg.app?subject=Cost%20Seg%20pipeline%20never%20started"
+                  className="text-foreground underline-offset-2 hover:underline"
+                >
+                  support@costseg.app
+                </a>{" "}
+                and we&rsquo;ll kick it off manually — no charge until delivery.
+              </p>
+            </>
+          ) : overdue ? (
+            <>
+              <p className="text-foreground font-medium">Taking a bit longer than usual.</p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                Pipelines usually start within ten seconds. Sometimes the queue bunches up. Give it
+                another minute — if nothing happens we&rsquo;ll chase it automatically.
+              </p>
+            </>
+          ) : state.status === "AWAITING_DOCUMENTS" ? (
+            <>
+              <p className="text-foreground font-medium">We have your documents.</p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                The worker is about to pick up your study — usually within ten seconds. You can
+                close this tab; we&rsquo;ll email you the moment the pipeline completes.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-foreground font-medium">Queued for the worker.</p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                Inngest dequeues pipelines within a few seconds. The first live step will appear
+                below as soon as it starts.
+              </p>
+            </>
+          )}
+        </div>
+
+        <dl className="mt-8 grid gap-6 sm:grid-cols-3">
+          <DlItem label="Tier" value={tierLabel} />
+          <DlItem label="Elapsed" value={formatElapsed(elapsedSec)} mono />
+          <DlItem label="State" value="Waiting for worker" />
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
 
