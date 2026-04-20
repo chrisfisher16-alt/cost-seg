@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { requireRole } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { formatCents } from "@/lib/stripe/catalog";
+import { formatAgeSla, hoursBetween } from "@/lib/studies/admin-age";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Admin · Engineer queue" };
@@ -61,21 +62,13 @@ async function loadQueue(): Promise<QueueRow[]> {
   }
 }
 
-function hoursBetween(start: Date, now: number): number {
-  return (now - start.getTime()) / 3_600_000;
-}
-
+// hoursBetween + formatAgeSla live in lib/studies/admin-age.ts so the two
+// admin surfaces share the implementation. bucketAge stays local because
+// FRESH_CUTOFF_HOURS / AGING_CUTOFF_HOURS are queue-specific SLA constants.
 function bucketAge(hours: number): AgeBucket {
   if (hours < FRESH_CUTOFF_HOURS) return "fresh";
   if (hours < AGING_CUTOFF_HOURS) return "aging";
   return "overdue";
-}
-
-function formatAge(hours: number): string {
-  if (hours < 1) return `${Math.round(hours * 60)}m`;
-  if (hours < 24) return `${Math.round(hours)}h`;
-  const days = hours / 24;
-  return `${days.toFixed(days < 10 ? 1 : 0)}d`;
 }
 
 const PROPERTY_TYPE_SHORT: Record<PropertyType, string> = {
@@ -106,8 +99,17 @@ export default async function AdminEngineerQueuePage({ searchParams }: Props) {
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const withAge = rows.map((row) => {
-    const hours = hoursBetween(row.updatedAt, now);
-    return { ...row, hours, bucket: bucketAge(hours) };
+    const updatedMs = row.updatedAt.getTime();
+    const hours = hoursBetween(updatedMs, now);
+    return {
+      ...row,
+      hours,
+      bucket: bucketAge(hours),
+      // Precompute the "3.2d" label here so QueueRowCard stays purely
+      // presentational and the formatter is called once per row with the
+      // request-pinned `now`.
+      ageLabel: formatAgeSla(updatedMs, now),
+    };
   });
 
   const counts = {
@@ -245,7 +247,11 @@ function FilterChip({
   );
 }
 
-function QueueRowCard({ row }: { row: QueueRow & { hours: number; bucket: AgeBucket } }) {
+function QueueRowCard({
+  row,
+}: {
+  row: QueueRow & { hours: number; bucket: AgeBucket; ageLabel: string };
+}) {
   const agePillTone =
     row.bucket === "overdue"
       ? "bg-destructive/10 text-destructive border-destructive/30"
@@ -294,7 +300,7 @@ function QueueRowCard({ row }: { row: QueueRow & { hours: number; bucket: AgeBuc
             data-tabular
           >
             <ClockIcon className="h-3 w-3" aria-hidden />
-            Waiting {formatAge(row.hours)}
+            Waiting {row.ageLabel}
           </span>
           <Button asChild size="sm" trailingIcon={<ArrowRightIcon />}>
             <Link href={`/admin/studies/${row.id}` as Route}>Open inspector</Link>

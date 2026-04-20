@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getPrisma } from "@/lib/db/client";
 import { CATALOG, formatCents, type Tier } from "@/lib/stripe/catalog";
+import { formatAgeTerse } from "@/lib/studies/admin-age";
 import { statusLabel } from "@/lib/studies/status-label";
 import { cn } from "@/lib/utils";
 import type { StudyStatus } from "@prisma/client";
@@ -96,14 +97,6 @@ async function loadCounts(): Promise<Record<StudyStatus, number>> {
   }
 }
 
-function hoursSince(date: Date): string {
-  const delta = (Date.now() - date.getTime()) / 1000;
-  if (delta < 60) return `${Math.round(delta)}s`;
-  if (delta < 3600) return `${Math.round(delta / 60)}m`;
-  if (delta < 86400) return `${Math.round(delta / 3600)}h`;
-  return `${Math.round(delta / 86400)}d`;
-}
-
 export default async function AdminPipelinePage({ searchParams }: Props) {
   const params = await searchParams;
   const status = isStatus(params.status) ? params.status : null;
@@ -112,6 +105,10 @@ export default async function AdminPipelinePage({ searchParams }: Props) {
 
   const [rows, counts] = await Promise.all([loadRows({ status, tier, q }), loadCounts()]);
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  // Pin the clock once per request so every row formats against the same
+  // now — dashboard/intake use the same pattern.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
 
   function buildHref(overrides: Partial<{ status: string; tier: string; q: string }>) {
     const next = new URLSearchParams();
@@ -303,7 +300,7 @@ export default async function AdminPipelinePage({ searchParams }: Props) {
                       {formatCents(row.pricePaidCents)}
                     </td>
                     <td className="text-muted-foreground px-4 py-3 align-top text-xs">
-                      {hoursSince(row.updatedAt)} ago
+                      {formatAgeTerse(row.updatedAt.getTime(), nowMs)} ago
                     </td>
                   </tr>
                 ))}
