@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronDownIcon, ChevronUpIcon, DownloadIcon, FileTextIcon, UserIcon } from "lucide-react";
 
 import { AdminActionsPanel } from "@/components/admin/AdminActionsPanel";
+import { DocsBulkDownload } from "@/components/admin/DocsBulkDownload";
 import { JsonViewer } from "@/components/admin/JsonViewer";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { DOCUMENT_KIND_META } from "@/components/intake/meta";
@@ -140,7 +141,17 @@ export default async function AdminStudyInspector({ params, searchParams }: Prop
           <CustomerPropertyCard study={study} />
 
           <section>
-            <SectionEyebrow>Documents ({documentsWithUrls.length})</SectionEyebrow>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <SectionEyebrow>Documents ({documentsWithUrls.length})</SectionEyebrow>
+              {/* Hidden server-side when <2 docs or none have signed URLs
+                  (e.g. when Supabase Storage is unreachable). The component
+                  itself also short-circuits at <2 for belt-and-suspenders. */}
+              <DocsBulkDownload
+                docs={documentsWithUrls
+                  .filter((d): d is typeof d & { signedUrl: string } => Boolean(d.signedUrl))
+                  .map((d) => ({ signedUrl: d.signedUrl, filename: d.filename }))}
+              />
+            </div>
             {documentsWithUrls.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="text-muted-foreground p-6 text-center text-sm">
