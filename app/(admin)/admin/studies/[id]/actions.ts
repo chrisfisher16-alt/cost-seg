@@ -9,6 +9,7 @@ import { STUDIES_BUCKET } from "@/lib/storage/studies";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { deliverEngineeredStudy, resendDeliveryEmail } from "@/lib/studies/deliver";
 import { safeInngestSend } from "@/lib/studies/inngest-safe";
+import { transitionStudy } from "@/lib/studies/transitions";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -80,20 +81,30 @@ export async function adminMarkFailedAction(
     };
   }
 
-  await prisma.$transaction([
-    prisma.study.update({
-      where: { id: studyId },
-      data: { status: "FAILED", failedReason: trimmed },
-    }),
-    prisma.studyEvent.create({
+  await prisma.$transaction(async (tx) => {
+    await transitionStudy({
+      studyId,
+      from: [
+        "PENDING_PAYMENT",
+        "AWAITING_DOCUMENTS",
+        "PROCESSING",
+        "AI_COMPLETE",
+        "AWAITING_ENGINEER",
+        "ENGINEER_REVIEWED",
+      ],
+      to: "FAILED",
+      extraData: { failedReason: trimmed },
+      tx,
+    });
+    await tx.studyEvent.create({
       data: {
         studyId,
         kind: "admin.marked_failed",
         actorId: user.id,
         payload: { priorStatus: study.status, reason: trimmed } as Prisma.InputJsonValue,
       },
-    }),
-  ]);
+    });
+  });
 
   revalidatePath(`/admin/studies/${studyId}`);
   revalidatePath("/admin");
@@ -169,12 +180,15 @@ export async function adminUploadSignedStudyAction(
     return { ok: false, error: `Upload failed: ${uploadError.message}` };
   }
 
-  await prisma.$transaction([
-    prisma.study.update({
-      where: { id: studyId },
-      data: { status: "ENGINEER_REVIEWED" },
-    }),
-    prisma.studyEvent.create({
+  await prisma.$transaction(async (tx) => {
+    await transitionStudy({
+      studyId,
+      from: "AWAITING_ENGINEER",
+      to: "ENGINEER_REVIEWED",
+      tier: "ENGINEER_REVIEWED",
+      tx,
+    });
+    await tx.studyEvent.create({
       data: {
         studyId,
         kind: "admin.engineer_pdf_uploaded",
@@ -186,8 +200,8 @@ export async function adminUploadSignedStudyAction(
           sizeBytes: file.size,
         } as Prisma.InputJsonValue,
       },
-    }),
-  ]);
+    });
+  });
 
   const deliverResult = await deliverEngineeredStudy({
     studyId,
@@ -284,12 +298,22 @@ export async function adminBulkMarkFailedAction(
     }
 
     try {
-      await prisma.$transaction([
-        prisma.study.update({
-          where: { id: studyId },
-          data: { status: "FAILED", failedReason: trimmed },
-        }),
-        prisma.studyEvent.create({
+      await prisma.$transaction(async (tx) => {
+        await transitionStudy({
+          studyId,
+          from: [
+            "PENDING_PAYMENT",
+            "AWAITING_DOCUMENTS",
+            "PROCESSING",
+            "AI_COMPLETE",
+            "AWAITING_ENGINEER",
+            "ENGINEER_REVIEWED",
+          ],
+          to: "FAILED",
+          extraData: { failedReason: trimmed },
+          tx,
+        });
+        await tx.studyEvent.create({
           data: {
             studyId,
             kind: "admin.marked_failed",
@@ -300,8 +324,8 @@ export async function adminBulkMarkFailedAction(
               bulk: true,
             } as Prisma.InputJsonValue,
           },
-        }),
-      ]);
+        });
+      });
       results.push({ studyId, ok: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "unknown DB error";

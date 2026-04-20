@@ -9,6 +9,7 @@ import { getPrisma } from "@/lib/db/client";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { renderAiReportPdf } from "@/lib/pdf/render";
 import { computeYearOneProjection, groupByDepreciationClass } from "@/lib/pdf/year-one";
+import { transitionStudy } from "@/lib/studies/transitions";
 
 import { Prisma, type PropertyType } from "@prisma/client";
 
@@ -201,16 +202,19 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
     console.error("[deliver] email send failed", err);
   }
 
-  await prisma.$transaction([
-    prisma.study.update({
-      where: { id: studyId },
-      data: {
-        status: "DELIVERED",
+  await prisma.$transaction(async (tx) => {
+    await transitionStudy({
+      studyId,
+      from: "AI_COMPLETE",
+      to: "DELIVERED",
+      tier: study.tier,
+      extraData: {
         deliveredAt: new Date(),
         deliverableUrl: storagePath,
       },
-    }),
-    prisma.studyEvent.create({
+      tx,
+    });
+    await tx.studyEvent.create({
       data: {
         studyId,
         kind: "study.delivered",
@@ -219,8 +223,8 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
           expiresAtIso,
         } as Prisma.InputJsonValue,
       },
-    }),
-  ]);
+    });
+  });
 
   return { ok: true, storagePath, signedUrl, expiresAtIso };
 }
@@ -291,17 +295,20 @@ export async function deliverEngineeredStudy(
     console.error("[deliver] engineer email send failed", err);
   }
 
-  await prisma.$transaction([
-    prisma.study.update({
-      where: { id: args.studyId },
-      data: {
-        status: "DELIVERED",
+  await prisma.$transaction(async (tx) => {
+    await transitionStudy({
+      studyId: args.studyId,
+      from: "ENGINEER_REVIEWED",
+      to: "DELIVERED",
+      tier: study.tier,
+      extraData: {
         deliveredAt: new Date(),
         deliverableUrl: args.storagePath,
         engineerSignedAt: new Date(),
       },
-    }),
-    prisma.studyEvent.create({
+      tx,
+    });
+    await tx.studyEvent.create({
       data: {
         studyId: args.studyId,
         kind: "engineer.signed_and_delivered",
@@ -313,8 +320,8 @@ export async function deliverEngineeredStudy(
           expiresAtIso,
         } as Prisma.InputJsonValue,
       },
-    }),
-  ]);
+    });
+  });
 
   return { ok: true, storagePath: args.storagePath, signedUrl, expiresAtIso };
 }

@@ -163,8 +163,11 @@ describe("isLegalTransition — illegal edges", () => {
  * that reach this block are about the runtime guard (count check + error
  * shape); the static-graph logic is covered above.
  */
+type UpdateManyArg = { where: { id: string; status: { in: StudyStatus[] } }; data: unknown };
+
 function mockTx(updateManyCount: number) {
-  const updateMany = vi.fn(async () => ({ count: updateManyCount }));
+  const updateMany = vi.fn<(arg: UpdateManyArg) => Promise<{ count: number }>>();
+  updateMany.mockResolvedValue({ count: updateManyCount });
   const tx = { study: { updateMany } } as unknown as Parameters<typeof transitionStudy>[0]["tx"];
   return { tx, updateMany };
 }
@@ -211,6 +214,7 @@ describe("transitionStudy — runtime guard", () => {
     });
     expect(updateMany).toHaveBeenCalledOnce();
     const call = updateMany.mock.calls[0]?.[0];
+    if (!call) throw new Error("expected updateMany to be called");
     expect(call.where).toMatchObject({
       id: "s1",
       status: { in: ["AI_COMPLETE"] },
@@ -231,6 +235,7 @@ describe("transitionStudy — runtime guard", () => {
       tx,
     });
     const call = updateMany.mock.calls[0]?.[0];
+    if (!call) throw new Error("expected updateMany to be called");
     expect(call.where.status).toEqual({
       in: ["PROCESSING", "AI_COMPLETE", "AWAITING_ENGINEER"],
     });

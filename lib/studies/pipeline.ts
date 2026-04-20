@@ -5,6 +5,7 @@ import { classifyAssets } from "@/lib/ai/steps/classify-assets";
 import { decomposePrice } from "@/lib/ai/steps/decompose-price";
 import { draftNarrative } from "@/lib/ai/steps/narrative";
 import { getPrisma } from "@/lib/db/client";
+import { transitionStudy } from "@/lib/studies/transitions";
 import { Prisma, type DocumentKind, type PropertyType, type Tier } from "@prisma/client";
 
 /**
@@ -232,12 +233,16 @@ export async function finalizeStudy(input: PipelineFinalize): Promise<void> {
     totalCents: input.assetScheduleTotalCents,
   } as Prisma.InputJsonValue;
 
-  await prisma.$transaction([
-    prisma.study.update({
-      where: { id: input.studyId },
-      data: { status: nextStatus, assetSchedule },
-    }),
-    prisma.studyEvent.create({
+  await prisma.$transaction(async (tx) => {
+    await transitionStudy({
+      studyId: input.studyId,
+      from: "PROCESSING",
+      to: nextStatus,
+      tier: input.tier,
+      extraData: { assetSchedule },
+      tx,
+    });
+    await tx.studyEvent.create({
       data: {
         studyId: input.studyId,
         kind: "pipeline.completed",
@@ -246,8 +251,8 @@ export async function finalizeStudy(input: PipelineFinalize): Promise<void> {
           totalCents: input.assetScheduleTotalCents,
         },
       },
-    }),
-  ]);
+    });
+  });
 
   // Tier 1 auto-delivers via the `study.ai.complete` Inngest chain. Tier 2
   // waits for admin-triggered engineer upload (Phase 7).
@@ -260,19 +265,35 @@ export async function finalizeStudy(input: PipelineFinalize): Promise<void> {
   }
 }
 
+/**
+ * Anything-in-flight → FAILED. Called from inside Inngest steps for
+ * unrecoverable pipeline errors, and from admin surfaces for manual
+ * marks. The transitions SSOT blocks marking a DELIVERED / REFUNDED /
+ * already-FAILED study from this path, so callers don't need a pre-read.
+ */
 export async function markStudyFailed(studyId: string, reason: string): Promise<void> {
   const prisma = getPrisma();
-  await prisma.$transaction([
-    prisma.study.update({
-      where: { id: studyId },
-      data: { status: "FAILED", failedReason: reason },
-    }),
-    prisma.studyEvent.create({
+  await prisma.$transaction(async (tx) => {
+    await transitionStudy({
+      studyId,
+      from: [
+        "PENDING_PAYMENT",
+        "AWAITING_DOCUMENTS",
+        "PROCESSING",
+        "AI_COMPLETE",
+        "AWAITING_ENGINEER",
+        "ENGINEER_REVIEWED",
+      ],
+      to: "FAILED",
+      extraData: { failedReason: reason },
+      tx,
+    });
+    await tx.studyEvent.create({
       data: {
         studyId,
         kind: "pipeline.failed",
         payload: { reason },
       },
-    }),
-  ]);
+    });
+  });
 }
