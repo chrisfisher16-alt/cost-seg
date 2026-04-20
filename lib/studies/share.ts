@@ -29,8 +29,27 @@ function generateShareToken(): string {
   return randomBytes(32).toString("hex");
 }
 
-function normalizeEmail(raw: string): string {
+/**
+ * Canonicalize an email for equality comparison: trim + lowercase. Exposed
+ * so callers and tests agree on the normalization used when deciding whether
+ * an accepter's session email matches the invite's stored address.
+ */
+export function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase();
+}
+
+/**
+ * True iff the accepter's session email matches the invite's stored
+ * `invitedEmail` (after normalization). Used to record the
+ * `emailMatched` audit flag on the `share.accepted` StudyEvent so the admin
+ * inspector can surface "invite went to A, accepted by B" cases.
+ */
+export function isAcceptedEmailMatch(
+  invitedEmail: string | null | undefined,
+  accepterEmail: string,
+): boolean {
+  if (!invitedEmail) return false;
+  return normalizeEmail(invitedEmail) === normalizeEmail(accepterEmail);
 }
 
 /**
@@ -168,11 +187,13 @@ export async function acceptShareByToken(
     throw new Error("This invitation was already accepted by a different account.");
   }
 
-  // If an email-normalized match is set, require it (lightweight guard).
+  // Invites are NOT strict-locked — a CPA signed in with email B can still
+  // accept an invite addressed to email A (common: aliases, @-sign quirks,
+  // household inboxes). But we MUST audit the mismatch so the admin
+  // inspector can surface it; Day 49's "warn on email mismatch" was
+  // implemented as an empty `if` block that threw away the signal.
   const normalized = normalizeEmail(accepter.email);
-  if (existing.invitedEmail !== normalized) {
-    // Allow — invites are not strict-locked — but record a note for audit.
-  }
+  const emailMatched = isAcceptedEmailMatch(existing.invitedEmail, accepter.email);
 
   const updated = await prisma.$transaction(async (tx) => {
     const share = await tx.studyShare.update({
@@ -193,7 +214,12 @@ export async function acceptShareByToken(
         studyId: share.studyId,
         kind: "share.accepted",
         actorId: accepter.id,
-        payload: { shareId: share.id, invitedEmail: share.invitedEmail } as never,
+        payload: {
+          shareId: share.id,
+          invitedEmail: share.invitedEmail,
+          accepterEmail: normalized,
+          emailMatched,
+        } as never,
       },
     });
     return share;
