@@ -13,6 +13,8 @@ import { PROPERTY_TYPE_LABELS } from "@/lib/estimator/types";
 import { CATALOG, formatCents } from "@/lib/stripe/catalog";
 import { createSignedReadUrl } from "@/lib/storage/studies";
 import { requireRole } from "@/lib/auth/require";
+import { formatStudyEvent, type EventTone } from "@/lib/studies/event-format";
+import { cn } from "@/lib/utils";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -370,28 +372,79 @@ function EventTimeline({
   return (
     <section>
       <SectionEyebrow>Event timeline</SectionEyebrow>
-      <ol className="space-y-2 text-xs">
-        {events.map((event) => (
-          <li key={event.id}>
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="font-mono">{event.kind}</span>
-                  <span className="text-muted-foreground">{event.createdAt.toLocaleString()}</span>
-                </div>
-                {event.actorId ? (
-                  <p className="text-muted-foreground mt-1 text-[10px]">
-                    actor {event.actorId.slice(0, 8)}
-                  </p>
-                ) : null}
-                <pre className="text-muted-foreground mt-2 overflow-auto font-mono text-[10px] leading-snug">
-                  {JSON.stringify(event.payload, null, 2)}
-                </pre>
-              </CardContent>
-            </Card>
-          </li>
-        ))}
+      <ol className="space-y-2">
+        {events.map((event) => {
+          const formatted = formatStudyEvent(event.kind, event.payload);
+          return (
+            <li key={event.id}>
+              <Card className={cn(toneBorder(formatted.tone))}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={cn("h-1.5 w-1.5 rounded-full", toneDot(formatted.tone))} />
+                        <p className="text-foreground text-sm font-medium">{formatted.title}</p>
+                      </div>
+                      {formatted.detail ? (
+                        <p className="text-muted-foreground text-xs leading-relaxed">
+                          {formatted.detail}
+                        </p>
+                      ) : null}
+                      <p className="text-muted-foreground font-mono text-[10px] tracking-wide">
+                        {event.kind}
+                        {event.actorId ? ` · actor ${event.actorId.slice(0, 8)}` : ""}
+                      </p>
+                    </div>
+                    <time className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
+                      {event.createdAt.toLocaleString()}
+                    </time>
+                  </div>
+                  <details className="mt-3">
+                    <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[11px] select-none">
+                      Raw payload
+                    </summary>
+                    <pre className="text-muted-foreground bg-muted/30 mt-2 overflow-auto rounded-md p-2 font-mono text-[10px] leading-snug">
+                      {JSON.stringify(event.payload, null, 2)}
+                    </pre>
+                  </details>
+                </CardContent>
+              </Card>
+            </li>
+          );
+        })}
       </ol>
     </section>
   );
+}
+
+function toneBorder(tone: EventTone): string {
+  switch (tone) {
+    case "success":
+      return "border-success/30";
+    case "primary":
+      return "border-primary/30";
+    case "warning":
+      return "border-warning/30";
+    case "destructive":
+      return "border-destructive/30";
+    default:
+      return "";
+  }
+}
+
+function toneDot(tone: EventTone): string {
+  switch (tone) {
+    case "success":
+      return "bg-success";
+    case "primary":
+      return "bg-primary";
+    case "warning":
+      return "bg-warning";
+    case "destructive":
+      return "bg-destructive";
+    case "muted":
+      return "bg-muted-foreground/40";
+    default:
+      return "bg-foreground/30";
+  }
 }
