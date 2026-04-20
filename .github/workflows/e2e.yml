@@ -1,9 +1,9 @@
-name: CI
+name: E2E
 
-# Fast feedback on every push/PR to main: typecheck, lint, format,
-# unit tests, and `next build`. E2E is split into a separate workflow
-# because Playwright + browser install adds ~3 min and e2e needs real
-# Supabase env vars that CI secrets haven't been wired up for yet.
+# Playwright + Chromium on every push/PR to main. Split from the main CI
+# workflow because browser install adds ~2 min and e2e is more likely to
+# go yellow on flakes than the fast checks. Running in parallel with CI
+# keeps total PR feedback under ~8 min.
 
 on:
   push:
@@ -12,15 +12,15 @@ on:
     branches: [main]
 
 jobs:
-  checks:
-    name: Typecheck · Lint · Format · Test · Build
+  e2e:
+    name: Playwright (chromium)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
-    # Placeholder values — enough to satisfy env() schema validation at build
-    # time without leaking real secrets into CI. env() is lazy (see lib/env.ts),
-    # so these only matter for routes that call it during prerendering.
-    # Production deploys pick up the real values from Vercel project env.
+    # Same placeholder env as CI — the e2e suite currently avoids Supabase
+    # and Stripe real calls (see tests/e2e — every spec hits marketing,
+    # infra, or static routes). If that changes, wire real secrets in
+    # via GitHub Actions secrets.
     env:
       APP_ENV: production
       NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -44,12 +44,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      # No `version:` here — package.json's `packageManager: pnpm@x.y.z`
-      # field is the source of truth, and setting both makes action-setup@v4
-      # refuse to run.
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -61,17 +56,23 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma generate
 
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Format check
-        run: pnpm format:check
-
-      - name: Unit tests
-        run: pnpm test
+      - name: Install Playwright browsers
+        # Cache key hashes pnpm-lock.yaml so we only re-download browsers
+        # when Playwright version changes with the lockfile.
+        run: pnpm exec playwright install chromium --with-deps
 
       - name: Build
         run: pnpm build
+
+      - name: E2E tests
+        run: pnpm test:e2e
+
+      # Upload the HTML report on failure so we can see screenshots/videos
+      # without re-running locally.
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
