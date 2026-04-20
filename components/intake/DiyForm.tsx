@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { submitDiyStudyAction } from "@/app/(app)/studies/[id]/diy/actions";
-import { AddressInput } from "@/components/marketing/AddressInput";
+import { AddressInput, type StructuredAddress } from "@/components/marketing/AddressInput";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -57,6 +57,18 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
     setLandValue(formatDollars(suggestedLandCents));
   }
 
+  /**
+   * Auto-fill city/state/zip when Places autocomplete fires — matches the
+   * PropertyForm behavior so the DIY flow gets the same "one address, all
+   * parts" convenience.
+   */
+  function handlePlace(place: StructuredAddress) {
+    if (place.streetAddress) setAddress(place.streetAddress);
+    if (place.city) setCity(place.city);
+    if (place.state) setStateCode(place.state);
+    if (place.zip) setZip(place.zip);
+  }
+
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -91,8 +103,18 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
           </p>
         </div>
 
-        <Field label="Address" required>
-          <AddressInput id="address" value={address} onChange={setAddress} required />
+        <Field
+          label="Address"
+          required
+          hint="Start typing and pick from the list — city, state, and ZIP auto-fill."
+        >
+          <AddressInput
+            id="address"
+            value={address}
+            onChange={setAddress}
+            onPlace={handlePlace}
+            required
+          />
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-3">

@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { updatePropertyAction } from "@/app/(app)/studies/[id]/actions";
-import { AddressInput } from "@/components/marketing/AddressInput";
+import { AddressInput, type StructuredAddress } from "@/components/marketing/AddressInput";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,18 @@ export function PropertyForm({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  /**
+   * Auto-fill city/state/zip when the user picks a Google Places suggestion.
+   * Only overwrites fields that have a new structured value — preserves
+   * anything the user typed manually if Places returned a partial address.
+   */
+  function handlePlace(place: StructuredAddress) {
+    if (place.streetAddress) setAddress(place.streetAddress);
+    if (place.city) setCity(place.city);
+    if (place.state) setStateCode(place.state);
+    if (place.zip) setZip(place.zip);
+  }
+
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -83,8 +95,18 @@ export function PropertyForm({
   return (
     <form onSubmit={submit} className="space-y-5">
       <fieldset disabled={locked} className="space-y-5">
-        <Field label="Address" required>
-          <AddressInput id="address" value={address} onChange={setAddress} required />
+        <Field
+          label="Address"
+          required
+          hint="Start typing and pick from the list — city, state, and ZIP auto-fill."
+        >
+          <AddressInput
+            id="address"
+            value={address}
+            onChange={setAddress}
+            onPlace={handlePlace}
+            required
+          />
         </Field>
 
         <div className="grid gap-5 sm:grid-cols-3">
