@@ -37,6 +37,21 @@ test.describe("public route coverage", () => {
   }
 });
 
+test.describe("not-found + error fallbacks", () => {
+  test("unknown route renders the global not-found page", async ({ page }) => {
+    const response = await page.goto("/this-route-does-not-exist-ever-12345");
+    expect(response?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: /page not found/i, level: 1 })).toBeVisible();
+    await expect(page.getByRole("link", { name: /back to home/i })).toBeVisible();
+  });
+
+  test("unknown sample id renders not-found", async ({ page }) => {
+    const response = await page.goto("/samples/this-sample-is-fake");
+    expect(response?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: /page not found/i, level: 1 })).toBeVisible();
+  });
+});
+
 test.describe("marketing header navigation", () => {
   test("top-level nav links all resolve to 200", async ({ page, request }) => {
     await page.goto("/");

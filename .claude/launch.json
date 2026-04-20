@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "next-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 3000
+    },
+    {
+      "name": "inngest-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["exec", "inngest-cli", "dev", "-u", "http://localhost:3000/api/inngest"],
+      "port": 8288
+    },
+    {
+      "name": "stripe-listen",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["stripe:listen"],
+      "port": 0
+    },
+    {
+      "name": "prisma-studio",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["prisma:studio"],
+      "port": 5555
+    },
+    {
+      "name": "vitest-ui",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["test:ui"],
+      "port": 51204
+    }
+  ]
+}

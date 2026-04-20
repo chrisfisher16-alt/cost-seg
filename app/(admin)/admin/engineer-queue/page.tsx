@@ -62,8 +62,12 @@ export default async function AdminEngineerQueuePage() {
       </header>
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          Queue is empty.
+        <div className="border-border space-y-2 rounded-xl border border-dashed p-10 text-center">
+          <p className="text-foreground text-sm font-medium">Queue is empty.</p>
+          <p className="text-muted-foreground mx-auto max-w-sm text-sm leading-relaxed">
+            Engineer-Reviewed studies land here after their AI pipeline completes. When a customer
+            upgrades or pays for Tier 2, they&rsquo;ll appear for PE signature.
+          </p>
         </div>
       ) : (
         <ul className="space-y-3">

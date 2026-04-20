@@ -224,8 +224,25 @@ export default async function AdminPipelinePage({ searchParams }: Props) {
 
       {rows.length === 0 ? (
         <Card className="border-dashed">
-          <CardContent className="text-muted-foreground p-10 text-center text-sm">
-            No studies match these filters.
+          <CardContent className="space-y-3 p-10 text-center">
+            <p className="text-foreground text-sm font-medium">
+              {status || tier || q ? "No studies match these filters." : "No studies yet."}
+            </p>
+            <p className="text-muted-foreground mx-auto max-w-sm text-sm leading-relaxed">
+              {status || tier || q
+                ? "Try clearing filters or broadening your search — the first study might be waiting under a different status."
+                : "Customer-submitted studies show up here in real time. As soon as one lands, you'll see it."}
+            </p>
+            {status || tier || q ? (
+              <div className="flex justify-center pt-2">
+                <Link
+                  href="/admin"
+                  className="text-primary hover:text-primary/80 text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  Clear all filters
+                </Link>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ) : (
