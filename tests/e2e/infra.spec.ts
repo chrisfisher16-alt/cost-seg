@@ -50,6 +50,49 @@ test.describe("sample PDF endpoint (Day 5)", () => {
   });
 });
 
+test.describe("brand icons", () => {
+  // Next.js 16 auto-discovers `app/icon.png` and `app/apple-icon.png`, wires
+  // them into <link rel="icon"> + <link rel="apple-touch-icon"> on every
+  // route, and serves them at `/icon.png[?hash]` + `/apple-icon.png[?hash]`.
+  // Verify both the served bytes AND the head-tag wiring so a future break
+  // (file deleted, size mismatch, Next.js upgrade changing conventions)
+  // fails CI instead of silently reaching prod social/home-screen previews.
+  test("serves a valid 32×32 favicon", async ({ request }) => {
+    const res = await request.get("/icon.png");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"] ?? "").toMatch(/image\/png/i);
+    const body = await res.body();
+    // PNG magic: 89 50 4E 47 0D 0A 1A 0A
+    expect(body.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    // Width + height live at bytes 16-24 of the IHDR chunk (big-endian int32).
+    const width = body.readUInt32BE(16);
+    const height = body.readUInt32BE(20);
+    expect(width, "favicon width wrong").toBe(32);
+    expect(height, "favicon height wrong").toBe(32);
+  });
+
+  test("serves a valid Apple touch icon ≥ 180×180", async ({ request }) => {
+    const res = await request.get("/apple-icon.png");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"] ?? "").toMatch(/image\/png/i);
+    const body = await res.body();
+    expect(body.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    // Apple's HIG recommends exactly 180×180; iOS downscales anything larger
+    // cleanly. Assert the lower bound so a regression to a too-small icon
+    // (visible blur on iPad home screens) is caught before shipping.
+    const width = body.readUInt32BE(16);
+    const height = body.readUInt32BE(20);
+    expect(width, "apple-icon width under 180px").toBeGreaterThanOrEqual(180);
+    expect(height, "apple-icon height under 180px").toBeGreaterThanOrEqual(180);
+  });
+
+  test("every marketing route advertises both icons in <head>", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator('link[rel="icon"][type="image/png"]')).toHaveCount(1);
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+  });
+});
+
 test.describe("SEO endpoints (Day 5)", () => {
   test("/robots.txt is served and disallows authenticated paths", async ({ request }) => {
     const res = await request.get("/robots.txt");
