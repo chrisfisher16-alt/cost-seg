@@ -1,6 +1,7 @@
+import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DownloadIcon, FileTextIcon, UserIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, DownloadIcon, FileTextIcon, UserIcon } from "lucide-react";
 
 import { AdminActionsPanel } from "@/components/admin/AdminActionsPanel";
 import { JsonViewer } from "@/components/admin/JsonViewer";
@@ -19,20 +20,42 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ expand?: string }>;
 };
 
-async function loadStudy(studyId: string) {
+// Default + expanded caps. The expanded cap is still bounded so a study with
+// thousands of events (e.g. one that's been re-run 20 times) can't blow up
+// the admin's memory or the SSR render budget.
+const DEFAULT_TAKE = 50;
+const EXPANDED_TAKE = 500;
+
+async function loadStudy(studyId: string, expanded: boolean) {
+  const take = expanded ? EXPANDED_TAKE : DEFAULT_TAKE;
   try {
-    return await getPrisma().study.findUnique({
-      where: { id: studyId },
-      include: {
-        user: { select: { id: true, email: true, name: true, role: true } },
-        property: true,
-        documents: { orderBy: { createdAt: "asc" } },
-        events: { orderBy: { createdAt: "desc" }, take: 50 },
-        aiAuditLogs: { orderBy: { createdAt: "desc" }, take: 50 },
-      },
-    });
+    const [study, totals] = await Promise.all([
+      getPrisma().study.findUnique({
+        where: { id: studyId },
+        include: {
+          user: { select: { id: true, email: true, name: true, role: true } },
+          property: true,
+          documents: { orderBy: { createdAt: "asc" } },
+          events: { orderBy: { createdAt: "desc" }, take },
+          aiAuditLogs: { orderBy: { createdAt: "desc" }, take },
+        },
+      }),
+      // Count totals separately so the truncation hint is honest — we only
+      // know we're over the cap if we compare against the real row count.
+      getPrisma().study.findUnique({
+        where: { id: studyId },
+        select: { _count: { select: { events: true, aiAuditLogs: true } } },
+      }),
+    ]);
+    if (!study || !totals) return null;
+    return {
+      study,
+      totalEvents: totals._count.events,
+      totalAuditLogs: totals._count.aiAuditLogs,
+    };
   } catch {
     return null;
   }
@@ -60,11 +83,14 @@ function SectionEyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function AdminStudyInspector({ params }: Props) {
+export default async function AdminStudyInspector({ params, searchParams }: Props) {
   await requireRole(["ADMIN"]);
   const { id } = await params;
-  const study = await loadStudy(id);
-  if (!study) notFound();
+  const { expand } = await searchParams;
+  const expanded = expand === "1";
+  const loaded = await loadStudy(id, expanded);
+  if (!loaded) notFound();
+  const { study, totalEvents, totalAuditLogs } = loaded;
 
   const catalog = CATALOG[study.tier];
   const scheduleBlob = study.assetSchedule as {
@@ -215,8 +241,18 @@ export default async function AdminStudyInspector({ params }: Props) {
             </section>
           ) : null}
 
-          <AiAuditTable logs={study.aiAuditLogs} />
-          <EventTimeline events={study.events} />
+          <AiAuditTable
+            logs={study.aiAuditLogs}
+            totalCount={totalAuditLogs}
+            expanded={expanded}
+            studyId={study.id}
+          />
+          <EventTimeline
+            events={study.events}
+            totalCount={totalEvents}
+            expanded={expanded}
+            studyId={study.id}
+          />
         </div>
 
         <AdminActionsPanel
@@ -295,6 +331,9 @@ function CustomerPropertyCard({
 
 function AiAuditTable({
   logs,
+  totalCount,
+  expanded,
+  studyId,
 }: {
   logs: Array<{
     id: string;
@@ -306,13 +345,22 @@ function AiAuditTable({
     costUsd: unknown;
     createdAt: Date;
   }>;
+  totalCount: number;
+  expanded: boolean;
+  studyId: string;
 }) {
   if (logs.length === 0) return null;
-  const totalCost = logs.reduce((a, l) => a + Number(l.costUsd), 0);
+  // costUsd shown below is the sum of the rows we loaded, not the whole study.
+  // When truncated, label it as "shown" so the admin doesn't misread it as
+  // lifetime spend on this study.
+  const shownCost = logs.reduce((a, l) => a + Number(l.costUsd), 0);
+  const truncated = totalCount > logs.length;
   return (
     <section>
       <SectionEyebrow>
-        AI audit trail ({logs.length} calls, ${totalCost.toFixed(4)})
+        AI audit trail ({logs.length}
+        {truncated ? ` of ${totalCount}` : ""} calls, ${shownCost.toFixed(4)}
+        {truncated ? " shown" : ""})
       </SectionEyebrow>
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
@@ -354,12 +402,22 @@ function AiAuditTable({
           </table>
         </div>
       </Card>
+      <ExpandHint
+        studyId={studyId}
+        shown={logs.length}
+        total={totalCount}
+        expanded={expanded}
+        label="calls"
+      />
     </section>
   );
 }
 
 function EventTimeline({
   events,
+  totalCount,
+  expanded,
+  studyId,
 }: {
   events: Array<{
     id: string;
@@ -368,11 +426,18 @@ function EventTimeline({
     payload: unknown;
     createdAt: Date;
   }>;
+  totalCount: number;
+  expanded: boolean;
+  studyId: string;
 }) {
   if (events.length === 0) return null;
+  const truncated = totalCount > events.length;
   return (
     <section>
-      <SectionEyebrow>Event timeline</SectionEyebrow>
+      <SectionEyebrow>
+        Event timeline ({events.length}
+        {truncated ? ` of ${totalCount}` : ""})
+      </SectionEyebrow>
       <ol className="space-y-2">
         {events.map((event) => {
           const formatted = formatStudyEvent(event.kind, event.payload);
@@ -414,7 +479,70 @@ function EventTimeline({
           );
         })}
       </ol>
+      <ExpandHint
+        studyId={studyId}
+        shown={events.length}
+        total={totalCount}
+        expanded={expanded}
+        label="events"
+      />
     </section>
+  );
+}
+
+/**
+ * Shared "Show all" / "Collapse" affordance for the two truncation-prone
+ * sections. When collapsed + over cap: shows the remaining count + a link
+ * that toggles `?expand=1`. When expanded: shows the expanded cap + a link
+ * back to the default view.
+ *
+ * We flow ?expand=1 through the URL instead of local state so the admin
+ * can share the expanded view by copying the link.
+ */
+function ExpandHint({
+  studyId,
+  shown,
+  total,
+  expanded,
+  label,
+}: {
+  studyId: string;
+  shown: number;
+  total: number;
+  expanded: boolean;
+  label: string;
+}) {
+  // Don't show anything when there's no truncation happening — collapsed
+  // AND under the cap means the section is already showing everything.
+  if (!expanded && total <= shown) return null;
+  const href = (
+    expanded ? `/admin/studies/${studyId}` : `/admin/studies/${studyId}?expand=1`
+  ) as Route;
+  const remaining = total - shown;
+  return (
+    <p className="text-muted-foreground mt-3 text-xs">
+      {expanded ? (
+        <>
+          Showing all {shown} {label}.{" "}
+          <Link
+            href={href}
+            className="text-foreground inline-flex items-center gap-0.5 underline-offset-2 hover:underline"
+          >
+            Collapse <ChevronUpIcon className="h-3 w-3" aria-hidden />
+          </Link>
+        </>
+      ) : (
+        <>
+          {remaining} older {label} hidden.{" "}
+          <Link
+            href={href}
+            className="text-foreground inline-flex items-center gap-0.5 underline-offset-2 hover:underline"
+          >
+            Show all <ChevronDownIcon className="h-3 w-3" aria-hidden />
+          </Link>
+        </>
+      )}
+    </p>
   );
 }
 
