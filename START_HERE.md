@@ -6,13 +6,22 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 18 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 19 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 58/58 Playwright
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 100/100 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 19 (dashboard StudyCard — next-action hints + stuck warnings):**
+
+- **Plain-English directive under every study.** The card used to just show a status badge — users had to decode "AWAITING_DOCUMENTS" to know what to do. Now each card carries a one-line hint: "Upload 2 required documents to kick off the pipeline.", "Running the AI pipeline — usually minutes.", "Awaiting PE signature — 3–7 business days.", "Delivered 3 days ago.", "Pipeline failed — we've paused and our team is looking." DIY tier gets tailored copy ("Enter your basis…") instead of upload prompts.
+- **Stuck-state warnings escalate tone.** AWAITING_DOCUMENTS idle >72h gets warning-border + "(Waiting Xd — ping us if stuck.)". AWAITING_ENGINEER past 7 days gets "Engineer review is running long (Xd) — we're chasing it." FAILED is destructive-bordered. These are the states most likely to become abandoned or miss SLA.
+- **Relative age replaces absolute dates.** "Started 11/4/2026" → "Started 3 days ago". DELIVERED studies get today/yesterday/N-days-ago formatting.
+- **New `lib/studies/next-action.ts` helper** is pure and covered by 11 unit tests (every status branch, both stuck thresholds, DIY vs AI copy, delivered-age formatting, formatRelativeAge from seconds to months, clock-skew guard). `computeNextAction` returns `{ hint, tone, userOwned }` — the tone drives both text color and card border, the userOwned flag can be used later for filtering.
+- **Zero extra DB queries.** `requiredDocsMissing` computed server-side by diffing uploaded DocumentKinds against a required set inside the existing study query — no N+1.
+- **Unit tests**: 89 → 100.
 
 **What landed in Day 18 (intake-flow polish — the first authenticated surface after checkout):**
 
