@@ -15,7 +15,7 @@ export function AdminHeader({ ctx }: { ctx: AuthContext }) {
     <header className="border-border/60 bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
       <Container size="full" className="flex h-16 items-center justify-between">
         <div className="flex items-center gap-5">
-          <BrandMark />
+          <BrandMark wordmarkClassName="hidden min-[420px]:inline" />
           <Badge variant="warning" size="sm">
             Admin
           </Badge>

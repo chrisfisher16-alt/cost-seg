@@ -25,7 +25,7 @@ export function AppHeader({ ctx }: { ctx: AuthContext }) {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 sm:px-8">
         <div className="flex items-center gap-6 sm:gap-8">
           <div className="flex items-center gap-2.5">
-            <BrandMark />
+            <BrandMark wordmarkClassName="hidden min-[420px]:inline" />
             {user.role === "CPA" ? (
               <Badge variant="info" size="sm" className="hidden sm:inline-flex">
                 CPA
