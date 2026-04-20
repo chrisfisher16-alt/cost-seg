@@ -195,7 +195,11 @@ export default async function DashboardPage() {
 
       <section className="mt-10">
         {studies.length === 0 && sharedStudies.length === 0 && !sharedError ? (
-          <EmptyState />
+          isCpa ? (
+            <CpaEmptyState />
+          ) : (
+            <CustomerEmptyState />
+          )
         ) : studies.length > 0 ? (
           <>
             <h2 className="text-muted-foreground mb-4 font-mono text-sm tracking-[0.18em] uppercase">
@@ -298,10 +302,48 @@ function StatCard({
   );
 }
 
-function EmptyState() {
+/**
+ * Customer-facing empty state. The dashboard's primary CTA already links to
+ * /pricing, so this block leans into the "here's what each tier is and how
+ * fast it runs" framing — three direct tier cards so a first-time user can
+ * pick without a detour through the pricing page.
+ */
+function CustomerEmptyState() {
+  const tiers: Array<{
+    id: "DIY" | "AI_REPORT" | "ENGINEER_REVIEWED";
+    title: string;
+    price: string;
+    turnaround: string;
+    description: string;
+    featured?: boolean;
+  }> = [
+    {
+      id: "DIY",
+      title: "DIY Self-Serve",
+      price: "$149",
+      turnaround: "Instant",
+      description: "Type in your basis + land value. MACRS schedule PDF in 90 seconds.",
+    },
+    {
+      id: "AI_REPORT",
+      title: "AI Report",
+      price: "$295",
+      turnaround: "Minutes",
+      description: "Upload your closing disclosure. We read the docs, you watch it run.",
+      featured: true,
+    },
+    {
+      id: "ENGINEER_REVIEWED",
+      title: "Engineer-Reviewed",
+      price: "$1,495",
+      turnaround: "3–7 business days",
+      description: "AI Report + PE signature. Audit-defensible under IRS Pub 5653.",
+    },
+  ];
+
   return (
     <Card className="bg-muted/20 border-dashed">
-      <CardContent className="p-10 text-center sm:p-14">
+      <CardContent className="p-8 text-center sm:p-12">
         <div className="bg-primary/10 text-primary mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full">
           <SparklesIcon className="h-6 w-6" />
         </div>
@@ -309,30 +351,80 @@ function EmptyState() {
           Let&rsquo;s run your first study.
         </h3>
         <p className="text-muted-foreground mx-auto mt-2 max-w-lg text-sm">
-          Pick a tier, upload your closing disclosure, and we&rsquo;ll have your report in minutes.
-          No property on file yet.
+          Three tiers, three turnaround times. Pick one and your intake flow starts right away.
         </p>
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
-          {[
-            { n: 1, t: "Choose a tier", b: "DIY, AI Report, or Engineer-Reviewed." },
-            { n: 2, t: "Upload 3 documents", b: "Closing disclosure, receipts, photos." },
-            { n: 3, t: "Watch it finish", b: "Live pipeline. PDF in minutes." },
-          ].map((s) => (
-            <div key={s.n} className="border-border bg-card rounded-lg border p-4 text-left">
-              <p className="text-muted-foreground font-mono text-[10px] tracking-[0.2em] uppercase">
-                Step {s.n}
+          {tiers.map((tier) => (
+            <Link
+              key={tier.id}
+              href={`/get-started?tier=${tier.id}` as Route}
+              className={cn(
+                "group border-border bg-card flex flex-col rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md",
+                tier.featured ? "border-primary/40 ring-primary/20 ring-1" : "",
+              )}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-sm font-semibold">{tier.title}</p>
+                {tier.featured ? (
+                  <span className="bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-[9px] font-medium tracking-wider uppercase">
+                    Popular
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-foreground mt-1.5 text-2xl font-semibold tracking-tight">
+                {tier.price}
               </p>
-              <p className="mt-1.5 text-sm font-semibold">{s.t}</p>
-              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{s.b}</p>
-            </div>
+              <p className="text-muted-foreground mt-0.5 text-xs">{tier.turnaround}</p>
+              <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+                {tier.description}
+              </p>
+            </Link>
           ))}
         </div>
+        <div className="text-muted-foreground mt-6 text-center text-xs">
+          Not sure yet?{" "}
+          <Link
+            href="/samples"
+            className="text-foreground font-medium underline-offset-4 hover:underline"
+          >
+            Browse the sample reports
+          </Link>
+          .
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * CPA-role empty state. A CPA who just accepted an invite doesn't need "let's
+ * run YOUR first study" — they're on the dashboard waiting for clients to
+ * share studies with them. Frame the state accordingly.
+ */
+function CpaEmptyState() {
+  const subject = encodeURIComponent("Cost Seg — share your study with me");
+  const body = encodeURIComponent(
+    "Hi,\n\nI can review your Cost Seg study through my CPA account. When you're ready, open the study's pipeline page, click 'Share with your CPA', and enter my email. I'll get read-only access to the schedule and PDF.\n\n— Your CPA",
+  );
+  return (
+    <Card className="bg-muted/20 border-dashed">
+      <CardContent className="p-8 text-center sm:p-12">
+        <div className="bg-info/10 text-info mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full">
+          <SparklesIcon className="h-6 w-6" />
+        </div>
+        <h3 className="mt-4 text-xl font-semibold tracking-tight">
+          Waiting for a client to share a study.
+        </h3>
+        <p className="text-muted-foreground mx-auto mt-2 max-w-lg text-sm">
+          When a client runs a Cost Seg study, they can share it with you in one click. The study
+          lands here read-only — same schedule, methodology, and PDF they see.
+        </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button asChild size="lg" leadingIcon={<PlusIcon />}>
-            <Link href="/pricing">Start your first study</Link>
+          <Button asChild size="lg">
+            <a href={`mailto:?subject=${subject}&body=${body}`}>Email a client</a>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <Link href="/samples">Browse a sample first</Link>
+            <Link href="/partners">How sharing works</Link>
           </Button>
         </div>
       </CardContent>
