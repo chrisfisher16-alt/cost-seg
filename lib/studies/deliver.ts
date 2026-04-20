@@ -238,6 +238,12 @@ interface DeliverEngineeredArgs {
  * Deliver a Tier 2 engineer-signed PDF. Assumes the PDF is already in
  * Supabase Storage at `storagePath`. Flips status to DELIVERED, records the
  * signing engineer on the Study via StudyEvent, and emails the customer.
+ *
+ * Idempotent — calling on an already-DELIVERED study short-circuits with
+ * `ok: true, skippedReason: "already delivered"`. This mirrors the guard
+ * in deliverAiReport and protects against a race (two admins clicking
+ * Upload at the same time) or a manual re-call firing a duplicate
+ * customer email + overwriting `engineerSignedAt` with a newer timestamp.
  */
 export async function deliverEngineeredStudy(
   args: DeliverEngineeredArgs,
@@ -249,6 +255,7 @@ export async function deliverEngineeredStudy(
       id: true,
       tier: true,
       status: true,
+      deliverableUrl: true,
       user: { select: { email: true, name: true } },
       property: { select: { address: true, city: true, state: true } },
     },
@@ -256,6 +263,16 @@ export async function deliverEngineeredStudy(
   if (!study) return { ok: false, skippedReason: "study not found" };
   if (study.tier !== "ENGINEER_REVIEWED") {
     return { ok: false, skippedReason: "not a Tier 2 study" };
+  }
+  if (study.status === "DELIVERED") {
+    // Preserve the original delivery state. Admin's re-delivery affordance
+    // is resendDeliveryEmail() which regenerates the signed URL without
+    // touching status/timestamps — that's the path to take here.
+    return {
+      ok: true,
+      skippedReason: "already delivered",
+      storagePath: study.deliverableUrl ?? args.storagePath,
+    };
   }
 
   const signedUrl = await createSignedReadUrl(args.storagePath, DELIVERABLE_EXPIRY_SECONDS);
