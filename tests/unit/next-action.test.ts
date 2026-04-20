@@ -155,4 +155,26 @@ describe("formatRelativeAge", () => {
   it("never renders negative ages for clock skew", () => {
     expect(formatRelativeAge(NOW + 1000, NOW)).toBe("just now");
   });
+
+  it("switches to absolute month+year past 12 months", () => {
+    // NOW is pinned in the test file; walk back ~15 months from NOW and
+    // assert the helper falls back to "<Mon> <YYYY>" format.
+    const fifteenMonthsAgoMs = NOW - 15 * 30 * 24 * 60 * 60 * 1000;
+    const formatted = formatRelativeAge(fifteenMonthsAgoMs, NOW);
+    // Matches e.g. "Jan 2025" / "Feb 2025" — three-letter month + year.
+    expect(formatted).toMatch(/^[A-Z][a-z]{2} \d{4}$/);
+    expect(formatted).not.toMatch(/months ago/);
+  });
+
+  it("still uses relative phrasing at exactly 11 months", () => {
+    const elevenMonthsAgoMs = NOW - 11 * 30 * 24 * 60 * 60 * 1000;
+    expect(formatRelativeAge(elevenMonthsAgoMs, NOW)).toBe("11 months ago");
+  });
+
+  it("switches to absolute right at the 12-month boundary", () => {
+    const twelveMonthsAgoMs = NOW - 12 * 30 * 24 * 60 * 60 * 1000;
+    const formatted = formatRelativeAge(twelveMonthsAgoMs, NOW);
+    expect(formatted).not.toMatch(/months ago/);
+    expect(formatted).toMatch(/\d{4}$/);
+  });
 });

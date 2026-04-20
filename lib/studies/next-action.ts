@@ -158,5 +158,15 @@ export function formatRelativeAge(fromMs: number, nowMs: number): string {
   const d = Math.floor(deltaSec / 86400);
   if (d < 30) return `${d} day${d === 1 ? "" : "s"} ago`;
   const months = Math.floor(d / 30);
+  // Past ~12 months, relative phrasing stops being useful — "13 months ago"
+  // reads awkwardly, and for a tax product an absolute month+year is more
+  // actionable (lets the user see which tax year a delivered study came from
+  // without doing calendar math). `en-US` is explicit so test output is
+  // locale-independent in CI.
+  if (months >= 12) {
+    return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(
+      new Date(fromMs),
+    );
+  }
   return `${months} month${months === 1 ? "" : "s"} ago`;
 }
