@@ -27,6 +27,7 @@ import {
 import { parseUsdInputToCents } from "@/lib/estimator/format";
 import { PROPERTY_TYPES, PROPERTY_TYPE_LABELS, type PropertyType } from "@/lib/estimator/types";
 import { US_STATES } from "@/lib/estimator/us-states";
+import { zipHint } from "@/lib/estimator/zip";
 import { acquiredDateHint } from "@/lib/studies/acquired-date-hint";
 import { DEFAULT_LAND_PCT } from "@/lib/studies/diy-pipeline";
 
@@ -65,6 +66,9 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
   // react-hooks/purity rule.
   const [nowMs] = useState(() => Date.now());
   const dateHint = acquiredDateHint(acquiredAt, nowMs);
+  // Same policy as PropertyForm — hint classifies mid-typing input as
+  // "partial" so we don't flash errors on every keystroke.
+  const zipFeedback = zipHint(zip);
 
   function useSuggestion() {
     setLandValue(formatDollars(suggestedLandCents));
@@ -85,6 +89,10 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    if (zipFeedback.kind !== "valid") {
+      setError("Check the ZIP code before generating the report.");
+      return;
+    }
     startTransition(async () => {
       const result = await submitDiyStudyAction(studyId, {
         address,
@@ -153,13 +161,15 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
               </SelectContent>
             </Select>
           </Field>
-          <Field label="ZIP" required>
+          <Field label="ZIP" required error={zipFeedback.message ?? undefined}>
             <Input
               value={zip}
               onChange={(e) => setZip(e.target.value)}
               required
               pattern="\d{5}(-\d{4})?"
               autoComplete="postal-code"
+              invalid={zipFeedback.kind === "invalid"}
+              aria-invalid={zipFeedback.kind === "invalid" || undefined}
             />
           </Field>
         </div>

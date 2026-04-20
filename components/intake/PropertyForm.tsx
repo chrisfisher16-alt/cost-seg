@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { PROPERTY_TYPES, PROPERTY_TYPE_LABELS, type PropertyType } from "@/lib/estimator/types";
 import { US_STATES } from "@/lib/estimator/us-states";
+import { zipHint } from "@/lib/estimator/zip";
 import { acquiredDateHint } from "@/lib/studies/acquired-date-hint";
 
 interface InitialValues {
@@ -68,6 +69,12 @@ export function PropertyForm({
   const [nowMs] = useState(() => Date.now());
   const dateHint = acquiredDateHint(acquiredAt, nowMs);
 
+  // Inline ZIP hint drives aria-invalid + the Field error slot. We keep
+  // the raw `zip` state as the source of truth (no parallel "touched"
+  // state) — the hint itself classifies partial inputs as "partial" so
+  // we never show an error mid-typing.
+  const zipFeedback = zipHint(zip);
+
   /**
    * Auto-fill city/state/zip when the user picks a Google Places suggestion.
    * Only overwrites fields that have a new structured value — preserves
@@ -83,6 +90,13 @@ export function PropertyForm({
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    // Client-side gate — the server also validates, but blocking here
+    // keeps the user on the page with the exact field focused instead of
+    // showing a bottom-of-form "invalid input" after a round-trip.
+    if (zipFeedback.kind !== "valid") {
+      setError("Check the ZIP code before saving.");
+      return;
+    }
     startTransition(async () => {
       const result = await updatePropertyAction(studyId, {
         address,
@@ -148,7 +162,7 @@ export function PropertyForm({
               </SelectContent>
             </Select>
           </Field>
-          <Field label="ZIP" required>
+          <Field label="ZIP" required error={zipFeedback.message ?? undefined}>
             <Input
               type="text"
               value={zip}
@@ -156,6 +170,8 @@ export function PropertyForm({
               required
               pattern="\d{5}(-\d{4})?"
               autoComplete="postal-code"
+              invalid={zipFeedback.kind === "invalid"}
+              aria-invalid={zipFeedback.kind === "invalid" || undefined}
             />
           </Field>
         </div>
