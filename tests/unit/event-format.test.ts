@@ -48,7 +48,7 @@ describe("formatStudyEvent", () => {
       totalCents: 147_200_00,
     });
     expect(r.title).toBe("Pipeline completed");
-    expect(r.detail).toContain("ai complete");
+    expect(r.detail).toContain("AI complete");
     expect(r.detail).toContain("$147,200");
     expect(r.tone).toBe("success");
   });
@@ -70,7 +70,7 @@ describe("formatStudyEvent", () => {
       reason: "Closing disclosure appears redacted",
     });
     expect(r.title).toMatch(/admin marked study failed/i);
-    expect(r.detail).toContain("awaiting engineer");
+    expect(r.detail).toContain("In engineer queue");
     expect(r.detail).toContain("redacted");
     expect(r.tone).toBe("destructive");
   });
@@ -78,7 +78,7 @@ describe("formatStudyEvent", () => {
   it("admin.rerun_pipeline — warning tone", () => {
     const r = formatStudyEvent("admin.rerun_pipeline", { priorStatus: "FAILED" });
     expect(r.tone).toBe("warning");
-    expect(r.detail).toContain("failed");
+    expect(r.detail).toContain("Failed");
   });
 
   it("share.created + share.accepted + share.revoked — each tone matches the semantic", () => {

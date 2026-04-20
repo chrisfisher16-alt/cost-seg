@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getPrisma } from "@/lib/db/client";
 import { CATALOG, formatCents, type Tier } from "@/lib/stripe/catalog";
+import { statusLabel } from "@/lib/studies/status-label";
 import { cn } from "@/lib/utils";
 import type { StudyStatus } from "@prisma/client";
 
@@ -188,7 +189,7 @@ export default async function AdminPipelinePage({ searchParams }: Props) {
                   <FilterChip
                     key={s}
                     href={buildHref({ status: s })}
-                    label={s.replace(/_/g, " ").toLowerCase()}
+                    label={statusLabel(s)}
                     count={counts[s]}
                     active={status === s}
                   />

@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { statusLabel } from "@/lib/studies/status-label";
 
 type StudyStatus =
   | "PENDING_PAYMENT"
@@ -14,19 +15,22 @@ type StudyStatus =
   | "REFUNDED"
   | string;
 
-const MAP: Record<
-  string,
-  { label: string; variant: Parameters<typeof Badge>[0]["variant"]; dot?: boolean }
-> = {
-  PENDING_PAYMENT: { label: "Awaiting payment", variant: "warning", dot: true },
-  AWAITING_DOCUMENTS: { label: "Upload needed", variant: "info", dot: true },
-  PROCESSING: { label: "Processing", variant: "info", dot: true },
-  AI_COMPLETE: { label: "AI complete", variant: "success", dot: true },
-  AWAITING_ENGINEER: { label: "In engineer queue", variant: "warning", dot: true },
-  ENGINEER_REVIEWED: { label: "Engineer reviewed", variant: "success", dot: true },
-  DELIVERED: { label: "Delivered", variant: "success", dot: true },
-  FAILED: { label: "Failed", variant: "destructive", dot: true },
-  REFUNDED: { label: "Refunded", variant: "muted" },
+/**
+ * Tone map per status. Human copy comes from lib/studies/status-label so
+ * it's reused anywhere a status is rendered, not only in a Badge —
+ * keeps the label consistent across admin pages, view page sidebars,
+ * the PipelineLive panels, and the event timeline.
+ */
+const TONE: Record<string, { variant: Parameters<typeof Badge>[0]["variant"]; dot?: boolean }> = {
+  PENDING_PAYMENT: { variant: "warning", dot: true },
+  AWAITING_DOCUMENTS: { variant: "info", dot: true },
+  PROCESSING: { variant: "info", dot: true },
+  AI_COMPLETE: { variant: "success", dot: true },
+  AWAITING_ENGINEER: { variant: "warning", dot: true },
+  ENGINEER_REVIEWED: { variant: "success", dot: true },
+  DELIVERED: { variant: "success", dot: true },
+  FAILED: { variant: "destructive", dot: true },
+  REFUNDED: { variant: "muted" },
 };
 
 export function StudyStatusBadge({
@@ -36,13 +40,10 @@ export function StudyStatusBadge({
   status: StudyStatus;
   size?: "default" | "sm";
 }) {
-  const entry = MAP[status] ?? {
-    label: status.replace(/_/g, " ").toLowerCase(),
-    variant: "muted" as const,
-  };
+  const tone = TONE[status] ?? { variant: "muted" as const };
   return (
-    <Badge variant={entry.variant} size={size} dot={entry.dot}>
-      {entry.label}
+    <Badge variant={tone.variant} size={size} dot={tone.dot}>
+      {statusLabel(status)}
     </Badge>
   );
 }

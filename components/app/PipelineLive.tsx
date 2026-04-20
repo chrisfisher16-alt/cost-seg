@@ -24,6 +24,7 @@ import { Kpi } from "@/components/shared/Kpi";
 import { useCountUp } from "@/components/shared/useCountUp";
 import { classifyFailure } from "@/lib/studies/failure-reason";
 import { estimatePipelineEta, type EtaStep, type EtaStepId } from "@/lib/studies/pipeline-eta";
+import { statusLabel } from "@/lib/studies/status-label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -345,7 +346,7 @@ function ProcessingPanel({
         <dl className="mt-8 grid gap-6 sm:grid-cols-3">
           <DlItem label="Tier" value={tierLabel} />
           <DlItem label="Elapsed" value={formatElapsed(elapsedSec)} mono />
-          <DlItem label="Status" value={state.status.replace(/_/g, " ").toLowerCase()} />
+          <DlItem label="Status" value={statusLabel(state.status)} />
         </dl>
       </CardContent>
     </Card>

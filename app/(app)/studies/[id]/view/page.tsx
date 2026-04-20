@@ -20,6 +20,7 @@ import { DEPRECIATION_CLASS_LABEL, type DepreciationClassKey } from "@/lib/pdf/t
 import { computeYearOneProjection } from "@/lib/pdf/year-one";
 import { CATALOG, formatCents } from "@/lib/stripe/catalog";
 import { resolveStudyAccess } from "@/lib/studies/access";
+import { statusLabel } from "@/lib/studies/status-label";
 import { ViewDownloadButton } from "./ViewDownloadButton";
 
 const BRACKET_PCT = Math.round(DEFAULT_BRACKET * 100);
@@ -317,7 +318,7 @@ export default async function StudyViewPage({ params }: Props) {
                       <p className="text-muted-foreground text-xs leading-relaxed">
                         The study is still in{" "}
                         <span className="text-foreground font-medium">
-                          {study.status.replace(/_/g, " ").toLowerCase()}
+                          {statusLabel(study.status)}
                         </span>
                         . Once delivered, the owner can re-share and the download will appear here.
                       </p>

@@ -1,3 +1,5 @@
+import { statusLabel } from "@/lib/studies/status-label";
+
 /**
  * Human-readable renderer for StudyEvent rows on the admin inspector.
  *
@@ -57,7 +59,7 @@ export function formatStudyEvent(kind: string, payload: unknown): FormattedEvent
       return {
         title: "Pipeline completed",
         detail: [
-          status ? `Transitioned to ${status.replace(/_/g, " ").toLowerCase()}` : null,
+          status ? `Transitioned to ${statusLabel(status)}` : null,
           total ? `Reclassified basis ${formatCents(total)}` : null,
         ]
           .filter(Boolean)
@@ -110,7 +112,7 @@ export function formatStudyEvent(kind: string, payload: unknown): FormattedEvent
         title: "Admin re-ran the pipeline",
         detail:
           typeof p.priorStatus === "string"
-            ? `From status ${p.priorStatus.replace(/_/g, " ").toLowerCase()}`
+            ? `From status ${statusLabel(p.priorStatus)}`
             : undefined,
         tone: "warning",
       };
@@ -120,10 +122,7 @@ export function formatStudyEvent(kind: string, payload: unknown): FormattedEvent
       const prior = typeof p.priorStatus === "string" ? p.priorStatus : null;
       return {
         title: "Admin marked study failed",
-        detail: [
-          prior ? `From ${prior.replace(/_/g, " ").toLowerCase()}` : null,
-          `Reason: ${reason}`,
-        ]
+        detail: [prior ? `From ${statusLabel(prior)}` : null, `Reason: ${reason}`]
           .filter(Boolean)
           .join(" · "),
         tone: "destructive",
