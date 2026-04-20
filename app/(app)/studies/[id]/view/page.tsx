@@ -332,7 +332,7 @@ export default async function StudyViewPage({ params }: Props) {
                   <p className="text-sm font-medium">Questions?</p>
                   <p className="text-muted-foreground text-xs leading-relaxed">
                     You have read-only access. Reach out to {study.user.email} for context or
-                    changes. For anything Cost Seg–side, email support@costseg.app.
+                    changes. For anything Segra–side, email support@segra.tax.
                   </p>
                 </CardContent>
               </Card>

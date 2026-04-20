@@ -5,11 +5,14 @@ import {
   Head,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
   Text,
 } from "@react-email/components";
+
+import { BRAND } from "@/lib/brand";
 
 import type { Tier } from "@/lib/stripe/catalog";
 
@@ -55,7 +58,13 @@ export function WelcomeEmail({ firstName, tier, intakeUrl, appUrl }: WelcomeEmai
       <Preview>Upload your documents to start your {copy.label}.</Preview>
       <Body style={body}>
         <Container style={container}>
-          <Text style={brand}>Cost Seg</Text>
+          <Img
+            src={`${appUrl}${BRAND.assets.logoPng1600}`}
+            alt={BRAND.name}
+            width="140"
+            height="40"
+            style={brandLogo}
+          />
           <Text style={heading}>{firstName ? `Hi ${firstName},` : "Hi there,"}</Text>
           <Text style={paragraph}>Thanks for your purchase. {copy.intakeBlurb}</Text>
           <Section style={{ textAlign: "center", marginTop: 32 }}>
@@ -82,7 +91,7 @@ export function WelcomeEmail({ firstName, tier, intakeUrl, appUrl }: WelcomeEmai
           ) : null}
           <Text style={paragraphSmall}>Questions? Just reply to this email.</Text>
           <Text style={footer}>
-            Cost Seg &middot;{" "}
+            {BRAND.name} &middot;{" "}
             <Link href={appUrl} style={link}>
               {new URL(appUrl).host}
             </Link>
@@ -109,11 +118,8 @@ const container: React.CSSProperties = {
   padding: "32px 40px",
 };
 
-const brand: React.CSSProperties = {
-  fontSize: 14,
-  fontWeight: 600,
-  letterSpacing: 0.3,
-  color: "#111",
+const brandLogo: React.CSSProperties = {
+  display: "block",
   marginBottom: 24,
 };
 

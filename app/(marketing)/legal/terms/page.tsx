@@ -18,13 +18,13 @@ export default function TermsPage() {
         <p className="text-muted-foreground text-sm">Effective {EFFECTIVE}.</p>
 
         <p>
-          These terms govern your use of Cost Seg (the &ldquo;Service&rdquo;). By creating an
-          account or paying for a study, you agree to them. If something&rsquo;s unclear, write to{" "}
-          <span className="font-mono">support@costseg.app</span>.
+          These terms govern your use of Segra (the &ldquo;Service&rdquo;). By creating an account
+          or paying for a study, you agree to them. If something&rsquo;s unclear, write to{" "}
+          <span className="font-mono">support@segra.tax</span>.
         </p>
 
         <h2>What the Service is</h2>
-        <p>Cost Seg provides three product tiers:</p>
+        <p>Segra provides three product tiers:</p>
         <ul>
           <li>
             <strong>DIY Self-Serve ($149)</strong> — a self-guided calculator that applies
@@ -138,10 +138,9 @@ export default function TermsPage() {
         <h2>Termination</h2>
         <p>
           You can close your account at any time by emailing{" "}
-          <span className="font-mono">support@costseg.app</span>. We may suspend or terminate
-          accounts that violate acceptable use, with notice where practical. Delivered studies
-          remain yours; you&rsquo;ll get a 30-day window to export them before we honor any deletion
-          request.
+          <span className="font-mono">support@segra.tax</span>. We may suspend or terminate accounts
+          that violate acceptable use, with notice where practical. Delivered studies remain yours;
+          you&rsquo;ll get a 30-day window to export them before we honor any deletion request.
         </p>
 
         <h2>Governing law</h2>
@@ -161,7 +160,7 @@ export default function TermsPage() {
         <h2>Contact</h2>
         <p>
           Questions, complaints, or weird legal requests?{" "}
-          <span className="font-mono">legal@costseg.app</span>.
+          <span className="font-mono">legal@segra.tax</span>.
         </p>
       </div>
     </Container>

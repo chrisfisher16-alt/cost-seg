@@ -33,7 +33,7 @@ function nextStepsForTier(tier: Tier | null): Array<{ n: number; title: string; 
       {
         n: 1,
         title: "Check your email",
-        body: "Sign-in link from Cost Seg — subject: 'Your sign-in link.'",
+        body: "Sign-in link from Segra — subject: 'Your sign-in link.'",
       },
       {
         n: 2,
@@ -52,7 +52,7 @@ function nextStepsForTier(tier: Tier | null): Array<{ n: number; title: string; 
       {
         n: 1,
         title: "Check your email",
-        body: "Sign-in link from Cost Seg — subject: 'Your sign-in link.'",
+        body: "Sign-in link from Segra — subject: 'Your sign-in link.'",
       },
       {
         n: 2,
@@ -71,7 +71,7 @@ function nextStepsForTier(tier: Tier | null): Array<{ n: number; title: string; 
     {
       n: 1,
       title: "Check your email",
-      body: "Sign-in link from Cost Seg — subject: 'Your sign-in link.'",
+      body: "Sign-in link from Segra — subject: 'Your sign-in link.'",
     },
     {
       n: 2,
@@ -173,7 +173,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
                   </Button>
                 )}
                 <Button asChild variant="outline" size="lg" leadingIcon={<MailIcon />}>
-                  <a href="mailto:support@costseg.app">Email support</a>
+                  <a href="mailto:support@segra.tax">Email support</a>
                 </Button>
               </div>
             </CardContent>

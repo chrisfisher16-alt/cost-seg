@@ -43,7 +43,7 @@ describe("classifyMagicLinkError", () => {
     });
     expect(r.kind).toBe("disabled");
     expect(r.retryAfterSec).toBeNull();
-    expect(r.message).toContain("support@costseg.app");
+    expect(r.message).toContain("support@segra.tax");
   });
 
   it("classifies invalid-email shape", () => {

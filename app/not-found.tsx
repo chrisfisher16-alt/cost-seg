@@ -49,10 +49,10 @@ export default function NotFoundPage() {
               <p className="text-muted-foreground border-border/60 border-t pt-5 text-xs">
                 Followed a link that should work? Let us know at{" "}
                 <a
-                  href="mailto:support@costseg.app"
+                  href="mailto:support@segra.tax"
                   className="text-foreground font-medium underline-offset-2 hover:underline"
                 >
-                  support@costseg.app
+                  support@segra.tax
                 </a>
                 .
               </p>

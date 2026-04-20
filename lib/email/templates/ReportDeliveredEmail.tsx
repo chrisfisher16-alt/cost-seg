@@ -5,11 +5,14 @@ import {
   Head,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
   Text,
 } from "@react-email/components";
+
+import { BRAND } from "@/lib/brand";
 
 import type { Tier } from "@/lib/stripe/catalog";
 
@@ -81,7 +84,7 @@ export function ReportDeliveredEmail({
         <Container style={container}>
           {/* Brand header */}
           <Section style={brandBar}>
-            <BrandLockup />
+            <BrandLockup appUrl={appUrl} />
             <Text style={badge}>{copy.badge}</Text>
           </Section>
 
@@ -120,7 +123,7 @@ export function ReportDeliveredEmail({
             </strong>
             . You can request a fresh link any time from your{" "}
             <Link href={`${appUrl}/dashboard`} style={link}>
-              Cost Seg dashboard
+              {BRAND.name} dashboard
             </Link>
             .
           </Text>
@@ -163,7 +166,7 @@ export function ReportDeliveredEmail({
           <Text style={paragraphSmall}>Questions? Reply to this email — we read every one.</Text>
 
           <Text style={footer}>
-            Cost Seg ·{" "}
+            {BRAND.name} ·{" "}
             <Link href={appUrl} style={link}>
               {new URL(appUrl).host}
             </Link>
@@ -176,12 +179,15 @@ export function ReportDeliveredEmail({
 
 export default ReportDeliveredEmail;
 
-function BrandLockup() {
+function BrandLockup({ appUrl }: { appUrl: string }) {
   return (
-    <Text style={brand}>
-      <span style={brandDot} />
-      Cost Seg
-    </Text>
+    <Img
+      src={`${appUrl}${BRAND.assets.logoPng1600}`}
+      alt={BRAND.name}
+      width="140"
+      height="40"
+      style={brandLogo}
+    />
   );
 }
 
@@ -214,22 +220,9 @@ const brandBar: React.CSSProperties = {
   justifyContent: "space-between",
   marginBottom: 28,
 };
-const brand: React.CSSProperties = {
-  fontSize: 15,
-  fontWeight: 600,
-  letterSpacing: -0.1,
-  color: INK,
+const brandLogo: React.CSSProperties = {
+  display: "block",
   margin: 0,
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-};
-const brandDot: React.CSSProperties = {
-  display: "inline-block",
-  width: 14,
-  height: 14,
-  borderRadius: 4,
-  background: `linear-gradient(135deg, ${EMERALD}, #2563eb)`,
 };
 const badge: React.CSSProperties = {
   display: "inline-block",

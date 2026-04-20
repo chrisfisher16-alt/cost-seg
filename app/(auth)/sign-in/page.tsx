@@ -11,7 +11,7 @@ type Props = {
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to Cost Seg — magic link or Google. No passwords.",
+  description: "Sign in to Segra — magic link or Google. No passwords.",
 };
 
 /**

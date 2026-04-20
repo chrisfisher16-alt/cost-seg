@@ -83,7 +83,7 @@ function MockPipelinePanel() {
           <span className="bg-warning/70 h-2.5 w-2.5 rounded-full" />
           <span className="bg-success/70 h-2.5 w-2.5 rounded-full" />
           <p className="text-muted-foreground ml-3 font-mono text-xs tracking-wide">
-            costseg.app/studies/207-s-edison/processing
+            segra.tax/studies/207-s-edison/processing
           </p>
         </div>
       </div>

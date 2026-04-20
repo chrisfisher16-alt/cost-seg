@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SkipLink } from "@/components/shared/SkipLink";
+import { BRAND } from "@/lib/brand";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -13,15 +14,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Cost Seg — AI-powered cost segregation studies, without the six-week wait",
-    template: "%s · Cost Seg",
+    default: `${BRAND.name} — Cost segregation in minutes`,
+    template: `%s · ${BRAND.name}`,
   },
-  description:
-    "Turn your real-estate basis into year-one tax deductions. Get a modeling report in minutes, or an engineer-signed, audit-defensible study in days.",
+  description: BRAND.description,
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   openGraph: {
     type: "website",
-    title: "Cost Seg — AI-powered cost segregation studies",
+    title: `${BRAND.name} — Cost segregation in minutes`,
     description:
       "Turn your real-estate basis into year-one tax deductions. In minutes, not six weeks.",
   },

@@ -1,5 +1,7 @@
 import * as React from "react";
-import { StyleSheet, Svg, Defs, LinearGradient, Stop, Rect, Text, View } from "@react-pdf/renderer";
+import { StyleSheet, Svg, Line, Path, Polygon, Rect, Text, View } from "@react-pdf/renderer";
+
+import { BRAND } from "@/lib/brand";
 
 /**
  * Palette — sRGB approximations of the web design tokens, tuned for print.
@@ -23,8 +25,13 @@ export const pdfColors = {
   primarySoft: "#ECFDF5",
   primarySoftBorder: "#A7F3D0",
 
-  /** Cobalt paired with emerald only on the brand lockup gradient. */
-  brandCobalt: "#1E40AF",
+  /** Segra brand navy + amber — reserved for the logo mark only. */
+  segraNavy: BRAND.colors.navy,
+  segraNavyRail: "#1F4A6B",
+  segraBar1: "#5B89AD",
+  segraBar2: "#8FB4D1",
+  segraBar3: "#F2C17A",
+  segraBar4: BRAND.colors.amber,
 
   /** Amber — scope disclosure only. Never a primary UI color. */
   amberBg: "#FFFBEB",
@@ -346,21 +353,37 @@ export function BrandMarkPdf({
 }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-      <Svg width={size} height={size} viewBox="0 0 32 32">
-        <Defs>
-          <LinearGradient id="cs-pdf-brand" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={pdfColors.primary} />
-            <Stop offset="1" stopColor={pdfColors.brandCobalt} />
-          </LinearGradient>
-        </Defs>
-        <Rect x="3" y="3" width="26" height="26" rx="7" fill="url(#cs-pdf-brand)" />
-        <Rect x="8" y="20" width="16" height="3" rx="1" fill="white" fillOpacity={0.95} />
-        <Rect x="10" y="15" width="12" height="3" rx="1" fill="white" fillOpacity={0.75} />
-        <Rect x="12" y="10" width="8" height="3" rx="1" fill="white" fillOpacity={0.5} />
+      <Svg width={size} height={size} viewBox="0 0 120 120">
+        {/* Navy rounded-square ground */}
+        <Rect x={0} y={0} width={120} height={120} rx={24} ry={24} fill={pdfColors.segraNavy} />
+        {/* Baseline rail */}
+        <Line
+          x1={22}
+          y1={92}
+          x2={98}
+          y2={92}
+          stroke={pdfColors.segraNavyRail}
+          strokeWidth={2}
+          strokeLinecap="round"
+        />
+        {/* Ascending bars */}
+        <Rect x={26} y={72} width={12} height={20} rx={2} ry={2} fill={pdfColors.segraBar1} />
+        <Rect x={44} y={60} width={12} height={32} rx={2} ry={2} fill={pdfColors.segraBar2} />
+        <Rect x={62} y={46} width={12} height={46} rx={2} ry={2} fill={pdfColors.segraBar3} />
+        <Rect x={80} y={30} width={12} height={62} rx={2} ry={2} fill={pdfColors.segraBar4} />
+        {/* Velocity curve + arrowhead */}
+        <Path
+          d="M 22 86 Q 30 28, 100 22"
+          fill="none"
+          stroke={pdfColors.segraBar4}
+          strokeWidth={4}
+          strokeLinecap="round"
+        />
+        <Polygon points="100,22 92,18 94,26" fill={pdfColors.segraBar4} />
       </Svg>
       {showWordmark ? (
         <Text style={{ fontSize: size * 0.75, fontFamily: "Helvetica-Bold", letterSpacing: -0.2 }}>
-          Cost Seg
+          {BRAND.name}
         </Text>
       ) : null}
     </View>

@@ -1,4 +1,4 @@
-// Cost Seg — Prisma schema
+// Segra — Prisma schema
 // See docs/adr/0002-authz-without-rls.md for authorization strategy.
 // RLS is intentionally disabled on these tables; app-layer helpers enforce
 // ownership + role on every query.

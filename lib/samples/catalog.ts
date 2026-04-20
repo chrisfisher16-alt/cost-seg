@@ -368,7 +368,7 @@ export function buildSampleSchedule(sample: Sample) {
   const narrativePropertyDesc =
     `${sample.address} is a ${sample.squareFeet.toLocaleString()} sqft ${sample.propertyType.toLowerCase()} ` +
     `built in ${sample.yearBuilt} and acquired on ${sample.acquisitionDate}. ` +
-    `This sample study is entirely synthetic — the property and owner are fictional, but the allocations, MACRS conventions, and methodology match what Cost Seg produces for real customer studies.`;
+    `This sample study is entirely synthetic — the property and owner are fictional, but the allocations, MACRS conventions, and methodology match what Segra produces for real customer studies.`;
 
   const narrativeMethodology =
     `Sample Cost Segregation Study — the methodology follows IRS Publication 5653 ` +

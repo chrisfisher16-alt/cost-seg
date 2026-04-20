@@ -55,7 +55,7 @@ export default function ScopeDisclosurePage() {
         </p>
         <h2>Limits of liability</h2>
         <p>
-          Cost Seg is not your tax advisor and does not provide tax advice. Have a credentialed tax
+          Segra is not your tax advisor and does not provide tax advice. Have a credentialed tax
           professional review every report before it informs a tax filing.
         </p>
         <p className="text-muted-foreground text-sm">

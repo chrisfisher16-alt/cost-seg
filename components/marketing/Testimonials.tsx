@@ -27,7 +27,7 @@ const QUOTES: Array<{
   },
   {
     quote:
-      "We onboarded four clients in one afternoon. Cost Seg is the first tool my firm hasn&rsquo;t had to explain to clients — they actually get it.",
+      "We onboarded four clients in one afternoon. Segra is the first tool my firm hasn&rsquo;t had to explain to clients — they actually get it.",
     author: "Priya K., CPA",
     role: "Two-partner firm · Tampa, FL",
     numbers: { label: "Clients onboarded", value: "4 in 1 afternoon" },

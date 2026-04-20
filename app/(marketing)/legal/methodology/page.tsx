@@ -12,7 +12,7 @@ export default function MethodologyPage() {
     <Container size="md" className="py-16 sm:py-24">
       <PageHeader
         title="Methodology"
-        description="How every Cost Seg report is produced, in enough detail to reproduce."
+        description="How every Segra report is produced, in enough detail to reproduce."
       />
       <div className="prose prose-neutral dark:prose-invert mt-10 max-w-none">
         <p className="text-muted-foreground text-sm">Effective {EFFECTIVE}.</p>

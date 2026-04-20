@@ -19,9 +19,9 @@ export default function PrivacyPage() {
 
         <h2>Who we are</h2>
         <p>
-          Cost Seg is operated by the product team at <strong>Cost Seg</strong> (&ldquo;we&rdquo;,
+          Segra is operated by the product team at <strong>Segra</strong> (&ldquo;we&rdquo;,
           &ldquo;us&rdquo;). Privacy questions go to{" "}
-          <span className="font-mono">privacy@costseg.app</span>. If you&rsquo;d rather write: use
+          <span className="font-mono">privacy@segra.tax</span>. If you&rsquo;d rather write: use
           that email to request a mailing address.
         </p>
 
@@ -165,9 +165,8 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Email <span className="font-mono">privacy@costseg.app</span> and we&rsquo;ll respond
-          within 30 days. California residents: this includes the rights granted under the CCPA and
-          CPRA.
+          Email <span className="font-mono">privacy@segra.tax</span> and we&rsquo;ll respond within
+          30 days. California residents: this includes the rights granted under the CCPA and CPRA.
         </p>
 
         <h2>Automated decisions</h2>
@@ -180,7 +179,7 @@ export default function PrivacyPage() {
 
         <h2>Children</h2>
         <p>
-          Cost Seg is for adult real-estate owners and tax professionals. We don&rsquo;t knowingly
+          Segra is for adult real-estate owners and tax professionals. We don&rsquo;t knowingly
           collect data from anyone under 18.
         </p>
 

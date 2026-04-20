@@ -55,7 +55,7 @@ against the prod `DIRECT_URL` to apply migrations.
 ## One-time: Resend
 
 1. Verify the sending domain in Resend.
-2. Set `RESEND_FROM_EMAIL` to a `Cost Seg <notifications@...>` address.
+2. Set `RESEND_FROM_EMAIL` to a `Segra <notifications@...>` address.
 3. Copy the API key into `RESEND_API_KEY`.
 
 ## Per-release checklist

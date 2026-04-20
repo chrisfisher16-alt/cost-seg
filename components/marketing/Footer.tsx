@@ -3,6 +3,7 @@ import { ArrowUpIcon, MailIcon } from "lucide-react";
 
 import { BrandMark } from "@/components/shared/BrandMark";
 import { Container } from "@/components/shared/Container";
+import { BRAND } from "@/lib/brand";
 
 const FOOTER_SECTIONS: Array<{
   title: string;
@@ -50,15 +51,15 @@ export function Footer() {
             </p>
             <div className="space-y-2 text-sm">
               <a
-                href="mailto:support@costseg.app"
+                href={`mailto:${BRAND.email.support}`}
                 className="text-foreground/80 hover:text-foreground inline-flex items-center gap-2 transition-colors"
               >
                 <MailIcon className="h-3.5 w-3.5" aria-hidden />
-                support@costseg.app
+                {BRAND.email.support}
               </a>
             </div>
             <p className="text-muted-foreground text-xs">
-              © {new Date().getFullYear()} Cost Seg. All rights reserved.
+              © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
             </p>
           </div>
           <div className="grid gap-10 sm:grid-cols-3">
@@ -88,7 +89,7 @@ export function Footer() {
             Estimates and AI Reports are planning tools produced by software. They are not
             engineered cost segregation studies under IRS Publication 5653 and should not be relied
             on for tax filings without CPA review. Engineer-Reviewed studies are signed by a
-            US-licensed Professional Engineer contracted by Cost Seg. All product names and
+            US-licensed Professional Engineer contracted by {BRAND.name}. All product names and
             trademarks referenced on this site are property of their respective owners; no
             affiliation or endorsement is implied.
           </p>

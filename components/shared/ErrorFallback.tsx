@@ -56,10 +56,10 @@ export function ErrorFallback({ error, retry, title, description, action }: Prop
           <p className="text-muted-foreground border-border/60 border-t pt-4 text-xs">
             Still stuck? Email{" "}
             <a
-              href="mailto:support@costseg.app"
+              href="mailto:support@segra.tax"
               className="text-foreground font-medium underline-offset-2 hover:underline"
             >
-              support@costseg.app
+              support@segra.tax
             </a>
             {error.digest ? " and include the error ref above" : ""}.
           </p>

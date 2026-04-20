@@ -5,11 +5,14 @@ import {
   Head,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
   Section,
   Text,
 } from "@react-email/components";
+
+import { BRAND } from "@/lib/brand";
 
 export interface CpaInviteEmailProps {
   ownerName?: string | null;
@@ -36,16 +39,20 @@ export function CpaInviteEmail({
       <Body style={body}>
         <Container style={container}>
           <Section style={brandBar}>
-            <Text style={brand}>
-              <span style={brandDot} />
-              Cost Seg
-            </Text>
+            <Img
+              src={`${appUrl}${BRAND.assets.logoPng1600}`}
+              alt={BRAND.name}
+              width="140"
+              height="40"
+              style={brandLogo}
+            />
             <Text style={badge}>Shared with you</Text>
           </Section>
 
           <Text style={greeting}>Hi there,</Text>
           <Text style={heroHeading}>
-            {ownerName ?? "A Cost Seg customer"} invited you to review a cost segregation study.
+            {ownerName ?? `A ${BRAND.name} customer`} invited you to review a cost segregation
+            study.
           </Text>
           <Text style={subhead}>For {propertyAddress}.</Text>
 
@@ -68,18 +75,18 @@ export function CpaInviteEmail({
             </Button>
           </Section>
           <Text style={paragraphSmall}>
-            When you click the link we&rsquo;ll prompt you to sign in (or create a Cost Seg account
-            if you don&rsquo;t have one). Your access is read-only — you&rsquo;ll see the property
-            details, asset schedule, MACRS projection, and a downloadable PDF.
+            When you click the link we&rsquo;ll prompt you to sign in (or create a {BRAND.name}{" "}
+            account if you don&rsquo;t have one). Your access is read-only — you&rsquo;ll see the
+            property details, asset schedule, MACRS projection, and a downloadable PDF.
           </Text>
 
           <Hr style={hr} />
 
-          <Text style={sectionHeading}>About Cost Seg</Text>
+          <Text style={sectionHeading}>About {BRAND.name}</Text>
           <Text style={paragraph}>
-            Cost Seg is an AI-powered cost segregation platform. Customers run a study in minutes,
-            share it with their CPA for review, and (when filing) upgrade to an engineer-signed,
-            audit-defensible study under IRS Publication 5653. Learn more at{" "}
+            {BRAND.name} is an AI-powered cost segregation platform. Customers run a study in
+            minutes, share it with their CPA for review, and (when filing) upgrade to an
+            engineer-reviewed, audit-defensible study under IRS Publication 5653. Learn more at{" "}
             <Link href={appUrl} style={link}>
               {new URL(appUrl).host}
             </Link>
@@ -127,22 +134,9 @@ const brandBar: React.CSSProperties = {
   justifyContent: "space-between",
   marginBottom: 28,
 };
-const brand: React.CSSProperties = {
-  fontSize: 15,
-  fontWeight: 600,
-  letterSpacing: -0.1,
-  color: INK,
+const brandLogo: React.CSSProperties = {
+  display: "block",
   margin: 0,
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-};
-const brandDot: React.CSSProperties = {
-  display: "inline-block",
-  width: 14,
-  height: 14,
-  borderRadius: 4,
-  background: `linear-gradient(135deg, ${EMERALD}, #2563eb)`,
 };
 const badge: React.CSSProperties = {
   display: "inline-block",

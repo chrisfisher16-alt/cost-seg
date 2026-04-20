@@ -65,7 +65,7 @@ function AcceptFailurePage({ message }: { message: string }) {
                   <a href="/dashboard">Go to dashboard</a>
                 </Button>
                 <Button asChild variant="ghost">
-                  <a href="mailto:support@costseg.app">Contact support</a>
+                  <a href="mailto:support@segra.tax">Contact support</a>
                 </Button>
               </div>
             </CardContent>

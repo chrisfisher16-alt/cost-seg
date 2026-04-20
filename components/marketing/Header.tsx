@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { href: "/samples", label: "Sample reports" },
   { href: "/compare", label: "Compare" },
   { href: "/faq", label: "FAQ" },
+  { href: "/about", label: "About" },
 ] as const;
 
 export async function Header() {
@@ -79,7 +80,7 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
           <SheetTitle>
             <BrandMark asLink={false} />
           </SheetTitle>
-          <SheetDescription>AI cost segregation studies.</SheetDescription>
+          <SheetDescription>AI-powered cost segregation studies.</SheetDescription>
         </SheetHeader>
         <nav className="flex flex-1 flex-col gap-1 p-4">
           {NAV_LINKS.map((link) => (

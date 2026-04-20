@@ -30,14 +30,14 @@ export default function ContactPage() {
             {
               Icon: MailIcon,
               label: "Email",
-              value: "support@costseg.app",
-              href: "mailto:support@costseg.app",
+              value: "support@segra.tax",
+              href: "mailto:support@segra.tax",
             },
             {
               Icon: MessageSquareIcon,
               label: "Sales",
-              value: "sales@costseg.app",
-              href: "mailto:sales@costseg.app",
+              value: "sales@segra.tax",
+              href: "mailto:sales@segra.tax",
             },
             { Icon: PhoneIcon, label: "Phone", value: "Coming soon", href: undefined },
           ].map(({ Icon, label, value, href }) => (
