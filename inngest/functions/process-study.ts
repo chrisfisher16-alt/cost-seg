@@ -25,20 +25,26 @@ export const processStudy = inngest.createFunction(
 
     await step.run("mark-processing", async () => {
       const { getPrisma } = await import("@/lib/db/client");
+      const { transitionStudy } = await import("@/lib/studies/transitions");
       const prisma = getPrisma();
-      await prisma.$transaction([
-        prisma.study.update({
-          where: { id: studyId },
-          data: { status: "PROCESSING" },
-        }),
-        prisma.studyEvent.create({
+      await prisma.$transaction(async (tx) => {
+        await transitionStudy({
+          studyId,
+          // Rerun-from-FAILED is legitimate; allow AWAITING_DOCUMENTS
+          // (first-time run) and FAILED (admin rerun) as legal preconditions.
+          from: ["AWAITING_DOCUMENTS", "FAILED"],
+          to: "PROCESSING",
+          tier: study.tier,
+          tx,
+        });
+        await tx.studyEvent.create({
           data: {
             studyId,
             kind: "pipeline.started",
             payload: { tier: study.tier, docCount: study.documents.length },
           },
-        }),
-      ]);
+        });
+      });
     });
 
     const classified = await step.run("step-a-classify-documents", () =>

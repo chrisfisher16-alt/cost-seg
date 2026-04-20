@@ -10,6 +10,7 @@ import { parseUsdInputToCents } from "@/lib/estimator/format";
 import { PROPERTY_TYPES } from "@/lib/estimator/types";
 import { buildDiySchedule } from "@/lib/studies/diy-pipeline";
 import { safeInngestSend } from "@/lib/studies/inngest-safe";
+import { transitionStudy } from "@/lib/studies/transitions";
 import { Prisma } from "@prisma/client";
 
 type ActionResult = { ok: true; redirectTo: string } | { ok: false; error: string };
@@ -97,8 +98,8 @@ export async function submitDiyStudyAction(studyId: string, input: unknown): Pro
   });
 
   try {
-    await prisma.$transaction([
-      prisma.property.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.property.update({
         where: { id: study.propertyId },
         data: {
           address: data.address,
@@ -111,15 +112,18 @@ export async function submitDiyStudyAction(studyId: string, input: unknown): Pro
           squareFeet: data.squareFeet ?? null,
           yearBuilt: data.yearBuilt ?? null,
         },
-      }),
-      prisma.study.update({
-        where: { id: studyId },
-        data: {
-          status: "AI_COMPLETE",
+      });
+      await transitionStudy({
+        studyId,
+        from: "AWAITING_DOCUMENTS",
+        to: "AI_COMPLETE",
+        tier: "DIY",
+        extraData: {
           assetSchedule: schedule as unknown as Prisma.InputJsonValue,
         },
-      }),
-      prisma.studyEvent.create({
+        tx,
+      });
+      await tx.studyEvent.create({
         data: {
           studyId,
           kind: "diy.generated",
@@ -130,8 +134,8 @@ export async function submitDiyStudyAction(studyId: string, input: unknown): Pro
             lineItemCount: schedule.schedule.lineItems.length,
           } as Prisma.InputJsonValue,
         },
-      }),
-    ]);
+      });
+    });
   } catch (err) {
     console.error("[diy] failed to persist schedule", err);
     return { ok: false, error: "Could not save your study. Please try again." };
