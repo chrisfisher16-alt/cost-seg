@@ -8,6 +8,7 @@ import { Container } from "@/components/shared/Container";
 import { Card, CardContent } from "@/components/ui/card";
 import { getOptionalAuth } from "@/lib/auth/require";
 import { acceptShareByToken } from "@/lib/studies/share";
+import { classifyShareError } from "@/lib/studies/share-error";
 
 export const metadata = { title: "Accept shared study" };
 
@@ -35,12 +36,15 @@ export default async function AcceptSharePage({ params }: Props) {
       // Next's redirect throws — let it propagate.
       throw err;
     }
-    const message = err instanceof Error ? err.message : "Could not accept this invitation.";
-    return <AcceptFailurePage message={message} />;
+    return <AcceptFailurePage error={err} />;
   }
 }
 
-function AcceptFailurePage({ message }: { message: string }) {
+function AcceptFailurePage({ error }: { error: unknown }) {
+  // classifyShareError returns a kind + tailored copy + a specific recovery
+  // route. See lib/studies/share-error.ts for the five categories and the
+  // pattern-matching against messages thrown from lib/studies/share.ts.
+  const classified = classifyShareError(error);
   return (
     <main id="main-content" className="flex flex-1 flex-col">
       <header className="border-border/60 bg-background/60 border-b backdrop-blur">
@@ -53,16 +57,12 @@ function AcceptFailurePage({ message }: { message: string }) {
           <Card>
             <CardContent className="space-y-6 p-8">
               <Alert variant="destructive">
-                <AlertTitle>We couldn&rsquo;t open that share.</AlertTitle>
-                <AlertDescription className="mt-2">{message}</AlertDescription>
+                <AlertTitle>{classified.title}</AlertTitle>
+                <AlertDescription className="mt-2">{classified.hint}</AlertDescription>
               </Alert>
-              <p className="text-muted-foreground text-sm">
-                Ask the person who sent it to re-share — the link may have been revoked, or it was
-                accepted on a different account.
-              </p>
               <div className="flex gap-3">
                 <Button asChild variant="outline">
-                  <a href="/dashboard">Go to dashboard</a>
+                  <a href={classified.recoveryHref}>{classified.recoveryLabel}</a>
                 </Button>
                 <Button asChild variant="ghost">
                   <a href="mailto:support@costseg.app">Contact support</a>
