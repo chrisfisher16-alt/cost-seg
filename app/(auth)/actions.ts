@@ -1,10 +1,13 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { classifyMagicLinkError } from "@/lib/auth/magic-link-error";
+import { magicLinkLimiter } from "@/lib/ratelimit";
+import { hashIp, resolveIp } from "@/lib/server/request-ip";
 import { createServerSupabase, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export type SignInResult =
@@ -43,6 +46,24 @@ export async function sendMagicLinkAction(
     return {
       ok: false,
       error: "Supabase is not configured in this environment.",
+    };
+  }
+
+  // Per-IP gate runs before Supabase's per-email throttle. A bot rotating
+  // emails from a single IP would bypass Supabase's limit; this one stops
+  // them at the front door. We hash the IP before using it as the key so
+  // the Redis entry isn't PII-at-rest.
+  const h = await headers();
+  const ip = resolveIp(h);
+  const gate = await magicLinkLimiter().check(hashIp(ip));
+  if (!gate.ok) {
+    const retryAfterSec = Math.max(1, Math.ceil((gate.resetAt - Date.now()) / 1000));
+    return {
+      ok: false,
+      error: `Too many sign-in requests from this address — try again in ${retryAfterSec} ${
+        retryAfterSec === 1 ? "second" : "seconds"
+      }.`,
+      retryAfterSec,
     };
   }
 

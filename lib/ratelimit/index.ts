@@ -88,3 +88,25 @@ export function leadCaptureLimiter(): Limiter {
 export function samplePdfLimiter(): Limiter {
   return getLimiter("sample-pdf", 10, "60 s");
 }
+
+/**
+ * 5 magic-link requests per 5-minute window per IP. Supabase already
+ * throttles by email (the classifyMagicLinkError path surfaces that cooldown
+ * to the user), but a bot could rotate emails from a single IP to bypass
+ * per-email limits. 5 per 5m is generous for a real user with typos and
+ * tight enough that a scraper can't burn Resend/Supabase quota.
+ */
+export function magicLinkLimiter(): Limiter {
+  return getLimiter("magic-link", 5, "300 s");
+}
+
+/**
+ * 8 Stripe-Checkout-session creations per 5-minute window per IP. Each call
+ * hits Stripe's API (billable in volume + quota'd at 100/s per account).
+ * The human flow is: (maybe refresh once) → fill form → submit. 8/5min
+ * covers legitimate form re-submits from a single household NAT while
+ * stopping a bot from spinning up hundreds of zombie checkout sessions.
+ */
+export function startCheckoutLimiter(): Limiter {
+  return getLimiter("start-checkout", 8, "300 s");
+}

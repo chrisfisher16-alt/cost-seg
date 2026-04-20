@@ -1,10 +1,13 @@
 "use server";
 
+import { headers } from "next/headers";
 import { z } from "zod";
 
 import { getOptionalAuth } from "@/lib/auth/require";
 import { PROPERTY_TYPES } from "@/lib/estimator/types";
 import { parseUsdInputToCents } from "@/lib/estimator/format";
+import { startCheckoutLimiter } from "@/lib/ratelimit";
+import { hashIp, resolveIp } from "@/lib/server/request-ip";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
 import { isStripeConfigured } from "@/lib/stripe/client";
 import {
@@ -31,6 +34,21 @@ const inputSchema = z.object({
 });
 
 export async function startCheckoutAction(input: unknown): Promise<StartCheckoutResult> {
+  // Unauthenticated public action that hits Stripe's API on every call —
+  // gate by IP so a bot can't burn our Stripe quota creating zombie
+  // checkout sessions. 8/5min lets a household NAT re-submit after typos
+  // while stopping scraper traffic dead.
+  const h = await headers();
+  const ip = resolveIp(h);
+  const gate = await startCheckoutLimiter().check(hashIp(ip));
+  if (!gate.ok) {
+    const retryAfterSec = Math.max(1, Math.ceil((gate.resetAt - Date.now()) / 1000));
+    return {
+      ok: false,
+      error: `Too many checkout attempts from this address — try again in ${retryAfterSec} seconds.`,
+    };
+  }
+
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
