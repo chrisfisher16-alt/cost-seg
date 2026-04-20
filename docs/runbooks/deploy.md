@@ -27,6 +27,12 @@ pnpm prisma migrate deploy
 
 against the prod `DIRECT_URL` to apply migrations.
 
+> **If migrate deploy errors on drift:** the live DB's `_prisma_migrations`
+> history table got out of sync with the local `prisma/migrations/` folder
+> (legacy names vs. Day-1-rebuild names). Follow
+> [`migration-baseline.md`](./migration-baseline.md) for the five-step
+> reconciliation before continuing.
+
 ## One-time: Stripe
 
 1. Create two Stripe Products + Prices in the Stripe dashboard:

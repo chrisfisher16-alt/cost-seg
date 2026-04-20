@@ -6,13 +6,25 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 19 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 42 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 100/100 unit · `pnpm test:e2e` 58/58 Playwright
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 164/164 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
-- ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
+- ⚠️ **Prisma migration baseline needed** — two new migrations (`add_diy_tier` + `02_cpa_shares`) ready to apply; the live DB's history table references legacy names (`init` + `add_manual_improvements`) that no longer exist on disk. Follow [`docs/runbooks/migration-baseline.md`](docs/runbooks/migration-baseline.md) — five-step reconciliation with a rollback path. Claude can't run this autonomously (destructive DB ops require your credentials).
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Days 38–42 (this batch):**
+
+- **Day 38 — mobile-safe BrandMark.** The marketing / app / admin headers were compressing the "Cost Seg" wordmark at very narrow viewports (<420px). BrandMark gained a `wordmarkClassName` passthrough; the three headers now hide the wordmark below 420px and let the icon anchor the brand while the CTAs reclaim the space. Screen readers still hear "Cost Seg" via an `sr-only` span + the link's `aria-label`.
+- **Day 39 — magic-link rate-limit UX.** Supabase throttles magic-link sends per-email with `status: 429` + "after N seconds." Before, every error became the same "try again shortly" toast; impatient users mashed the button, reset the throttle, and never saw an email. `classifyMagicLinkError` splits errors into five buckets (rate-limited / invalid-email / disabled / transport / generic). On rate-limit, the server returns `retryAfterSec`; the client disables the submit button and ticks the seconds down in both the button label and the alert. 9 new unit tests.
+- **Day 40 — inline ZIP validation.** PropertyForm + DiyForm call `zipHint()` on every keystroke: empty / partial / valid / invalid. Partial inputs ("941", "94110-12") stay quiet so we don't flash errors mid-typing. Invalid inputs paint the field red and fill the Field's error slot with specific copy ("That's 6 digits — use 5 or 94110-1234"). Submit gate short-circuits before the server round-trip. 13 new unit tests.
+- **Day 41 — admin engineer-queue bulk mark-failed.** `adminBulkMarkFailedAction(ids, reason)` processes up to 50 studies sequentially with per-row outcome tracking — one malformed row doesn't roll back the others. New `EngineerQueueList` client wrapper adds row checkboxes + select-all + a shared-reason dialog that reuses the singular flow's copy contract. Why not "bulk mark delivered"? Each engineer sign-off needs a unique signed PDF — this is the only honest bulk action for the AWAITING_ENGINEER queue.
+- **Day 42 — migration baseline runbook.** Written, not executed. `docs/runbooks/migration-baseline.md` walks through the five-step reconciliation (snapshot → diff → rename legacy history rows → apply the two pending migrations → verify) with a `pg_dump` rollback path. This is the recurring "⚠️ Prisma migrations pending" caveat finally given a concrete execution plan.
+
+**What landed in Day 37 (role-aware dashboard empty state):**
+
+- Split the generic "Let's run your first study" empty state into a customer version (three tier cards — DIY $149 / AI Report $295 featured / Engineer-Reviewed $1,495 — each linking straight to `/get-started?tier=<id>`) and a CPA version ("Waiting for a client to share a study" with a pre-filled `mailto:` + link to `/partners`).
 
 **What landed in Day 19 (dashboard StudyCard — next-action hints + stuck warnings):**
 
