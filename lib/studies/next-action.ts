@@ -112,13 +112,32 @@ export function computeNextAction(input: {
 
     case "DELIVERED": {
       const daysAgo = Math.max(0, Math.floor(ageHours / 24));
+      // Today + yesterday get the "download or share with your CPA" CTA
+      // because the deliverable is top-of-mind. Past that, we just stamp
+      // the age and delegate to formatRelativeAge so phrasing stays in
+      // sync with the dashboard's createdAt labels (Day 59 fallback to
+      // "Apr 2025" past 12 months applies here too).
+      if (daysAgo === 0) {
+        return {
+          hint: "Delivered today — download or share with your CPA.",
+          tone: "success",
+          userOwned: false,
+        };
+      }
+      if (daysAgo === 1) {
+        return {
+          hint: "Delivered yesterday — download or share with your CPA.",
+          tone: "success",
+          userOwned: false,
+        };
+      }
+      const rel = formatRelativeAge(updatedAtMs, nowMs);
+      // Absolute dates ("Apr 2025") don't take "ago"; relative phrases do.
+      // Prepending "in" to absolute dates reads more naturally
+      // ("Delivered in Apr 2025.") without branching elsewhere.
+      const phrase = rel.endsWith("ago") ? rel : `in ${rel}`;
       return {
-        hint:
-          daysAgo === 0
-            ? "Delivered today — download or share with your CPA."
-            : daysAgo === 1
-              ? "Delivered yesterday — download or share with your CPA."
-              : `Delivered ${daysAgo} days ago.`,
+        hint: `Delivered ${phrase}.`,
         tone: "success",
         userOwned: false,
       };

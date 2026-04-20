@@ -127,7 +127,32 @@ describe("computeNextAction", () => {
         updatedAtMs: hoursAgo(24 * 5),
         nowMs: NOW,
       }).hint,
-    ).toMatch(/5 days ago/i);
+    ).toMatch(/delivered 5 days ago/i);
+  });
+
+  it("DELIVERED past 12 months uses the absolute-date fallback with 'in'", () => {
+    // ~18 months ago — falls out of "N months ago" into "<Mon> <YYYY>".
+    const eighteenMonthsAgoMs = NOW - 18 * 30 * 24 * 60 * 60 * 1000;
+    const hint = computeNextAction({
+      status: "DELIVERED",
+      tier: "AI_REPORT",
+      updatedAtMs: eighteenMonthsAgoMs,
+      nowMs: NOW,
+    }).hint;
+    // Grammar swap: absolute dates take "in", relative phrases take "ago"
+    expect(hint).toMatch(/^Delivered in [A-Z][a-z]{2} \d{4}\.$/);
+    expect(hint).not.toMatch(/ago/);
+  });
+
+  it("DELIVERED a few months back reads 'Delivered 2 months ago.'", () => {
+    const sixtyDaysAgoMs = NOW - 60 * 24 * 60 * 60 * 1000;
+    const hint = computeNextAction({
+      status: "DELIVERED",
+      tier: "AI_REPORT",
+      updatedAtMs: sixtyDaysAgoMs,
+      nowMs: NOW,
+    }).hint;
+    expect(hint).toBe("Delivered 2 months ago.");
   });
 
   it("FAILED surfaces destructive tone", () => {
