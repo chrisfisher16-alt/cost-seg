@@ -1,15 +1,23 @@
 name: E2E
 
-# Playwright + Chromium on every push/PR to main. Split from the main CI
-# workflow because browser install adds ~2 min and e2e is more likely to
-# go yellow on flakes than the fast checks. Running in parallel with CI
-# keeps total PR feedback under ~8 min.
+# Playwright + Chromium. Manual-trigger-only for now — the suite hits
+# routes that talk to Supabase + Postgres + Stripe at runtime (the
+# estimator persists a lead row, intake redirects require real auth, etc).
+# Placeholder env gets through `next build` but not through a running app.
+#
+# To enable on push/PR later: wire these GitHub Actions secrets
+#   - DATABASE_URL, DIRECT_URL (ideally a dedicated test DB, NOT prod)
+#   - NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   - SUPABASE_SERVICE_ROLE_KEY
+#   - STRIPE_* (test-mode keys are fine)
+# Then add `push:` and `pull_request:` triggers below and replace the env:
+# block's placeholders with `${{ secrets.* }}` refs for the ones that need
+# real values.
+#
+# Until then, run locally:  pnpm test:e2e
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   e2e:
