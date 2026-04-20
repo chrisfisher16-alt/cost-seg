@@ -24,7 +24,12 @@ export function PricingSection({ compact = false }: { compact?: boolean }) {
           description="Start with a modeling report for planning. Upgrade to an engineer-signed study when you file — without re-uploading a single document."
         />
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
+        {/* md:grid-cols-3 instead of lg: — at 1024px+ cards get generous
+            space; at tablet (768-1024px) they're tight at ~224px each but
+            the price/title/bullets all fit, and the alternative is a
+            1400px vertical scroll on iPads. Matches the /samples gallery
+            breakpoint for consistency. */}
+        <div className="mt-14 grid gap-5 sm:gap-6 md:grid-cols-3">
           {MARKETING_TIERS.map((tier) => (
             <TierCard key={tier.id} tier={tier} />
           ))}
