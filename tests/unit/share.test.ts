@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildShareUrl, isAcceptedEmailMatch, normalizeEmail } from "@/lib/studies/share";
+import {
+  buildShareUrl,
+  formatShareCooldown,
+  isAcceptedEmailMatch,
+  normalizeEmail,
+} from "@/lib/studies/share";
 
 describe("buildShareUrl", () => {
   it("concatenates the token onto the app origin", () => {
@@ -55,5 +60,39 @@ describe("isAcceptedEmailMatch", () => {
     expect(isAcceptedEmailMatch("cpa@firm.com", "cpa@firm.co")).toBe(false);
     // Prefix match only.
     expect(isAcceptedEmailMatch("cpa@firm.com", "cpa-extra@firm.com")).toBe(false);
+  });
+});
+
+describe("formatShareCooldown", () => {
+  // Regression for B4-2: the prior label computed `Math.ceil(sec/60) + "m"`
+  // unconditionally. For a 30-second cooldown it read "Try again in 1m" but
+  // re-enabled the button after 30s — the label and the actual wait never
+  // matched within the same minute.
+
+  it("shows raw seconds under 60s", () => {
+    expect(formatShareCooldown(1)).toBe("1s");
+    expect(formatShareCooldown(30)).toBe("30s");
+    expect(formatShareCooldown(59)).toBe("59s");
+  });
+
+  it("switches to minutes at 60s and rounds UP (never under-promises)", () => {
+    expect(formatShareCooldown(60)).toBe("1m");
+    expect(formatShareCooldown(61)).toBe("2m"); // 1:01 → 2m, not 1m
+    expect(formatShareCooldown(120)).toBe("2m");
+    expect(formatShareCooldown(121)).toBe("3m");
+    expect(formatShareCooldown(3600)).toBe("60m");
+  });
+
+  it("clamps zero and negative inputs to '0s'", () => {
+    expect(formatShareCooldown(0)).toBe("0s");
+    expect(formatShareCooldown(-5)).toBe("0s");
+  });
+
+  it("ceils fractional seconds (matches the one-second tick)", () => {
+    // The state is ticked once per second, but the rate-limit resetAt can
+    // produce fractional deltas when first computed — ceil keeps the label
+    // honest.
+    expect(formatShareCooldown(0.1)).toBe("1s");
+    expect(formatShareCooldown(59.9)).toBe("1m"); // 60 → minute branch
   });
 });
