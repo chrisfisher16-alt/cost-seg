@@ -104,10 +104,12 @@ async function listStudies(userId: string): Promise<{
 
 export default async function DashboardPage() {
   const { user } = await requireAuth();
-  const [{ listItems: studies, aggregateInput }, sharedRaw] = await Promise.all([
+  const [{ listItems: studies, aggregateInput }, sharedResult] = await Promise.all([
     listStudies(user.id),
     safeListShared(user.id),
   ]);
+  const sharedStudies = sharedResult.ok ? sharedResult.shares : [];
+  const sharedError = sharedResult.ok ? null : sharedResult.error;
 
   const delivered = studies.filter((s) => s.status === "DELIVERED").length;
   const processing = studies.filter((s) =>
@@ -167,7 +169,7 @@ export default async function DashboardPage() {
       ) : null}
 
       <section className="mt-10">
-        {studies.length === 0 && sharedRaw.length === 0 ? (
+        {studies.length === 0 && sharedStudies.length === 0 && !sharedError ? (
           <EmptyState />
         ) : studies.length > 0 ? (
           <>
@@ -183,27 +185,66 @@ export default async function DashboardPage() {
         ) : null}
       </section>
 
-      {sharedRaw.length > 0 ? (
+      {sharedError ? (
+        <Section className="mt-4 !pt-10" divider={false}>
+          <div className="border-warning/40 bg-warning/5 rounded-lg border p-5">
+            <p className="text-warning-foreground text-sm font-medium">
+              We couldn&rsquo;t load studies shared with you.
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+              This is usually a transient database hiccup — refresh in a moment. If it persists,
+              email <span className="font-mono">support@costseg.app</span>.
+            </p>
+          </div>
+        </Section>
+      ) : sharedStudies.length > 0 ? (
         <Section className="mt-4 !pt-10" divider={false}>
           <h2 className="text-muted-foreground mb-4 font-mono text-sm tracking-[0.18em] uppercase">
             Shared with you
           </h2>
           <ul className="space-y-3">
-            {sharedRaw.map((entry) => (
+            {sharedStudies.map((entry) => (
               <SharedStudyCard key={entry.id} entry={entry} />
             ))}
           </ul>
+        </Section>
+      ) : isCpa ? (
+        <Section className="mt-4 !pt-10" divider={false}>
+          <h2 className="text-muted-foreground mb-4 font-mono text-sm tracking-[0.18em] uppercase">
+            Shared with you
+          </h2>
+          <Card className="border-dashed">
+            <CardContent className="space-y-2 p-8 text-center">
+              <p className="text-foreground text-sm font-medium">
+                No clients have shared a study yet.
+              </p>
+              <p className="text-muted-foreground mx-auto max-w-sm text-sm leading-relaxed">
+                When your clients run a Cost Seg study, they can share it with you in one click.
+                You&rsquo;ll see it here read-only — same schedule and methodology as the owner.
+              </p>
+            </CardContent>
+          </Card>
         </Section>
       ) : null}
     </Container>
   );
 }
 
-async function safeListShared(userId: string) {
+/**
+ * Load the studies that were shared with this user. Returns a discriminated
+ * result so the page can distinguish "no shares" (quiet empty) from "DB
+ * unavailable" (loud error banner) — the two used to look identical.
+ */
+async function safeListShared(
+  userId: string,
+): Promise<
+  | { ok: true; shares: Awaited<ReturnType<typeof listStudiesSharedWith>> }
+  | { ok: false; error: string }
+> {
   try {
-    return await listStudiesSharedWith(userId);
-  } catch {
-    return [];
+    return { ok: true, shares: await listStudiesSharedWith(userId) };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Unknown error" };
   }
 }
 
@@ -351,7 +392,9 @@ function SharedStudyCard({ entry }: { entry: SharedEntry }) {
   const entryTier = entry.study.tier;
   const tierLabel = CATALOG[entryTier].label;
   const viewHref = `/studies/${entry.study.id}/view` as Route;
-  const ownerLabel = entry.study.user.name ?? entry.study.user.email;
+  // Owner identity falls through name → email → "the owner" — the last
+  // guard handles a pathological DB row with both columns null/empty.
+  const ownerLabel = entry.study.user.name?.trim() || entry.study.user.email?.trim() || "the owner";
 
   return (
     <li>

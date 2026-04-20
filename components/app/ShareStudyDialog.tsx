@@ -92,11 +92,20 @@ export function ShareStudyDialog({
     });
   }
 
-  async function onRevoke(shareId: string) {
-    const res = await revokeShareAction(studyId, shareId);
+  async function onRevoke(share: SerializableShareRow) {
+    // Require confirmation — revoking an ACCEPTED share cuts off a CPA who
+    // may actively be reviewing. A PENDING share is less critical but still
+    // a side-effectful action worth a one-click speed-bump.
+    const prompt =
+      share.status === "ACCEPTED"
+        ? `Revoke ${share.invitedEmail}'s access? They will immediately lose access to this study.`
+        : `Cancel the invite to ${share.invitedEmail}? The invite link will stop working.`;
+    if (!confirm(prompt)) return;
+
+    const res = await revokeShareAction(studyId, share.id);
     if (res.ok) {
-      setShares((prev) => prev.filter((s) => s.id !== shareId));
-      toast("Access revoked");
+      setShares((prev) => prev.filter((s) => s.id !== share.id));
+      toast.success(share.status === "ACCEPTED" ? "Access revoked" : "Invite cancelled");
     } else {
       toast.error("Couldn't revoke", { description: res.error });
     }
@@ -195,8 +204,12 @@ export function ShareStudyDialog({
                       type="button"
                       size="icon-sm"
                       variant="ghost"
-                      onClick={() => onRevoke(share.id)}
-                      aria-label="Revoke access"
+                      onClick={() => onRevoke(share)}
+                      aria-label={
+                        share.status === "ACCEPTED"
+                          ? `Revoke access for ${share.invitedEmail}`
+                          : `Cancel invite for ${share.invitedEmail}`
+                      }
                     >
                       <Trash2Icon className="text-muted-foreground hover:text-destructive h-4 w-4" />
                     </Button>

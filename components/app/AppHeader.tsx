@@ -4,6 +4,7 @@ import { ChevronDownIcon, LogOutIcon, UserIcon } from "lucide-react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { BrandMark } from "@/components/shared/BrandMark";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,8 +22,15 @@ export function AppHeader({ ctx }: { ctx: AuthContext }) {
   return (
     <header className="border-border/60 bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 sm:px-8">
-        <div className="flex items-center gap-8">
-          <BrandMark />
+        <div className="flex items-center gap-6 sm:gap-8">
+          <div className="flex items-center gap-2.5">
+            <BrandMark />
+            {user.role === "CPA" ? (
+              <Badge variant="info" size="sm" className="hidden sm:inline-flex">
+                CPA
+              </Badge>
+            ) : null}
+          </div>
           <nav className="hidden items-center gap-6 text-sm sm:flex">
             <Link
               href="/dashboard"
