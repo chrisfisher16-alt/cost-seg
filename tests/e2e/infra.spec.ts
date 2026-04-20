@@ -93,6 +93,50 @@ test.describe("brand icons", () => {
   });
 });
 
+test.describe("Stripe webhook endpoint", () => {
+  // These assertions verify the auth gate around the webhook — the handler
+  // itself is unit-tested in create-from-checkout.test.ts. Here we only care
+  // that an unsigned / mis-signed POST never reaches the handler.
+  //
+  // If STRIPE_WEBHOOK_SECRET is unset in the dev env, the endpoint returns
+  // 503 ("webhook not configured") before looking at the body — also a valid
+  // outcome to assert, because it means no silent success on a mis-config.
+
+  test("rejects a POST with no stripe-signature header", async ({ request }) => {
+    const res = await request.post("/api/stripe/webhook", {
+      data: { type: "checkout.session.completed", data: {} },
+      headers: { "content-type": "application/json" },
+    });
+    // 400 when secret IS set (missing signature), 503 when secret is unset
+    // (misconfigured env in CI/dev). Either is correct — crucially, not 200.
+    expect(
+      [400, 503],
+      `webhook with no signature returned ${res.status()} (expected 400 or 503)`,
+    ).toContain(res.status());
+    expect(res.status()).not.toBe(200);
+  });
+
+  test("rejects a POST with a bogus stripe-signature", async ({ request }) => {
+    const res = await request.post("/api/stripe/webhook", {
+      headers: {
+        "content-type": "application/json",
+        "stripe-signature": "t=1700000000,v1=deadbeefdeadbeefdeadbeefdeadbeef",
+      },
+      data: { type: "checkout.session.completed", data: {} },
+    });
+    expect([400, 503]).toContain(res.status());
+    expect(res.status()).not.toBe(200);
+  });
+
+  test("GET is not allowed (no accidental 200 on browser navigation)", async ({ request }) => {
+    const res = await request.get("/api/stripe/webhook");
+    // Next returns 405 for unsupported methods on a route handler that only
+    // exports POST — confirms the endpoint doesn't accidentally leak 200s
+    // to a curious browser.
+    expect(res.status()).toBe(405);
+  });
+});
+
 test.describe("SEO endpoints (Day 5)", () => {
   test("/robots.txt is served and disallows authenticated paths", async ({ request }) => {
     const res = await request.get("/robots.txt");
