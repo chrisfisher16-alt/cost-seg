@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { getOptionalAuth } from "@/lib/auth/require";
 import { CATALOG, formatCents, type Tier } from "@/lib/stripe/catalog";
 import { isStripeConfigured } from "@/lib/stripe/client";
+import { promoBypassEnabled } from "@/lib/studies/bypass-checkout";
 
 type Props = {
   searchParams: Promise<{ tier?: string; cancelled?: string }>;
@@ -104,6 +105,7 @@ export default async function GetStartedPage({ searchParams }: Props) {
                   tier={tier}
                   defaultEmail={ctx?.user.email}
                   stripeConfigured={isStripeConfigured()}
+                  promoBypassEnabled={promoBypassEnabled()}
                 />
               </CardContent>
             </Card>

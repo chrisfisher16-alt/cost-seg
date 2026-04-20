@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowRightIcon, DollarSignIcon, LockIcon, MailIcon } from "lucide-react";
+import { ArrowRightIcon, DollarSignIcon, LockIcon, MailIcon, TicketIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { startCheckoutAction } from "@/app/get-started/actions";
+import { AddressInput } from "@/components/marketing/AddressInput";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -22,15 +23,26 @@ interface Props {
   tier: Tier;
   defaultEmail?: string;
   stripeConfigured: boolean;
+  /** When true, the page offers a collapsible promo-code input that skips Stripe. */
+  promoBypassEnabled?: boolean;
 }
 
-export function GetStartedForm({ tier, defaultEmail, stripeConfigured }: Props) {
+export function GetStartedForm({
+  tier,
+  defaultEmail,
+  stripeConfigured,
+  promoBypassEnabled = false,
+}: Props) {
   const [email, setEmail] = useState(defaultEmail ?? "");
   const [propertyType, setPropertyType] = useState<PropertyType>("SHORT_TERM_RENTAL");
   const [addressLine, setAddressLine] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [promoOpen, setPromoOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const usingPromo = promoOpen && promoCode.trim().length > 0;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,6 +54,7 @@ export function GetStartedForm({ tier, defaultEmail, stripeConfigured }: Props) 
         email,
         addressLine: addressLine.trim() || undefined,
         purchasePriceRaw: purchasePrice.trim() || undefined,
+        promoCode: usingPromo ? promoCode.trim() : undefined,
       });
       if (!result.ok) {
         setError(result.error);
@@ -59,7 +72,10 @@ export function GetStartedForm({ tier, defaultEmail, stripeConfigured }: Props) 
           <AlertDescription>
             Your dev setup is missing the Stripe keys in{" "}
             <span className="font-mono">.env.local</span>. Add them and restart the dev server to
-            enable checkout.
+            enable checkout
+            {promoBypassEnabled
+              ? " — or use the promo code below to skip straight to intake."
+              : "."}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -102,13 +118,11 @@ export function GetStartedForm({ tier, defaultEmail, stripeConfigured }: Props) 
         hint="Optional — you&rsquo;ll refine this during intake."
         htmlFor="addressLine"
       >
-        <Input
+        <AddressInput
           id="addressLine"
-          type="text"
           value={addressLine}
-          onChange={(e) => setAddressLine(e.target.value)}
-          placeholder="123 Main St, Asheville, NC"
-          autoComplete="street-address"
+          onChange={setAddressLine}
+          placeholder="Start typing an address…"
         />
       </Field>
 
@@ -128,6 +142,36 @@ export function GetStartedForm({ tier, defaultEmail, stripeConfigured }: Props) 
         />
       </Field>
 
+      {promoBypassEnabled ? (
+        <div className="border-border/60 border-t pt-4">
+          {!promoOpen ? (
+            <button
+              type="button"
+              onClick={() => setPromoOpen(true)}
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs font-medium underline-offset-4 hover:underline"
+            >
+              <TicketIcon className="h-3.5 w-3.5" aria-hidden />I have a promo code
+            </button>
+          ) : (
+            <Field
+              label="Promo code"
+              htmlFor="promoCode"
+              hint="Skips Stripe and lands you at intake. Only works when the code matches the server-side value."
+            >
+              <Input
+                id="promoCode"
+                type="text"
+                autoComplete="off"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                placeholder="Enter your code"
+                leadingAdornment={<TicketIcon className="h-4 w-4" />}
+              />
+            </Field>
+          )}
+        </div>
+      ) : null}
+
       {error ? (
         <p role="alert" className="text-destructive text-sm font-medium">
           {error}
@@ -138,16 +182,18 @@ export function GetStartedForm({ tier, defaultEmail, stripeConfigured }: Props) 
         type="submit"
         size="lg"
         className="w-full"
-        disabled={!stripeConfigured}
+        disabled={!stripeConfigured && !usingPromo}
         loading={isPending}
-        loadingText="Opening secure checkout…"
+        loadingText={usingPromo ? "Applying promo…" : "Opening secure checkout…"}
         trailingIcon={<ArrowRightIcon />}
       >
-        Continue to secure checkout
+        {usingPromo ? "Skip checkout with promo" : "Continue to secure checkout"}
       </Button>
       <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-center text-xs">
         <LockIcon className="h-3 w-3" aria-hidden />
-        Powered by Stripe. We never see your card.
+        {usingPromo
+          ? "Promo bypass — no charge. You'll get a sign-in link by email."
+          : "Powered by Stripe. We never see your card."}
       </p>
     </form>
   );
