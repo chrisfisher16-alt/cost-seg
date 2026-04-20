@@ -14,14 +14,41 @@ export const metadata: Metadata = {
   description: "Sign in to Cost Seg — magic link or Google. No passwords.",
 };
 
+/**
+ * Map a raw `next` path to a human-friendly destination label. Keeps the
+ * sign-in hero context-aware without echoing raw URLs at the user.
+ * Falls through to "your account" for anything unrecognized.
+ */
+function destinationLabel(next: string | undefined): string | null {
+  if (!next) return null;
+  if (next.startsWith("/dashboard")) return "your dashboard";
+  if (next.startsWith("/admin/engineer-queue")) return "the engineer queue";
+  if (next.startsWith("/admin")) return "the admin pipeline";
+  if (next.match(/^\/studies\/[^/]+\/intake/)) return "your document upload";
+  if (next.match(/^\/studies\/[^/]+\/processing/)) return "your running study";
+  if (next.match(/^\/studies\/[^/]+\/diy/)) return "your DIY study";
+  if (next.match(/^\/studies\/[^/]+\/view/)) return "the shared study";
+  if (next.startsWith("/share/")) return "your CPA invite";
+  return "your account";
+}
+
 export default async function SignInPage({ searchParams }: Props) {
   const params = await searchParams;
   const configured = isSupabaseConfigured();
+  const destination = destinationLabel(params.next);
+
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-semibold tracking-tight">Welcome back.</h1>
-        <p className="text-muted-foreground text-sm">Magic links or Google — no passwords.</p>
+        {destination ? (
+          <p className="text-muted-foreground text-sm">
+            Sign in to continue to{" "}
+            <span className="text-foreground font-medium">{destination}</span>.
+          </p>
+        ) : (
+          <p className="text-muted-foreground text-sm">Magic links or Google — no passwords.</p>
+        )}
       </div>
 
       {params.error === "callback" ? (
