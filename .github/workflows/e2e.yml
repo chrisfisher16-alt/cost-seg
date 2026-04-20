@@ -30,6 +30,7 @@ jobs:
     # infra, or static routes). If that changes, wire real secrets in
     # via GitHub Actions secrets.
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       APP_ENV: production
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321

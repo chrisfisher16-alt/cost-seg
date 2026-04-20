@@ -5,16 +5,22 @@ and what to expect.
 
 **Status when you wake up:**
 
-- ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 42 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ Branch: `claude/hopeful-proskuriakova-19300e` · also pushed to `origin/main` on <https://github.com/chrisfisher16-alt/cost-seg>
+- ✅ **Day 1 through Day 44 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 164/164 unit · `pnpm test:e2e` 58/58 Playwright
-- ⚠️ Not pushed to remote — staying local until you say go
+- ✅ **GitHub Actions CI green on every push/PR** — typecheck + lint + format + unit tests + build, ~1.5 min
+- ⚠️ **E2E is manual-trigger only in CI** — runtime needs real Postgres + Supabase. Follow [`docs/runbooks/ci-test-environment.md`](docs/runbooks/ci-test-environment.md) to spin up a dedicated test Supabase project + wire 9 GitHub Actions secrets, then e2e runs on push too.
 - ⚠️ **Prisma migration baseline needed** — two new migrations (`add_diy_tier` + `02_cpa_shares`) ready to apply; the live DB's history table references legacy names (`init` + `add_manual_improvements`) that no longer exist on disk. Follow [`docs/runbooks/migration-baseline.md`](docs/runbooks/migration-baseline.md) — five-step reconciliation with a rollback path. Claude can't run this autonomously (destructive DB ops require your credentials).
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
 
-**What landed in Days 38–42 (this batch):**
+**What landed in Days 43–44 (CI infra):**
+
+- **Day 43 — GitHub Actions CI green.** Two workflows: `.github/workflows/ci.yml` (install → `prisma generate` → typecheck → lint → format:check → `vitest run` → `next build`, ~1.5 min) runs on every push/PR to main. `.github/workflows/e2e.yml` (Playwright + chromium) is `workflow_dispatch` only — the first auto-run failed with hydration errors + a Prisma lead-insert failure because placeholder env gets past `next build` but not a running app. Fixed the initial `ERR_PNPM_BAD_PM_VERSION` by removing the workflow's explicit pnpm version (package.json's `packageManager` field is now the single source of truth). Uploads `playwright-report/` on failure so screenshots are accessible without a local rerun.
+- **Day 44 — CI forward-compat + test-env runbook.** Set `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` on both workflows so the Sept 2026 Node 20 → Node 24 cutover doesn't surprise us (deprecation banner gone). Wrote [`docs/runbooks/ci-test-environment.md`](docs/runbooks/ci-test-environment.md) — a 5-step walkthrough for spinning up a dedicated test Supabase project (not prod), wiring 9 GitHub Actions secrets (all prefixed `CI_*`), and flipping e2e back to push/PR triggers. Once executed, every PR will get both CI + E2E checks in parallel, total feedback under 8 min.
+
+**What landed in Days 38–42 (polish batch):**
 
 - **Day 38 — mobile-safe BrandMark.** The marketing / app / admin headers were compressing the "Cost Seg" wordmark at very narrow viewports (<420px). BrandMark gained a `wordmarkClassName` passthrough; the three headers now hide the wordmark below 420px and let the icon anchor the brand while the CTAs reclaim the space. Screen readers still hear "Cost Seg" via an `sr-only` span + the link's `aria-label`.
 - **Day 39 — magic-link rate-limit UX.** Supabase throttles magic-link sends per-email with `status: 429` + "after N seconds." Before, every error became the same "try again shortly" toast; impatient users mashed the button, reset the throttle, and never saw an email. `classifyMagicLinkError` splits errors into five buckets (rate-limited / invalid-email / disabled / transport / generic). On rate-limit, the server returns `retryAfterSec`; the client disables the submit button and ticks the seconds down in both the button label and the alert. 9 new unit tests.

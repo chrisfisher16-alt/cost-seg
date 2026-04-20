@@ -22,6 +22,9 @@ jobs:
     # so these only matter for routes that call it during prerendering.
     # Production deploys pick up the real values from Vercel project env.
     env:
+      # Opt into Node 24 for the action runtime ahead of the Sept 2026 cutover
+      # (otherwise every run emits a deprecation warning for Node 20 actions).
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       APP_ENV: production
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
