@@ -21,6 +21,7 @@ import {
 import { CelebrationTrigger } from "@/components/shared/Celebration";
 import { ShareStudyDialog } from "@/components/app/ShareStudyDialog";
 import { Kpi } from "@/components/shared/Kpi";
+import { useCountUp } from "@/components/shared/useCountUp";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -230,6 +231,10 @@ function DeliveredPanel({
   const taxSavings = state.summary.year1TaxSavingsCents ?? 0;
   const basis = state.summary.depreciableBasisCents ?? 0;
   const assetCount = state.summary.totalAssetCount ?? 0;
+  // Count-up the headline number — 900ms ease-out cubic. Respects
+  // prefers-reduced-motion internally.
+  const animatedYear1 = useCountUp(year1 || null);
+  const headlineValue = year1 ? formatCents(animatedYear1) : "See report";
   const hintParts: string[] = [];
   if (assetCount) hintParts.push(`${assetCount} classified line items`);
   if (taxSavings) hintParts.push(`≈ ${formatCents(taxSavings)} tax savings at 37% bracket`);
@@ -243,7 +248,7 @@ function DeliveredPanel({
   }
 
   return (
-    <Card className="border-primary/30 ring-primary/20 relative overflow-hidden shadow-xl ring-1">
+    <Card className="border-primary/30 ring-primary/20 relative overflow-hidden shadow-xl ring-1 motion-safe:animate-[slide-in-from-bottom_400ms_cubic-bezier(0.22,1,0.36,1)]">
       <div className="brand-gradient-bg absolute inset-0 -z-10" aria-hidden />
       <CardContent className="p-8 sm:p-12">
         <div className="flex items-center justify-between">
@@ -262,7 +267,7 @@ function DeliveredPanel({
         <div className="mt-10">
           <Kpi
             label="Year-one deduction identified"
-            value={year1 ? formatCents(year1) : "See report"}
+            value={headlineValue}
             hint={hint}
             size="xl"
             tone="accent"
@@ -414,29 +419,46 @@ function StepRow({ step }: { step: PipelineStep }) {
 }
 
 function StepIcon({ state }: { state: PipelineStep["state"] }) {
+  // `key` on the state-wrapping span forces React to remount the node on
+  // state change, which re-triggers the scale-in animation. The result is a
+  // subtle pop as a step flips pending → active → done.
   if (state === "done") {
     return (
-      <span className="bg-primary text-primary-foreground mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+      <span
+        key="done"
+        className="bg-primary text-primary-foreground mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors motion-safe:animate-[scale-in_200ms_cubic-bezier(0.22,1,0.36,1)]"
+      >
         <CheckIcon className="h-3.5 w-3.5" aria-hidden />
       </span>
     );
   }
   if (state === "active") {
     return (
-      <span className="bg-primary/15 text-primary mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+      <span
+        key="active"
+        className="bg-primary/15 text-primary mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors motion-safe:animate-[scale-in_200ms_cubic-bezier(0.22,1,0.36,1)]"
+      >
+        {/* Keep the spinner always active — it's the functional "processing"
+            indicator. Global reduced-motion rules slow it to imperceptible. */}
         <Loader2Icon className="h-3.5 w-3.5 animate-spin" aria-hidden />
       </span>
     );
   }
   if (state === "error") {
     return (
-      <span className="bg-destructive text-destructive-foreground mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
+      <span
+        key="error"
+        className="bg-destructive text-destructive-foreground mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors motion-safe:animate-[scale-in_200ms_cubic-bezier(0.22,1,0.36,1)]"
+      >
         <AlertCircleIcon className="h-3.5 w-3.5" aria-hidden />
       </span>
     );
   }
   return (
-    <span className="border-border bg-muted/40 text-muted-foreground mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border">
+    <span
+      key="pending"
+      className="border-border bg-muted/40 text-muted-foreground mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors"
+    >
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-50" />
     </span>
   );

@@ -3,8 +3,24 @@
 import * as React from "react";
 
 /**
- * Fires a subtle, one-shot confetti burst. Respects `prefers-reduced-motion`.
- * Lazy-loads canvas-confetti so it only ships to clients that actually need it.
+ * Brand palette for confetti — hex values that approximate our OKLCH tokens.
+ * canvas-confetti renders via canvas fillStyle which has spotty OKLCH support;
+ * hex is the compatible and predictable path.
+ *
+ * Corresponds to: primary emerald (light + dark tints), info cobalt, accent
+ * amber. Four colors keeps bursts visually rich without looking chaotic.
+ */
+const CONFETTI_COLORS = [
+  "#047857", // emerald 700 — primary
+  "#10b981", // emerald 500 — primary tint
+  "#3b82f6", // blue 500 — info
+  "#fcd34d", // amber 300 — accent
+];
+
+/**
+ * Fires a subtle, three-burst confetti sequence from the hero area. Respects
+ * `prefers-reduced-motion`. Lazy-loads canvas-confetti so it only ships to
+ * clients that actually need it.
  */
 export function useConfetti() {
   return React.useCallback(async () => {
@@ -13,40 +29,48 @@ export function useConfetti() {
     try {
       const mod = await import("canvas-confetti");
       const confetti = mod.default;
-      const colors = [
-        "oklch(0.508 0.118 165)",
-        "oklch(0.65 0.14 165)",
-        "oklch(0.6 0.14 235)",
-        "oklch(0.91 0.08 85)",
-      ];
+
+      // Center burst — the headline pop.
       confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.3 },
-        colors,
-        ticks: 180,
-        scalar: 0.9,
+        particleCount: 90,
+        spread: 72,
+        startVelocity: 38,
+        origin: { y: 0.32 },
+        colors: CONFETTI_COLORS,
+        ticks: 200,
+        scalar: 0.95,
+        gravity: 0.9,
       });
-      setTimeout(() => {
+
+      // Left side — 160ms staggered.
+      window.setTimeout(() => {
         confetti({
-          particleCount: 50,
-          spread: 100,
-          origin: { x: 0.2, y: 0.4 },
-          colors,
-          ticks: 160,
-          scalar: 0.8,
+          particleCount: 55,
+          angle: 60,
+          spread: 70,
+          startVelocity: 35,
+          origin: { x: 0.1, y: 0.5 },
+          colors: CONFETTI_COLORS,
+          ticks: 180,
+          scalar: 0.85,
+          gravity: 0.95,
         });
-      }, 180);
-      setTimeout(() => {
+      }, 160);
+
+      // Right side — 320ms staggered.
+      window.setTimeout(() => {
         confetti({
-          particleCount: 50,
-          spread: 100,
-          origin: { x: 0.8, y: 0.4 },
-          colors,
-          ticks: 160,
-          scalar: 0.8,
+          particleCount: 55,
+          angle: 120,
+          spread: 70,
+          startVelocity: 35,
+          origin: { x: 0.9, y: 0.5 },
+          colors: CONFETTI_COLORS,
+          ticks: 180,
+          scalar: 0.85,
+          gravity: 0.95,
         });
-      }, 360);
+      }, 320);
     } catch (err) {
       console.warn("confetti unavailable", err);
     }
