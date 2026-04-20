@@ -3,6 +3,7 @@ import "server-only";
 import Stripe from "stripe";
 
 import { BRAND } from "@/lib/brand";
+import { CATALOG } from "@/lib/stripe/catalog";
 
 let instance: Stripe | null = null;
 
@@ -28,10 +29,15 @@ export function getStripe(): Stripe {
   return instance;
 }
 
+/**
+ * "Can we actually take money right now?" — true iff we have STRIPE_SECRET_KEY
+ * *and* a price id for every tier in the catalog. Derived from CATALOG so a
+ * new tier added there extends this check automatically; otherwise we'd ship
+ * a deployment where (say) the /get-started form renders the tier but the
+ * createCheckoutSession call blows up at the Stripe API with a vague 500 the
+ * user reads as "Could not start checkout. Please try again."
+ */
 export function isStripeConfigured(): boolean {
-  return Boolean(
-    process.env.STRIPE_SECRET_KEY &&
-    process.env.STRIPE_PRICE_ID_TIER_1 &&
-    process.env.STRIPE_PRICE_ID_TIER_2,
-  );
+  if (!process.env.STRIPE_SECRET_KEY) return false;
+  return Object.values(CATALOG).every((entry) => Boolean(process.env[entry.stripePriceIdEnv]));
 }

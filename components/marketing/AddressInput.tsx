@@ -138,6 +138,18 @@ export function AddressInput({
   const ref = useRef<HTMLInputElement>(null);
   const [enhanced, setEnhanced] = useState(false);
 
+  // Stash the latest callbacks in refs so the Autocomplete effect can read
+  // them without restarting when the parent passes new function identities.
+  // Most consumers don't `useCallback` these props — without refs every
+  // parent render would tear down + re-create the Google Autocomplete
+  // widget, which leaks pac-container divs and sometimes orphans listeners.
+  const onChangeRef = useRef(onChange);
+  const onPlaceRef = useRef(onPlace);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onPlaceRef.current = onPlace;
+  });
+
   useEffect(() => {
     if (!PLACES_KEY || !ref.current) return;
     let cancelled = false;
@@ -154,8 +166,8 @@ export function AddressInput({
           const place = ac.getPlace();
           const structured = parseAddressComponents(place);
           if (structured.formatted) {
-            onChange(structured.formatted);
-            onPlace?.(structured);
+            onChangeRef.current(structured.formatted);
+            onPlaceRef.current?.(structured);
           }
         });
         setEnhanced(true);
@@ -167,7 +179,9 @@ export function AddressInput({
       cancelled = true;
       sub?.remove();
     };
-  }, [onChange, onPlace]);
+    // Mount-once: Autocomplete lives for the component's lifetime. Callback
+    // updates are picked up via the refs above.
+  }, []);
 
   return (
     <Input

@@ -79,7 +79,30 @@ bucket.
 
 ## Bucket 3 — Purchase + Stripe webhook
 
-_(not started)_
+| ID   | Severity | Surface                                 | Finding                                                                                                                                                                                                                                                                                                                                       | Status          | Commit                                                                  | Regression test                                                                 |
+| ---- | -------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| B3-1 | P2       | `lib/stripe/client.ts`                  | `isStripeConfigured()` only required `STRIPE_SECRET_KEY` + `STRIPE_PRICE_ID_TIER_1` + `STRIPE_PRICE_ID_TIER_2`. After Bucket 1 F5 added DIY to the env schema, a deployment missing the DIY price id passed the check, rendered the DIY checkout form, and failed at `createCheckoutSession` with a vague "Could not start checkout" message. | fixed           | [de159b9](https://github.com/chrisfisher16-alt/cost-seg/commit/de159b9) | `tests/unit/stripe-client.test.ts` — five cases covering every tier price id.   |
+| B3-2 | P3       | `lib/studies/create-from-checkout.ts`   | `resolveOrCreateUser` falls back to `listUsers({ perPage: 200 })` without pagination on the "email already exists" race. For projects with >200 users AND a concurrent-webhook race AND the racing user not in the first 200, the handler throws "Could not create or find user." Ship-ready for V1 (solo operator, low user count).          | open — deferred | —                                                                       | —                                                                               |
+| B3-3 | P3       | `components/marketing/AddressInput.tsx` | useEffect dep array `[onChange, onPlace]` caused a fresh `new google.maps.places.Autocomplete(...)` every parent rerender — `GetStartedForm` passes inline callbacks so identities change on every keystroke. Leaks pac-container divs; stale listeners can double-fire.                                                                      | fixed           | [cae171a](https://github.com/chrisfisher16-alt/cost-seg/commit/cae171a) | `tests/unit/address-input.test.tsx` — ref-pattern assertions across re-renders. |
+
+### Audits that surfaced no findings (Bucket 3)
+
+| Audit                                 | Result                                                                                                                                                                                                               |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tier param handling                   | `isTier()` type-guard at `/get-started/page.tsx:22` accepts only `DIY`/`AI_REPORT`/`ENGINEER_REVIEWED`; invalid + missing → silent default to `AI_REPORT`. Reasonable.                                               |
+| `startCheckoutAction` rate limit      | `startCheckoutLimiter().check(hashIp(ip))` at [actions.ts:43](app/get-started/actions.ts:43) runs BEFORE zod validation, preventing bots from burning the limiter with malformed payloads. 8 per 5min per hashed IP. |
+| Promo bypass wiring                   | `promoBypassEnabled()` + `promoCodeMatches()` (Bucket 1 F7) + `bypassCheckoutAndCreateStudy()` → `signInViaAdminMagicLink` → relative redirect to `/studies/{id}/intake`.                                            |
+| Stripe webhook signature verification | 503 when secret unset, 400 when signature missing/invalid — verified by existing `tests/e2e/infra.spec.ts` "Stripe webhook endpoint" block.                                                                          |
+| Webhook idempotency                   | `prisma.study.findUnique({ where: { stripeSessionId } })` at [create-from-checkout.ts:26](lib/studies/create-from-checkout.ts:26) → early return if exists. Backed by `@unique` constraint.                          |
+| DIY tier synchronous path             | Webhook creates Study with `status: AWAITING_DOCUMENTS` for all tiers (same path); DIY moves to DELIVERED from the `/studies/[id]/diy` form action, not Inngest. Matches §2.3.                                       |
+| `/get-started/success` states         | Fresh (Study row resolves, tier-specific next steps) / already-fulfilled (idempotent same screen) / webhook-failed or no session_id (tier-null fallback copy). Handled.                                              |
+| CheckoutMetadata encode/decode        | Address field clamping (480/240/120/16 chars) + tier + propertyType positive-list validation already tested in `tests/unit/checkout-metadata.test.ts`.                                                               |
+| `/auth/callback` open-redirect        | Confirmed in Bucket 2 — `safeNext` refuses absolute + protocol-relative paths.                                                                                                                                       |
+
+### Running totals after Bucket 3
+
+- **Unit tests:** 253 → **260** (+7: `stripe-client.test.ts` grew 2 → 7, `address-input.test.tsx` +2).
+- **E2E tests:** 112 → **112** (no new e2e this bucket — fixes land in unit; existing webhook-signature + idempotency-adjacent tests already in `infra.spec.ts`).
 
 ## Bucket 4 — Customer app + DIY + CPA share
 
