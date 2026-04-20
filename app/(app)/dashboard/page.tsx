@@ -26,16 +26,21 @@ import {
   type PortfolioTotals,
 } from "@/lib/studies/aggregate";
 import { CATALOG, formatCents, type Tier } from "@/lib/stripe/catalog";
+import { computeNextAction, formatRelativeAge } from "@/lib/studies/next-action";
 import { listStudiesSharedWith } from "@/lib/studies/share";
+import { cn } from "@/lib/utils";
+import type { DocumentKind, StudyStatus } from "@prisma/client";
 
 export const metadata = { title: "Dashboard" };
 
 type StudyListItem = {
   id: string;
   tier: Tier;
-  status: string;
+  status: StudyStatus;
   createdAt: Date;
+  updatedAt: Date;
   deliverableUrl: string | null;
+  requiredDocsMissing: number;
   property: { address: string; city: string; state: string };
 };
 
@@ -53,9 +58,11 @@ async function listStudies(userId: string): Promise<{
         tier: true,
         status: true,
         createdAt: true,
+        updatedAt: true,
         deliveredAt: true,
         deliverableUrl: true,
         assetSchedule: true,
+        documents: { select: { kind: true } },
         property: {
           select: {
             address: true,
@@ -70,15 +77,29 @@ async function listStudies(userId: string): Promise<{
       },
     });
 
+    // Required document kinds for non-DIY tiers; DIY has no doc requirements.
+    const requiredKinds: DocumentKind[] = ["CLOSING_DISCLOSURE", "PROPERTY_PHOTO"];
+
     return {
-      listItems: rows.map((r) => ({
-        id: r.id,
-        tier: r.tier,
-        status: r.status,
-        createdAt: r.createdAt,
-        deliverableUrl: r.deliverableUrl,
-        property: { address: r.property.address, city: r.property.city, state: r.property.state },
-      })),
+      listItems: rows.map((r) => {
+        const uploadedKinds = new Set<DocumentKind>(r.documents.map((d) => d.kind));
+        const missing =
+          r.tier === "DIY" ? 0 : requiredKinds.filter((k) => !uploadedKinds.has(k)).length;
+        return {
+          id: r.id,
+          tier: r.tier,
+          status: r.status,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+          deliverableUrl: r.deliverableUrl,
+          requiredDocsMissing: missing,
+          property: {
+            address: r.property.address,
+            city: r.property.city,
+            state: r.property.state,
+          },
+        };
+      }),
       aggregateInput: rows.map((r) => ({
         id: r.id,
         tier: r.tier,
@@ -110,6 +131,10 @@ export default async function DashboardPage() {
   ]);
   const sharedStudies = sharedResult.ok ? sharedResult.shares : [];
   const sharedError = sharedResult.ok ? null : sharedResult.error;
+  // Pinned to the request timestamp in the server component; pass to cards
+  // so each one's relative-age + stuck-state math lines up.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
 
   const delivered = studies.filter((s) => s.status === "DELIVERED").length;
   const processing = studies.filter((s) =>
@@ -178,7 +203,7 @@ export default async function DashboardPage() {
             </h2>
             <ul className="space-y-3">
               {studies.map((study) => (
-                <StudyCard key={study.id} study={study} />
+                <StudyCard key={study.id} study={study} nowMs={nowMs} />
               ))}
             </ul>
           </>
@@ -315,8 +340,16 @@ function EmptyState() {
   );
 }
 
-function StudyCard({ study }: { study: StudyListItem }) {
+function StudyCard({ study, nowMs }: { study: StudyListItem; nowMs: number }) {
   const entry = CATALOG[study.tier];
+  const action = computeNextAction({
+    status: study.status,
+    tier: study.tier,
+    updatedAtMs: study.updatedAt.getTime(),
+    nowMs,
+    missingRequiredDocs: study.requiredDocsMissing,
+  });
+  const relAge = formatRelativeAge(study.createdAt.getTime(), nowMs);
 
   // DIY studies go to the simpler self-serve form; AI / Engineer-Reviewed use
   // the full intake wizard with document upload.
@@ -335,24 +368,43 @@ function StudyCard({ study }: { study: StudyListItem }) {
       : null;
   const canDownload = study.status === "DELIVERED" && Boolean(study.deliverableUrl);
 
+  const hintToneClass =
+    action.tone === "primary"
+      ? "text-primary"
+      : action.tone === "warning"
+        ? "text-warning-foreground dark:text-warning"
+        : action.tone === "destructive"
+          ? "text-destructive"
+          : action.tone === "success"
+            ? "text-success"
+            : "text-muted-foreground";
+
+  const cardBorderClass =
+    action.tone === "warning"
+      ? "border-warning/40"
+      : action.tone === "destructive"
+        ? "border-destructive/40"
+        : "";
+
   return (
     <li>
-      <Card className="transition hover:shadow-md">
+      <Card className={cn("transition hover:shadow-md", cardBorderClass)}>
         <CardContent className="flex flex-wrap items-center gap-4 p-5">
           <div className="bg-primary/10 text-primary inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md">
             <HomeIcon className="h-4 w-4" aria-hidden />
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 space-y-1.5">
             <p className="truncate font-medium">
               {study.property.address}, {study.property.city}, {study.property.state}
             </p>
-            <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-3 text-xs">
+            <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-xs">
               <Badge variant={study.tier === "ENGINEER_REVIEWED" ? "success" : "default"} size="sm">
                 {entry.label}
               </Badge>
-              <span>Started {study.createdAt.toLocaleDateString()}</span>
               <StudyStatusBadge status={study.status} size="sm" />
+              <span>Started {relAge}</span>
             </div>
+            <p className={cn("text-xs leading-relaxed", hintToneClass)}>{action.hint}</p>
           </div>
           <div className="flex items-center gap-2">
             {intakeHref ? (
