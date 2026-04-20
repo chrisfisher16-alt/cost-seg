@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildShareUrl,
   formatShareCooldown,
   isAcceptedEmailMatch,
   normalizeEmail,
-} from "@/lib/studies/share";
+} from "@/lib/studies/share-format";
+import { buildShareUrl } from "@/lib/studies/share";
 
 describe("buildShareUrl", () => {
   it("concatenates the token onto the app origin", () => {

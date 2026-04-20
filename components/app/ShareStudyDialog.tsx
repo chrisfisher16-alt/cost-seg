@@ -18,7 +18,7 @@ import {
   type SerializableShareRow,
 } from "@/app/(app)/studies/[id]/share/actions";
 import { Button } from "@/components/ui/button";
-import { formatShareCooldown } from "@/lib/studies/share";
+import { formatShareCooldown } from "@/lib/studies/share-format";
 import {
   Dialog,
   DialogContent,
