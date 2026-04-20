@@ -22,6 +22,7 @@ import { CelebrationTrigger } from "@/components/shared/Celebration";
 import { ShareStudyDialog } from "@/components/app/ShareStudyDialog";
 import { Kpi } from "@/components/shared/Kpi";
 import { useCountUp } from "@/components/shared/useCountUp";
+import { estimatePipelineEta, type EtaStep, type EtaStepId } from "@/lib/studies/pipeline-eta";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -158,13 +159,16 @@ function ProcessingPanel({
 }) {
   const activeStep = state.steps.find((s) => s.state === "active");
 
-  // Rough ETA — typical pipeline runs 90–180s.
-  const targetTotalSec = 150;
-  const remainingSec = Math.max(10, targetTotalSec - elapsedSec);
-  const etaLabel =
-    remainingSec > 60
-      ? `~${Math.ceil(remainingSec / 60)} min remaining`
-      : `~${remainingSec}s remaining`;
+  // Per-step ETA. Pure helper keyed on which step is active — more accurate
+  // than a fixed 150s budget, especially near the end when render + deliver
+  // are the only thing left (tiny) vs. early when `assets` still has to run
+  // (long).
+  const etaSteps: EtaStep[] = state.steps.map((s) => ({
+    id: s.id as EtaStepId,
+    state: s.state,
+  }));
+  const eta = estimatePipelineEta(etaSteps, elapsedSec);
+  const etaLabel = eta.label;
 
   return (
     <Card className="border-primary/30 bg-card relative overflow-hidden">
@@ -187,6 +191,11 @@ function ProcessingPanel({
             <p data-tabular className="mt-1 text-xl font-semibold tracking-tight">
               {etaLabel}
             </p>
+            {eta.confidence === "low" ? (
+              <p className="text-muted-foreground mt-1 text-[10px]">Running long — hang tight.</p>
+            ) : eta.confidence === "medium" ? (
+              <p className="text-muted-foreground mt-1 text-[10px]">Slightly slower than usual.</p>
+            ) : null}
           </div>
         </div>
 
