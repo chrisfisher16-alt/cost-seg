@@ -4,6 +4,7 @@ import { MailIcon, MessageSquareIcon, PhoneIcon } from "lucide-react";
 import { Container } from "@/components/shared/Container";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Contact" };
 
@@ -30,14 +31,14 @@ export default function ContactPage() {
             {
               Icon: MailIcon,
               label: "Email",
-              value: "support@segra.tax",
-              href: "mailto:support@segra.tax",
+              value: BRAND.email.support,
+              href: `mailto:${BRAND.email.support}`,
             },
             {
               Icon: MessageSquareIcon,
               label: "Sales",
-              value: "sales@segra.tax",
-              href: "mailto:sales@segra.tax",
+              value: BRAND.email.sales,
+              href: `mailto:${BRAND.email.sales}`,
             },
             { Icon: PhoneIcon, label: "Phone", value: "Coming soon", href: undefined },
           ].map(({ Icon, label, value, href }) => (

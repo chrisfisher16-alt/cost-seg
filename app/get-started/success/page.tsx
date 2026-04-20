@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getOptionalAuth } from "@/lib/auth/require";
+import { BRAND } from "@/lib/brand";
 import { getPrisma } from "@/lib/db/client";
 import { CATALOG, type Tier } from "@/lib/stripe/catalog";
 
@@ -173,7 +174,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
                   </Button>
                 )}
                 <Button asChild variant="outline" size="lg" leadingIcon={<MailIcon />}>
-                  <a href="mailto:support@segra.tax">Email support</a>
+                  <a href={`mailto:${BRAND.email.support}`}>Email support</a>
                 </Button>
               </div>
             </CardContent>

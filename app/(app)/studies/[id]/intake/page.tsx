@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { assertOwnership, requireAuth } from "@/lib/auth/require";
+import { BRAND } from "@/lib/brand";
 import { getPrisma } from "@/lib/db/client";
 import { CATALOG, formatCents } from "@/lib/stripe/catalog";
 import { computeNextAction } from "@/lib/studies/next-action";
@@ -149,10 +150,10 @@ export default async function StudyIntakePage({ params }: Props) {
               {nextAction.hint} If you&rsquo;re blocked on a document, reply to your welcome email
               or ping{" "}
               <a
-                href="mailto:support@segra.tax"
+                href={`mailto:${BRAND.email.support}`}
                 className="text-foreground underline-offset-2 hover:underline"
               >
-                support@segra.tax
+                {BRAND.email.support}
               </a>{" "}
               and we&rsquo;ll help.
             </p>
@@ -302,8 +303,11 @@ export default async function StudyIntakePage({ params }: Props) {
                 <div className="space-y-1.5">
                   <p className="text-sm leading-tight font-medium">Stuck on a document?</p>
                   <p className="text-muted-foreground text-xs leading-relaxed">
-                    Email <span className="font-mono">support@segra.tax</span> and we&rsquo;ll help
-                    you find the right file from your closing packet.
+                    Email{" "}
+                    <a href={`mailto:${BRAND.email.support}`} className="font-mono">
+                      {BRAND.email.support}
+                    </a>{" "}
+                    and we&rsquo;ll help you find the right file from your closing packet.
                   </p>
                 </div>
               </div>

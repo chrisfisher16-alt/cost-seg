@@ -10,6 +10,8 @@
  * Pure. Never throws — unknown error shapes fall through to `generic`.
  */
 
+import { BRAND } from "@/lib/brand";
+
 export type MagicLinkErrorKind =
   | "rate-limited"
   | "invalid-email"
@@ -86,7 +88,7 @@ export function classifyMagicLinkError(err: unknown): ClassifiedMagicLinkError {
   ) {
     return {
       kind: "disabled",
-      message: "Email sign-in is disabled for this project. Reach out to support@segra.tax.",
+      message: `Email sign-in is disabled for this project. Reach out to ${BRAND.email.support}.`,
       retryAfterSec: null,
     };
   }

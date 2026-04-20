@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireAuth } from "@/lib/auth/require";
+import { BRAND } from "@/lib/brand";
 import { getPrisma } from "@/lib/db/client";
 import {
   buildPortfolioTotals,
@@ -228,7 +229,11 @@ export default async function DashboardPage() {
             </p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
               This is usually a transient database hiccup — refresh in a moment. If it persists,
-              email <span className="font-mono">support@segra.tax</span>.
+              email{" "}
+              <a href={`mailto:${BRAND.email.support}`} className="font-mono">
+                {BRAND.email.support}
+              </a>
+              .
             </p>
           </div>
         </Section>

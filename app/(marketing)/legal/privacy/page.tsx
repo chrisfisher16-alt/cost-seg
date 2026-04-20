@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { Container } from "@/components/shared/Container";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Privacy" };
 
@@ -19,10 +20,12 @@ export default function PrivacyPage() {
 
         <h2>Who we are</h2>
         <p>
-          Segra is operated by the product team at <strong>Segra</strong> (&ldquo;we&rdquo;,
-          &ldquo;us&rdquo;). Privacy questions go to{" "}
-          <span className="font-mono">privacy@segra.tax</span>. If you&rsquo;d rather write: use
-          that email to request a mailing address.
+          {BRAND.name} is operated by the product team at <strong>{BRAND.name}</strong>
+          (&ldquo;we&rdquo;, &ldquo;us&rdquo;). Privacy questions go to{" "}
+          <a href={`mailto:${BRAND.email.privacy}`} className="font-mono">
+            {BRAND.email.privacy}
+          </a>
+          . If you&rsquo;d rather write: use that email to request a mailing address.
         </p>
 
         <h2>What we collect</h2>
@@ -163,8 +166,12 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Email <span className="font-mono">privacy@segra.tax</span> and we&rsquo;ll respond within
-          30 days. California residents: this includes the rights granted under the CCPA and CPRA.
+          Email{" "}
+          <a href={`mailto:${BRAND.email.privacy}`} className="font-mono">
+            {BRAND.email.privacy}
+          </a>{" "}
+          and we&rsquo;ll respond within 30 days. California residents: this includes the rights
+          granted under the CCPA and CPRA.
         </p>
 
         <h2>Automated decisions</h2>

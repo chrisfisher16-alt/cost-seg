@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import Link from "next/link";
 
+import { BRAND } from "@/lib/brand";
+
 /**
  * Catastrophic-error boundary. Renders when `app/error.tsx` itself fails or
  * the root layout throws. Must declare its own <html> and <body> — Next
@@ -69,10 +71,10 @@ export default function GlobalError({
             This page failed before we could even load our normal error screen. Try again — if it
             keeps happening, email{" "}
             <a
-              href="mailto:support@segra.tax"
+              href={`mailto:${BRAND.email.support}`}
               style={{ color: "#047857", textDecoration: "underline" }}
             >
-              support@segra.tax
+              {BRAND.email.support}
             </a>{" "}
             with the error ref below and we&rsquo;ll get right on it.
           </p>
