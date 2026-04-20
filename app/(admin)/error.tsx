@@ -26,7 +26,7 @@ export default function AdminError({
       error={error}
       retry={unstable_retry}
       title="Admin view hit an error."
-      description="The pipeline service may be rate-limited or briefly unavailable. Retry, or pop back to the queue."
+      description="Usually means Prisma, Supabase, or Inngest is having a moment. Check the respective status pages if retry doesn't clear it — the error ref below pins the exact request in the server logs."
       action={
         <Button asChild variant="outline">
           <Link href="/admin">Back to pipeline</Link>

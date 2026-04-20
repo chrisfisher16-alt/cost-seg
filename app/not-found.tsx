@@ -31,8 +31,8 @@ export default function NotFoundPage() {
               <div className="space-y-2">
                 <h1 className="text-2xl font-semibold tracking-tight">Page not found.</h1>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  That URL doesn&rsquo;t point to anything. Maybe a typo, maybe a page we moved —
-                  either way, head back and we&rsquo;ll get you somewhere useful.
+                  That URL doesn&rsquo;t point anywhere we know. Probably a typo, maybe a page
+                  we&rsquo;ve moved. Jump to one of these, or head home and start from there.
                 </p>
               </div>
               <div className="flex flex-wrap justify-center gap-2">
@@ -46,6 +46,16 @@ export default function NotFoundPage() {
                   <Link href="/samples">Sample reports</Link>
                 </Button>
               </div>
+              <p className="text-muted-foreground border-border/60 border-t pt-5 text-xs">
+                Followed a link that should work? Let us know at{" "}
+                <a
+                  href="mailto:support@costseg.app"
+                  className="text-foreground font-medium underline-offset-2 hover:underline"
+                >
+                  support@costseg.app
+                </a>
+                .
+              </p>
             </CardContent>
           </Card>
         </Container>

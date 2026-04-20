@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangleIcon, RefreshCwIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckIcon, CopyIcon, RefreshCwIcon } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +28,7 @@ export function ErrorFallback({ error, retry, title, description, action }: Prop
   const headline = title ?? "Something went wrong.";
   const body =
     description ??
-    "We hit an unexpected error. Try again — if it keeps happening, refresh the page or get in touch.";
+    "We hit an unexpected error. Try again — if it keeps happening, email support and we'll dig in.";
 
   return (
     <Container size="md" className="py-16 sm:py-24">
@@ -43,11 +44,7 @@ export function ErrorFallback({ error, retry, title, description, action }: Prop
             </div>
           </div>
 
-          {error.digest ? (
-            <p className="text-muted-foreground border-border/60 border-t pt-4 font-mono text-xs">
-              Error ref: <span className="text-foreground">{error.digest}</span>
-            </p>
-          ) : null}
+          {error.digest ? <ErrorDigest digest={error.digest} /> : null}
 
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={retry} variant="default" leadingIcon={<RefreshCwIcon />}>
@@ -55,8 +52,57 @@ export function ErrorFallback({ error, retry, title, description, action }: Prop
             </Button>
             {action}
           </div>
+
+          <p className="text-muted-foreground border-border/60 border-t pt-4 text-xs">
+            Still stuck? Email{" "}
+            <a
+              href="mailto:support@costseg.app"
+              className="text-foreground font-medium underline-offset-2 hover:underline"
+            >
+              support@costseg.app
+            </a>
+            {error.digest ? " and include the error ref above" : ""}.
+          </p>
         </CardContent>
       </Card>
     </Container>
+  );
+}
+
+/**
+ * Error-ref display with a click-to-copy button. Makes the "send us the
+ * digest" debugging loop actually one click instead of hand-highlighting
+ * a mono-font string from a dialog.
+ */
+function ErrorDigest({ digest }: { digest: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(digest);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard denied (older browsers, http context). The digest is still
+      // visible for a user to hand-select; swallow silently.
+    }
+  }
+
+  return (
+    <div className="border-border/60 bg-muted/30 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+      <p className="text-muted-foreground font-mono text-xs">
+        Error ref: <span className="text-foreground">{digest}</span>
+      </p>
+      <Button
+        type="button"
+        onClick={copy}
+        size="sm"
+        variant="ghost"
+        leadingIcon={copied ? <CheckIcon /> : <CopyIcon />}
+        aria-label={copied ? "Copied to clipboard" : "Copy error reference"}
+      >
+        {copied ? "Copied" : "Copy"}
+      </Button>
+    </div>
   );
 }

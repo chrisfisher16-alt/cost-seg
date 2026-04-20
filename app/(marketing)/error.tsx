@@ -27,10 +27,10 @@ export default function MarketingError({
       error={error}
       retry={unstable_retry}
       title="This page didn't load."
-      description="We hit an error rendering marketing content. Refresh in a moment, or browse elsewhere."
+      description="Something on our side hiccupped. Try again in a few seconds — or poke around: the samples, pricing, and FAQ links still work."
       action={
         <Button asChild variant="outline">
-          <Link href="/">Home</Link>
+          <Link href="/">Back to home</Link>
         </Button>
       }
     />

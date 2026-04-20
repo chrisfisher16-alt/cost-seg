@@ -26,7 +26,7 @@ export default function AppError({
       error={error}
       retry={unstable_retry}
       title="We couldn't load this page."
-      description="Most often this is a transient issue — retry should fix it. If not, head back to your dashboard."
+      description="Usually a transient database or network blip — one retry fixes it. Your study data isn't affected; nothing has been lost."
       action={
         <Button asChild variant="outline">
           <Link href="/dashboard">Back to dashboard</Link>

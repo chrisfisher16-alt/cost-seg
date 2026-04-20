@@ -56,7 +56,7 @@ export default function GlobalError({
             !
           </div>
           <h1 style={{ fontSize: 24, fontWeight: 600, margin: "0 0 8px" }}>
-            Cost Seg ran into a critical error.
+            Something broke badly enough that we couldn&rsquo;t recover.
           </h1>
           <p
             style={{
@@ -66,14 +66,15 @@ export default function GlobalError({
               margin: "0 0 24px",
             }}
           >
-            We couldn&rsquo;t render this page. Try again, or email{" "}
+            This page failed before we could even load our normal error screen. Try again — if it
+            keeps happening, email{" "}
             <a
-              href="mailto:support@costseg.co"
+              href="mailto:support@costseg.app"
               style={{ color: "#047857", textDecoration: "underline" }}
             >
-              support@costseg.co
+              support@costseg.app
             </a>{" "}
-            if the issue persists.
+            with the error ref below and we&rsquo;ll get right on it.
           </p>
           {error.digest ? (
             <p
