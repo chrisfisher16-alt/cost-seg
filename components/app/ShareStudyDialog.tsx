@@ -18,6 +18,7 @@ import {
   type SerializableShareRow,
 } from "@/app/(app)/studies/[id]/share/actions";
 import { Button } from "@/components/ui/button";
+import { formatShareCooldown } from "@/lib/studies/share-format";
 import {
   Dialog,
   DialogContent,
@@ -187,9 +188,7 @@ export function ShareStudyDialog({
             loadingText="Sending invite…"
             disabled={cooldownSec > 0}
           >
-            {cooldownSec > 0
-              ? `Try again in ${Math.max(1, Math.ceil(cooldownSec / 60))}m`
-              : "Send invite"}
+            {cooldownSec > 0 ? `Try again in ${formatShareCooldown(cooldownSec)}` : "Send invite"}
           </Button>
         </form>
 

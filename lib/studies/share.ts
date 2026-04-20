@@ -3,7 +3,17 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 
 import { getPrisma } from "@/lib/db/client";
+import { isAcceptedEmailMatch, normalizeEmail } from "@/lib/studies/share-format";
 import type { StudyShareStatus, User } from "@prisma/client";
+
+// Re-export pure helpers so existing `@/lib/studies/share` server-side
+// callers keep working. Client components must import from
+// `@/lib/studies/share-format` directly — see that module's header.
+export {
+  formatShareCooldown,
+  isAcceptedEmailMatch,
+  normalizeEmail,
+} from "@/lib/studies/share-format";
 
 export interface CreateShareArgs {
   studyId: string;
@@ -27,10 +37,6 @@ export interface ShareRow {
 
 function generateShareToken(): string {
   return randomBytes(32).toString("hex");
-}
-
-function normalizeEmail(raw: string): string {
-  return raw.trim().toLowerCase();
 }
 
 /**
@@ -168,11 +174,13 @@ export async function acceptShareByToken(
     throw new Error("This invitation was already accepted by a different account.");
   }
 
-  // If an email-normalized match is set, require it (lightweight guard).
+  // Invites are NOT strict-locked — a CPA signed in with email B can still
+  // accept an invite addressed to email A (common: aliases, @-sign quirks,
+  // household inboxes). But we MUST audit the mismatch so the admin
+  // inspector can surface it; Day 49's "warn on email mismatch" was
+  // implemented as an empty `if` block that threw away the signal.
   const normalized = normalizeEmail(accepter.email);
-  if (existing.invitedEmail !== normalized) {
-    // Allow — invites are not strict-locked — but record a note for audit.
-  }
+  const emailMatched = isAcceptedEmailMatch(existing.invitedEmail, accepter.email);
 
   const updated = await prisma.$transaction(async (tx) => {
     const share = await tx.studyShare.update({
@@ -193,7 +201,12 @@ export async function acceptShareByToken(
         studyId: share.studyId,
         kind: "share.accepted",
         actorId: accepter.id,
-        payload: { shareId: share.id, invitedEmail: share.invitedEmail } as never,
+        payload: {
+          shareId: share.id,
+          invitedEmail: share.invitedEmail,
+          accepterEmail: normalized,
+          emailMatched,
+        } as never,
       },
     });
     return share;

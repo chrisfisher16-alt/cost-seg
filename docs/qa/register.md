@@ -106,7 +106,35 @@ bucket.
 
 ## Bucket 4 — Customer app + DIY + CPA share
 
-_(not started)_
+| ID   | Severity | Surface                               | Finding                                                                                                                                                                                                                                                                                                             | Status          | Commit                                                                  | Regression test                                                       |
+| ---- | -------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| B4-1 | P1       | `lib/studies/share.ts`                | `acceptShareByToken` computed the email-match inside an empty `if` block — the comment described a "record note for audit" but no code executed. A CPA signed in with email B could accept an invite addressed to email A and the admin inspector had no signal. Day 49's "warn on email mismatch" was never wired. | fixed           | [88eb757](https://github.com/chrisfisher16-alt/cost-seg/commit/88eb757) | `tests/unit/share.test.ts` — `isAcceptedEmailMatch` helper (5 cases). |
+| B4-2 | P2       | `components/app/ShareStudyDialog.tsx` | Cooldown button rendered `Math.ceil(cooldownSec / 60) + "m"` unconditionally. A 30-second throttle label read "Try again in 1m" but the button re-enabled at 30s — the label lied. Per-study share limit caps at 5/hour so `cooldownSec` spans 1–3600s; old formula only worked at one end.                         | fixed           | [4b2a23e](https://github.com/chrisfisher16-alt/cost-seg/commit/4b2a23e) | `tests/unit/share.test.ts` — `formatShareCooldown` helper (4 cases).  |
+| B4-3 | P3       | `components/intake/DiyForm.tsx`       | DIY land-value suggestion renders a hardcoded percentage of purchase price via `DEFAULT_LAND_PCT[propertyType]` with no hint explaining the number. Pure UX polish — user sees "$60,000 land value" prefilled without knowing where it came from.                                                                   | open — deferred | —                                                                       | —                                                                     |
+
+### Audits that surfaced no findings (Bucket 4)
+
+| Audit                                                       | Result                                                                                                                                   |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard role-aware empty states (Day 37)                  | `isCpa` branch at [dashboard/page.tsx:205-208](<app/(app)/dashboard/page.tsx:205>) drives tier cards vs shared-with-you copy.            |
+| Intake stuck-warning (Day 57)                               | `nextAction.tone === "warning"` branch at intake/page.tsx:106.                                                                           |
+| UploadZone keyboard affordance (Day 65)                     | Tab → Space/Enter → file picker wired at UploadZone.tsx:178-184; visible focus ring present.                                             |
+| ZIP + acquired-date hints in PropertyForm (Day 29 + Day 40) | `zipHint` + `acquiredDateHint` both rendered; inline invalid-ZIP feedback.                                                               |
+| Auth guards on intake / DIY / processing / view             | `assertOwnership` / `resolveStudyAccess` on every page; no bypass paths.                                                                 |
+| `classifyShareError` kinds (Day 49)                         | 5 kinds — not-found, revoked, wrong-account, invalid-email, generic — each with tailored title / hint / recovery.                        |
+| `classifyFailure` kinds (Day 30)                            | missing-document, unbalanced-schedule, admin-flagged, generic — all surface in `FailedPanel` with support mailto subject pre-fill.       |
+| `estimatePipelineEta` wiring (Day 25)                       | PipelineLive.tsx:297 computes per-step ETA from pipeline-eta.ts, renders inline.                                                         |
+| `prefers-reduced-motion` respected (Day 13)                 | `motion-safe:animate-*` used throughout PipelineLive (lines 371, 565, 576, 587); `<CelebrationTrigger>` respects media query internally. |
+| Confetti on delivery                                        | `<CelebrationTrigger active={state.isDelivered} />` at PipelineLive.tsx:94.                                                              |
+| Queued state (Day 34)                                       | `QueuedPanel` branch at PipelineLive.tsx:100-106.                                                                                        |
+| Share invite rate limit (Day 67) + Day 39 cooldown pattern  | `shareInviteLimiter()` gates the action; cooldown ticks locally; button disabled during.                                                 |
+| CPA invite email content (Day 53 snapshot)                  | Already covered by `tests/unit/emails.test.ts`.                                                                                          |
+| Radix Dialog a11y (Escape + focus return + trap)            | ShareStudyDialog uses Radix primitives — behavior inherited.                                                                             |
+
+### Running totals after Bucket 4
+
+- **Unit tests:** 260 → **271** (+11: `share.test.ts` grew 3 → 14 with the two new helpers + regression cases).
+- **E2E tests:** 112 → **112** (no new e2e this bucket — all fixes are unit-testable).
 
 ## Bucket 5 — Pipeline + delivery + state machine
 
