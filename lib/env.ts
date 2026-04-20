@@ -34,6 +34,7 @@ const serverEnvSchema = z.object({
   // Stripe
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
+  STRIPE_PRICE_ID_DIY: z.string().startsWith("price_"),
   STRIPE_PRICE_ID_TIER_1: z.string().startsWith("price_"),
   STRIPE_PRICE_ID_TIER_2: z.string().startsWith("price_"),
 
@@ -47,6 +48,7 @@ const serverEnvSchema = z.object({
 
   // Sentry
   SENTRY_DSN: z.string().url().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),
@@ -97,6 +99,7 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().default("https://us.i.posthog.com"),
   NEXT_PUBLIC_GOOGLE_MAPS_KEY: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
@@ -109,5 +112,6 @@ export function clientEnv(): ClientEnv {
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_GOOGLE_MAPS_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
   });
 }
