@@ -1,8 +1,17 @@
 "use client";
 
-import { FileIcon, ImageIcon, Loader2Icon, TrashIcon, UploadCloudIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  FileIcon,
+  ImageIcon,
+  Loader2Icon,
+  LockIcon,
+  TrashIcon,
+  UploadCloudIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import {
   createUploadUrlAction,
@@ -103,6 +112,10 @@ export function UploadZone({
           setError(step2.error);
           return;
         }
+        toast.success(`Uploaded ${file.name}`, {
+          description: "Stored encrypted — safe to close this tab and come back.",
+          icon: <CheckCircle2Icon className="h-4 w-4" />,
+        });
         router.refresh();
       } finally {
         setIsUploading(false);
@@ -129,10 +142,20 @@ export function UploadZone({
     setIsDragOver(false);
   }
 
-  function onRemove(documentId: string) {
+  function onRemove(documentId: string, filename: string) {
+    if (
+      !confirm(`Remove "${filename}"? You can re-upload it any time before we start processing.`)
+    ) {
+      return;
+    }
     startRemoveTransition(async () => {
       const result = await removeDocumentAction(studyId, documentId);
-      if (!result.ok) setError(result.error);
+      if (!result.ok) {
+        setError(result.error);
+        toast.error("Couldn't remove file", { description: result.error });
+        return;
+      }
+      toast(`Removed ${filename}`);
       router.refresh();
     });
   }
@@ -183,11 +206,24 @@ export function UploadZone({
           {isUploading
             ? "Uploading…"
             : meta.allowMultiple || uploaded.length === 0
-              ? "Drop a file or click to browse"
+              ? "Drop a file or tap to upload"
               : "Remove the current file to replace it"}
         </span>
-        <span className="text-muted-foreground text-xs">
-          PDF, JPG, or PNG · up to {MAX_BYTES / 1024 / 1024}MB
+        <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
+          <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-mono tracking-wide">
+            PDF
+          </span>
+          <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-mono tracking-wide">
+            JPG
+          </span>
+          <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-mono tracking-wide">
+            PNG
+          </span>
+          <span className="text-muted-foreground">up to {MAX_BYTES / 1024 / 1024}MB</span>
+        </div>
+        <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+          <LockIcon className="h-3 w-3" aria-hidden />
+          Encrypted at rest · only you and your engineer can see it
         </span>
       </label>
 
@@ -225,8 +261,8 @@ export function UploadZone({
                   type="button"
                   size="icon-sm"
                   variant="ghost"
-                  onClick={() => onRemove(doc.id)}
-                  aria-label="Remove file"
+                  onClick={() => onRemove(doc.id, doc.filename)}
+                  aria-label={`Remove ${doc.filename}`}
                 >
                   <TrashIcon className="text-muted-foreground hover:text-destructive h-4 w-4" />
                 </Button>

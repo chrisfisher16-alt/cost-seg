@@ -114,6 +114,20 @@ export default async function StudyIntakePage({ params }: Props) {
         }
       />
 
+      {!locked && !processing ? (
+        <div className="border-primary/30 bg-primary/5 text-foreground mt-6 flex items-start gap-3 rounded-lg border p-4 text-sm">
+          <ShieldCheckIcon className="text-primary mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <div>
+            <p className="font-medium">You can close this tab at any time.</p>
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+              Each upload saves automatically. When every required document is in, we kick off the
+              pipeline without you having to click anything else — and you&rsquo;ll get an email the
+              moment the PDF is ready.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_320px]">
         <div className="space-y-10">
           <section className="space-y-4">
@@ -220,23 +234,35 @@ export default async function StudyIntakePage({ params }: Props) {
             processing={processing}
           />
           <Card className="bg-muted/30">
-            <CardContent className="space-y-3 p-5">
-              <ShieldCheckIcon className="text-primary h-4 w-4" aria-hidden />
-              <p className="text-sm font-medium">Privacy by default</p>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                Documents are stored encrypted in a private bucket. Only you and your assigned
-                engineer can generate signed links to access them.
-              </p>
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <div className="bg-primary/10 text-primary mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
+                  <ShieldCheckIcon className="h-4 w-4" aria-hidden />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-sm leading-tight font-medium">Privacy by default</p>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Documents are stored encrypted in a private bucket. Only you and your assigned
+                    engineer can generate signed links to access them.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
           <Card className="bg-muted/30">
-            <CardContent className="space-y-3 p-5">
-              <HelpCircleIcon className="text-primary h-4 w-4" aria-hidden />
-              <p className="text-sm font-medium">Stuck on a document?</p>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                Email <span className="font-mono">support@costseg.app</span> and we&rsquo;ll help
-                you find the right file from your closing packet.
-              </p>
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <div className="bg-primary/10 text-primary mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
+                  <HelpCircleIcon className="h-4 w-4" aria-hidden />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-sm leading-tight font-medium">Stuck on a document?</p>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Email <span className="font-mono">support@costseg.app</span> and we&rsquo;ll
+                    help you find the right file from your closing packet.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </aside>
