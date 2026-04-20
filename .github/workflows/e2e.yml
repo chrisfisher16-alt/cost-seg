@@ -47,7 +47,7 @@ jobs:
       STRIPE_PRICE_ID_TIER_1: price_ci_tier_one
       STRIPE_PRICE_ID_TIER_2: price_ci_tier_two
       RESEND_API_KEY: re_ci_placeholder
-      RESEND_FROM_EMAIL: Cost Seg <ci@example.test>
+      RESEND_FROM_EMAIL: Segra <ci@example.test>
       INNGEST_EVENT_KEY: ci-placeholder-inngest-event
       INNGEST_SIGNING_KEY: ci-placeholder-inngest-signing
 

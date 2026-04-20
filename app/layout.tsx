@@ -21,9 +21,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   openGraph: {
     type: "website",
-    title: `${BRAND.name} — Cost segregation in minutes`,
-    description:
-      "Turn your real-estate basis into year-one tax deductions. In minutes, not six weeks.",
+    title: `${BRAND.name} — ${BRAND.tagline.replace(/\.$/, "")}`,
+    // Pulls from BRAND so the social share card stays in sync with the
+    // rest of the brand copy. Edit `BRAND.description` in lib/brand.ts to
+    // change what Twitter/LinkedIn/iMessage show when someone shares a
+    // segra.tax URL.
+    description: BRAND.description,
   },
 };
 

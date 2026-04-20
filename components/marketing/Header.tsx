@@ -15,6 +15,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { getOptionalAuth } from "@/lib/auth/require";
+import { BRAND } from "@/lib/brand";
 
 const NAV_LINKS = [
   { href: "/pricing", label: "Pricing" },
@@ -80,7 +81,7 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
           <SheetTitle>
             <BrandMark asLink={false} />
           </SheetTitle>
-          <SheetDescription>AI-powered cost segregation studies.</SheetDescription>
+          <SheetDescription>{BRAND.tagline}</SheetDescription>
         </SheetHeader>
         <nav className="flex flex-1 flex-col gap-1 p-4">
           {NAV_LINKS.map((link) => (
