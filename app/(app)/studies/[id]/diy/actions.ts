@@ -8,8 +8,8 @@ import { assertOwnership, requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { parseUsdInputToCents } from "@/lib/estimator/format";
 import { PROPERTY_TYPES } from "@/lib/estimator/types";
-import { inngest } from "@/inngest/client";
 import { buildDiySchedule } from "@/lib/studies/diy-pipeline";
+import { safeInngestSend } from "@/lib/studies/inngest-safe";
 import { Prisma } from "@prisma/client";
 
 type ActionResult = { ok: true; redirectTo: string } | { ok: false; error: string };
@@ -139,16 +139,13 @@ export async function submitDiyStudyAction(studyId: string, input: unknown): Pro
 
   // Kick off delivery in the background. The existing deliverAiReport Inngest
   // function accepts DIY as of Day 3, and handles PDF render + storage + email.
-  try {
-    await inngest.send({
-      name: "study.ai.complete",
-      data: { studyId, tier: "DIY" },
-    });
-  } catch (err) {
-    // Inngest not configured in this env. Log and continue — the user can
-    // still see the processing page, and an admin can trigger delivery manually.
-    console.warn("[diy] inngest send failed; delivery must be triggered manually", err);
-  }
+  // If Inngest is unreachable we log + continue to the processing page;
+  // admin can trigger delivery manually via the inspector's "Re-run pipeline"
+  // button. The safe-send helper writes a structured log line for monitoring.
+  await safeInngestSend(
+    { name: "study.ai.complete", data: { studyId, tier: "DIY" } },
+    { caller: "diy.actions", studyId },
+  );
 
   const processingHref = `/studies/${studyId}/processing` as Route;
   redirect(processingHref);

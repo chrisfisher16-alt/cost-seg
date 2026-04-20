@@ -5,10 +5,10 @@ import { Prisma } from "@prisma/client";
 
 import { requireRole } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
-import { inngest } from "@/inngest/client";
 import { STUDIES_BUCKET } from "@/lib/storage/studies";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { deliverEngineeredStudy, resendDeliveryEmail } from "@/lib/studies/deliver";
+import { safeInngestSend } from "@/lib/studies/inngest-safe";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -27,10 +27,17 @@ export async function adminRerunPipelineAction(studyId: string): Promise<ActionR
   });
   if (!study) return { ok: false, error: "Study not found" };
 
-  await inngest.send({
-    name: "study.documents.ready",
-    data: { studyId: study.id, tier: study.tier },
-  });
+  const sendResult = await safeInngestSend(
+    { name: "study.documents.ready", data: { studyId: study.id, tier: study.tier } },
+    { caller: "admin.rerunPipeline", studyId, actorId: user.id },
+  );
+  if (!sendResult.ok) {
+    return {
+      ok: false,
+      error:
+        "Couldn't queue the re-run — the background job service is unreachable. Check the Inngest dev server (or cloud status) and try again.",
+    };
+  }
 
   await prisma.studyEvent.create({
     data: {

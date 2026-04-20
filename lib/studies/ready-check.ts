@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getPrisma } from "@/lib/db/client";
-import { inngest } from "@/inngest/client";
+import { safeInngestSend } from "@/lib/studies/inngest-safe";
 import type { DocumentKind } from "@prisma/client";
 
 /**
@@ -88,18 +88,11 @@ export async function emitDocumentsReadyIfComplete(studyId: string): Promise<boo
   // Inngest dev server is down (ECONNREFUSED) or the cloud endpoint is
   // unreachable, we log + swallow; the next finalize retries automatically
   // because we haven't written the documents.ready guard row yet.
-  try {
-    await inngest.send({
-      name: "study.documents.ready",
-      data: { studyId, tier: study.tier },
-    });
-  } catch (err) {
-    console.error("[ready-check] inngest.send failed — study will retry on next finalize", {
-      studyId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return false;
-  }
+  const sendResult = await safeInngestSend(
+    { name: "study.documents.ready", data: { studyId, tier: study.tier } },
+    { caller: "ready-check", studyId },
+  );
+  if (!sendResult.ok) return false;
 
   await prisma.studyEvent.create({
     data: {
