@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import type { Route } from "next";
 import Link from "next/link";
-import { ArrowRightIcon, DownloadIcon, FileTextIcon, HomeIcon } from "lucide-react";
+import { ArrowRightIcon, DownloadIcon, HomeIcon } from "lucide-react";
 
 import { FinalCta } from "@/components/marketing/FinalCta";
 import { SampleDownloadForm } from "@/components/marketing/SampleDownloadForm";
@@ -69,7 +70,11 @@ export default function SamplesPage() {
 
       <Section>
         <Container size="xl">
-          <div className="grid gap-8 md:grid-cols-3">
+          {/* role="list" makes the three cards announce as a group to screen
+              readers even though we're using divs — the semantic intent is
+              "a list of sample reports," and our card grid expresses that
+              without a bullet list's visual baggage. */}
+          <div role="list" className="grid gap-8 md:grid-cols-3">
             {samples.map((sample) => (
               <SampleCard key={sample.id} sample={sample} />
             ))}
@@ -118,73 +123,104 @@ export default function SamplesPage() {
 function SampleCard({ sample }: { sample: Sample }) {
   const gradient = GRADIENTS[sample.id] ?? "from-primary/15 via-info/10 to-accent/20";
   const taxSavings = Math.round(sample.year1Deduction * 0.37);
+  // Stable id so the <article> can be aria-labelledby the heading — screen
+  // readers then announce each card as e.g. "article, 1842 Oak Ridge Lane".
+  const headingId = `sample-${sample.id}-title`;
+  const pdfHref = `/api/samples/${sample.id}/pdf`;
+  const viewHref = `/samples/${sample.id}` as Route;
+
   return (
-    <Card className="group flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-lg">
-      <div className={`relative aspect-[4/3] bg-gradient-to-br ${gradient}`}>
-        <div className="absolute inset-0 flex items-center justify-center opacity-60 transition-opacity group-hover:opacity-100">
-          <HomeIcon className="text-foreground/30 h-16 w-16" aria-hidden />
+    <Card className="group focus-within:ring-ring relative flex flex-col overflow-hidden transition focus-within:ring-2 focus-within:ring-offset-2 hover:-translate-y-0.5 hover:shadow-lg">
+      {/* Semantic article — each card is a self-contained unit with its
+          address heading as the accessible name. */}
+      <article aria-labelledby={headingId} role="listitem" className="flex flex-1 flex-col">
+        <div
+          className={`relative aspect-[4/3] bg-gradient-to-br ${gradient}`}
+          role="img"
+          aria-label={`${sample.propertyType} illustration`}
+        >
+          <div className="absolute inset-0 flex items-center justify-center opacity-60 transition-opacity group-hover:opacity-100">
+            <HomeIcon className="text-foreground/30 h-16 w-16" aria-hidden />
+          </div>
+          <div className="absolute top-5 left-5">
+            <Badge variant={sample.tier === "Engineer-Reviewed" ? "success" : "default"} size="sm">
+              {sample.tier}
+            </Badge>
+          </div>
+          <div className="absolute right-5 bottom-5 left-5 flex justify-between text-xs">
+            <span className="bg-background/80 text-foreground/80 rounded-full px-2.5 py-0.5 font-mono tracking-wide backdrop-blur">
+              {sample.squareFeet.toLocaleString()} sqft
+            </span>
+            <span className="bg-background/80 text-foreground/80 rounded-full px-2.5 py-0.5 font-mono tracking-wide backdrop-blur">
+              Built {sample.yearBuilt}
+            </span>
+          </div>
         </div>
-        <div className="absolute top-5 left-5">
-          <Badge variant={sample.tier === "Engineer-Reviewed" ? "success" : "default"} size="sm">
-            {sample.tier}
-          </Badge>
-        </div>
-        <div className="absolute right-5 bottom-5 left-5 flex justify-between text-xs">
-          <span className="bg-background/80 text-foreground/80 rounded-full px-2.5 py-0.5 font-mono tracking-wide backdrop-blur">
-            {sample.squareFeet.toLocaleString()} sqft
-          </span>
-          <span className="bg-background/80 text-foreground/80 rounded-full px-2.5 py-0.5 font-mono tracking-wide backdrop-blur">
-            Built {sample.yearBuilt}
-          </span>
-        </div>
-      </div>
-      <CardContent className="flex flex-1 flex-col gap-5 p-6">
-        <div>
-          <p className="text-muted-foreground font-mono text-xs tracking-[0.18em] uppercase">
-            {sample.propertyType}
-          </p>
-          <h3 className="mt-1.5 text-base leading-tight font-semibold">{sample.address}</h3>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            Basis{" "}
-            <span data-tabular className="text-foreground font-medium">
-              {fmtUsd(sample.acquisitionPrice)}
-            </span>{" "}
-            · {sample.turnaround}
-          </p>
-        </div>
+        <CardContent className="flex flex-1 flex-col gap-5 p-6">
+          <div>
+            <p className="text-muted-foreground font-mono text-xs tracking-[0.18em] uppercase">
+              {sample.propertyType}
+            </p>
+            {/* The heading IS the primary link. Screen reader users can
+                navigate between cards by heading (H key in many tools) and
+                land on the clickable target directly. The ::after overlay
+                extends the hit area to the entire card without nesting
+                anchors, so the PDF button below still gets clicks. */}
+            <h3 id={headingId} className="mt-1.5 text-base leading-tight font-semibold">
+              <Link
+                href={viewHref}
+                className="hover:text-primary after:absolute after:inset-0 after:z-0 after:content-[''] focus-visible:outline-none"
+              >
+                {sample.address}
+              </Link>
+            </h3>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              Basis{" "}
+              <span data-tabular className="text-foreground font-medium">
+                {fmtUsd(sample.acquisitionPrice)}
+              </span>{" "}
+              · {sample.turnaround}
+            </p>
+          </div>
 
-        <Separator />
+          <Separator />
 
-        <Kpi
-          label="Year-1 deduction"
-          value={fmtUsd(sample.year1Deduction)}
-          hint={`≈ ${fmtUsd(taxSavings)} tax savings at 37% bracket`}
-          size="lg"
-          tone="primary"
-        />
+          <Kpi
+            label="Year-1 deduction"
+            value={fmtUsd(sample.year1Deduction)}
+            hint={`≈ ${fmtUsd(taxSavings)} tax savings at 37% bracket`}
+            size="lg"
+            tone="primary"
+          />
 
-        <div className="bg-muted/40 grid grid-cols-3 gap-2 rounded-md p-3 text-center">
-          <MiniStat label="5-year" value={fmtUsd(sample.accelerated.fiveYear)} />
-          <MiniStat label="15-year" value={fmtUsd(sample.accelerated.fifteenYear)} />
-          <MiniStat label="Accelerated" value={`${sample.accelerated.pct.toFixed(1)}%`} accent />
-        </div>
+          <div className="bg-muted/40 grid grid-cols-3 gap-2 rounded-md p-3 text-center">
+            <MiniStat label="5-year" value={fmtUsd(sample.accelerated.fiveYear)} />
+            <MiniStat label="15-year" value={fmtUsd(sample.accelerated.fifteenYear)} />
+            <MiniStat label="Accelerated" value={`${sample.accelerated.pct.toFixed(1)}%`} accent />
+          </div>
 
-        <div className="mt-auto flex gap-2">
-          <Button asChild variant="outline" className="flex-1" leadingIcon={<FileTextIcon />}>
-            <Link href={`/samples/${sample.id}` as never}>View</Link>
-          </Button>
-          <Button asChild variant="secondary" className="flex-1" leadingIcon={<DownloadIcon />}>
-            <a
-              href={`/api/samples/${sample.id}/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              download
+          <div className="mt-auto">
+            {/* relative + z-10 keeps the PDF download clickable above the
+                ::after overlay coming from the heading link. */}
+            <Button
+              asChild
+              variant="secondary"
+              className="relative z-10 w-full"
+              leadingIcon={<DownloadIcon />}
             >
-              PDF
-            </a>
-          </Button>
-        </div>
-      </CardContent>
+              <a
+                href={pdfHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                aria-label={`Download PDF for ${sample.address}`}
+              >
+                Download PDF
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </article>
     </Card>
   );
 }
