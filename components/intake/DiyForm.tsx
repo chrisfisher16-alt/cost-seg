@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { parseUsdInputToCents } from "@/lib/estimator/format";
 import { PROPERTY_TYPES, PROPERTY_TYPE_LABELS, type PropertyType } from "@/lib/estimator/types";
+import { US_STATES } from "@/lib/estimator/us-states";
 import { acquiredDateHint } from "@/lib/studies/acquired-date-hint";
 import { DEFAULT_LAND_PCT } from "@/lib/studies/diy-pipeline";
 
@@ -138,14 +139,19 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
               autoComplete="address-level2"
             />
           </Field>
-          <Field label="State" required hint="2-letter">
-            <Input
-              value={stateCode}
-              onChange={(e) => setStateCode(e.target.value.toUpperCase())}
-              required
-              maxLength={2}
-              autoComplete="address-level1"
-            />
+          <Field label="State" required>
+            <Select value={stateCode} onValueChange={setStateCode}>
+              <SelectTrigger aria-label="State">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent>
+                {US_STATES.map((s) => (
+                  <SelectItem key={s.code} value={s.code}>
+                    {s.code} · {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
           <Field label="ZIP" required>
             <Input
