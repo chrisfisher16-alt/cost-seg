@@ -5,6 +5,15 @@ import { PageHeader } from "@/components/shared/PageHeader";
 
 export const metadata: Metadata = { title: "Scope disclosure" };
 
+/**
+ * Static effective date for the scope disclosure. Update when the policy text
+ * is actually edited — NOT on every page render. Using `new Date()` here
+ * previously made the date tick forward on every reload and drift with
+ * browser locale ("4/20/2026" vs. "20/04/2026"), misleading visitors into
+ * believing the policy was freshly updated.
+ */
+const LAST_UPDATED = "April 19, 2026";
+
 export default function ScopeDisclosurePage() {
   return (
     <Container size="md" className="py-16 sm:py-24">
@@ -58,9 +67,7 @@ export default function ScopeDisclosurePage() {
           Segra is not your tax advisor and does not provide tax advice. Have a credentialed tax
           professional review every report before it informs a tax filing.
         </p>
-        <p className="text-muted-foreground text-sm">
-          Last updated {new Date().toLocaleDateString()}.
-        </p>
+        <p className="text-muted-foreground text-sm">Last updated {LAST_UPDATED}.</p>
       </div>
     </Container>
   );
