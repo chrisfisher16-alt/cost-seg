@@ -54,6 +54,18 @@ export function ShareStudyDialog({
   const [shareUrls, setShareUrls] = React.useState<Record<string, string>>({});
   const [error, setError] = React.useState<string | null>(null);
   const [loadedOnce, setLoadedOnce] = React.useState(false);
+  // Cooldown state mirrors the SignInForm pattern (Day 39) — when the
+  // server reports a per-study invite throttle, disable Send and tick
+  // the seconds down locally so the user watches the wait finish.
+  const [cooldownSec, setCooldownSec] = React.useState(0);
+
+  React.useEffect(() => {
+    if (cooldownSec <= 0) return;
+    const id = window.setInterval(() => {
+      setCooldownSec((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [cooldownSec]);
 
   async function loadShares() {
     const res = await listSharesAction(studyId);
@@ -71,6 +83,7 @@ export function ShareStudyDialog({
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (cooldownSec > 0) return;
     setError(null);
     startTransition(async () => {
       const res = await shareStudyAction(studyId, { email, note: note || undefined });
@@ -88,6 +101,12 @@ export function ShareStudyDialog({
         });
       } else {
         setError(res.error);
+        // Rate-limit path: the server returns retryAfterSec for this
+        // particular failure. Drive the cooldown so the Send button
+        // reflects the wait instead of staying clickable.
+        if (res.retryAfterSec && res.retryAfterSec > 0) {
+          setCooldownSec(res.retryAfterSec);
+        }
       }
     });
   }
@@ -161,8 +180,16 @@ export function ShareStudyDialog({
               {error}
             </p>
           ) : null}
-          <Button type="submit" size="sm" loading={isPending} loadingText="Sending invite…">
-            Send invite
+          <Button
+            type="submit"
+            size="sm"
+            loading={isPending}
+            loadingText="Sending invite…"
+            disabled={cooldownSec > 0}
+          >
+            {cooldownSec > 0
+              ? `Try again in ${Math.max(1, Math.ceil(cooldownSec / 60))}m`
+              : "Send invite"}
           </Button>
         </form>
 

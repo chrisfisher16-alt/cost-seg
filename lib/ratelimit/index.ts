@@ -110,3 +110,17 @@ export function magicLinkLimiter(): Limiter {
 export function startCheckoutLimiter(): Limiter {
   return getLimiter("start-checkout", 8, "300 s");
 }
+
+/**
+ * 5 CPA-invite sends per hour. Keyed per {studyId, ownerId} pair — an owner
+ * can invite across multiple studies without hitting the limit, and a
+ * single study can't get flooded even from multiple admin accounts.
+ *
+ * Why per-study? Each send fires a Resend email (billable) + creates a
+ * StudyEvent row. 5/h covers "I typed the wrong email, then re-sent to the
+ * right one, then re-invited after the CPA lost the email in their filter"
+ * while stopping a malicious or sloppy owner from burning 1,000 emails.
+ */
+export function shareInviteLimiter(): Limiter {
+  return getLimiter("share-invite", 5, "3600 s");
+}

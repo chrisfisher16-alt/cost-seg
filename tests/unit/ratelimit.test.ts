@@ -80,6 +80,20 @@ describe("rate limiters (memory fallback)", () => {
     expect((await limiter.check(key)).ok).toBe(false);
   });
 
+  it("shareInviteLimiter: 5 per hour, keyed per study+owner", async () => {
+    const { shareInviteLimiter } = await import("@/lib/ratelimit");
+    const limiter = shareInviteLimiter();
+    const key = "study-abc:owner-123";
+    for (let i = 0; i < 5; i++) {
+      expect((await limiter.check(key)).ok, `call ${i + 1}`).toBe(true);
+    }
+    expect((await limiter.check(key)).ok).toBe(false);
+
+    // Different study+owner pair has its own budget.
+    expect((await limiter.check("study-xyz:owner-123")).ok).toBe(true);
+    expect((await limiter.check("study-abc:owner-456")).ok).toBe(true);
+  });
+
   it("resetAt is in the future and within the configured window", async () => {
     const { estimatorLimiter } = await import("@/lib/ratelimit");
     const limiter = estimatorLimiter();

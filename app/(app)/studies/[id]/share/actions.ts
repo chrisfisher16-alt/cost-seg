@@ -5,6 +5,7 @@ import { z } from "zod";
 import { assertOwnership, requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { sendCpaInviteEmail } from "@/lib/email/send";
+import { shareInviteLimiter } from "@/lib/ratelimit";
 import {
   buildShareUrl,
   createShare,
@@ -15,7 +16,16 @@ import {
 
 export type ShareActionResult =
   | { ok: true; share: SerializableShareRow; shareUrl: string }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /**
+       * Present only when the owner hit the per-study invite rate-limit.
+       * Client uses this to show a tailored "try again in N minutes"
+       * message instead of the generic error.
+       */
+      retryAfterSec?: number;
+    };
 
 export type SerializableShareRow = Omit<ShareRow, "createdAt" | "acceptedAt" | "revokedAt"> & {
   createdAtIso: string;
@@ -63,6 +73,24 @@ export async function shareStudyAction(
   });
   if (!study) return { ok: false, error: "Study not found." };
   assertOwnership(user, study);
+
+  // Gate after ownership check so a non-owner trying to share someone else's
+  // study doesn't burn their rate-limit budget on a denied request. Keyed
+  // per {studyId, ownerId} — the owner can share across multiple studies
+  // without hitting the limit, and the same study can't be flooded even if
+  // two admin accounts are somehow involved.
+  const gate = await shareInviteLimiter().check(`${studyId}:${user.id}`);
+  if (!gate.ok) {
+    const retryAfterSec = Math.max(1, Math.ceil((gate.resetAt - Date.now()) / 1000));
+    const minutes = Math.max(1, Math.ceil(retryAfterSec / 60));
+    return {
+      ok: false,
+      error: `You've sent 5 invites for this study in the last hour. Try again in ${minutes} ${
+        minutes === 1 ? "minute" : "minutes"
+      }.`,
+      retryAfterSec,
+    };
+  }
 
   let share: ShareRow;
   try {
