@@ -7,7 +7,18 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("sample PDF endpoint (Day 5)", () => {
-  for (const id of ["oak-ridge", "magnolia-duplex", "riverside-commercial"]) {
+  // `addressSnippet` is a distinctive piece of each sample's property address
+  // that we expect to find in the PDF bytes — guards against a template break
+  // that still renders a "valid" PDF shape but with the wrong (or no) property
+  // data. Chosen to be uncompressed-metadata-visible (shows up in Subject/Title
+  // fields, which react-pdf emits without stream compression).
+  const SAMPLES = [
+    { id: "oak-ridge", addressSnippet: "Oak Ridge" },
+    { id: "magnolia-duplex", addressSnippet: "Magnolia" },
+    { id: "riverside-commercial", addressSnippet: "Riverside" },
+  ] as const;
+
+  for (const { id, addressSnippet } of SAMPLES) {
     test(`/api/samples/${id}/pdf returns a PDF`, async ({ request }) => {
       const res = await request.get(`/api/samples/${id}/pdf`);
       expect(res.status(), `${id} pdf returned ${res.status()}`).toBe(200);
@@ -18,6 +29,18 @@ test.describe("sample PDF endpoint (Day 5)", () => {
       const body = await res.body();
       expect(body.byteLength, `${id} pdf body empty`).toBeGreaterThan(1000);
       expect(body.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+
+      // --- brand + content guards ---
+      // The PDF metadata dictionary is uncompressed so Author/Producer/Subject
+      // show up as scannable ASCII in the raw bytes. If the rebrand ever drops
+      // or mangles the brand strings, this assertion fires before the file
+      // ever reaches a customer.
+      const bodyStr = body.toString("latin1");
+      expect(bodyStr, `${id} pdf missing Segra brand string`).toContain("Segra");
+      expect(
+        bodyStr,
+        `${id} pdf missing ${addressSnippet} — template may not be wiring property data`,
+      ).toContain(addressSnippet);
     });
   }
 
