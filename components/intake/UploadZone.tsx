@@ -170,6 +170,19 @@ export function UploadZone({
     setIsDragOver(false);
   }
 
+  // Keyboard affordance for the drop area. <label htmlFor> handles mouse
+  // clicks via native browser behavior, but Tab traversal without a
+  // visible focus state + keyboard-triggered file picker was a dead end
+  // for keyboard-only users. Space/Enter on the focused label now
+  // triggers the hidden input the same way a click would.
+  function onDropZoneKeyDown(event: React.KeyboardEvent<HTMLLabelElement>) {
+    if (disabled) return;
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      inputRef.current?.click();
+    }
+  }
+
   function onRemove(documentId: string, filename: string) {
     if (
       !confirm(`Remove "${filename}"? You can re-upload it any time before we start processing.`)
@@ -195,8 +208,24 @@ export function UploadZone({
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
+        onKeyDown={onDropZoneKeyDown}
+        // role + tabIndex make the drop zone a real focus stop for keyboard
+        // users. The hidden <input> is pulled out of the tab order via
+        // tabIndex={-1} so focus lands on the visible label (which shows a
+        // focus ring) instead of an invisible sr-only input.
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-disabled={disabled || undefined}
+        aria-label={
+          disabled
+            ? `Upload disabled for ${meta.label}`
+            : meta.allowMultiple
+              ? `Upload files for ${meta.label}`
+              : `Upload a file for ${meta.label}`
+        }
         className={cn(
           "group bg-muted/20 relative flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-8 text-center text-sm transition",
+          "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
           disabled
             ? "border-border/60 cursor-not-allowed opacity-60"
             : isDragOver
@@ -212,6 +241,10 @@ export function UploadZone({
           multiple={meta.allowMultiple}
           className="sr-only"
           disabled={disabled}
+          // The <label> above owns the focus affordance — screen readers and
+          // Tab navigation land there with a visible focus ring. Leaving this
+          // input tabbable would create two focus stops for the same control.
+          tabIndex={-1}
           onChange={(e) => {
             if (e.target.files) void handleFiles(e.target.files);
           }}
