@@ -1,6 +1,12 @@
 "use client";
 
-import { CheckCircle2Icon, DollarSignIcon, SaveIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  CheckCircle2Icon,
+  DollarSignIcon,
+  InfoIcon,
+  SaveIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -18,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PROPERTY_TYPES, PROPERTY_TYPE_LABELS, type PropertyType } from "@/lib/estimator/types";
+import { acquiredDateHint } from "@/lib/studies/acquired-date-hint";
 
 interface InitialValues {
   address: string;
@@ -52,6 +59,13 @@ export function PropertyForm({
   const [yearBuilt, setYearBuilt] = useState<string>(initial.yearBuilt?.toString() ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Pin "now" to mount time via useState lazy init — React invokes the
+  // initializer exactly once, so the hint computation stays stable across
+  // keystrokes in the acquired-date input. Refreshing the page picks up
+  // a new reference; fine, this is an intake form, not a long session.
+  const [nowMs] = useState(() => Date.now());
+  const dateHint = acquiredDateHint(acquiredAt, nowMs);
 
   /**
    * Auto-fill city/state/zip when the user picks a Google Places suggestion.
@@ -196,6 +210,7 @@ export function PropertyForm({
             />
           </Field>
         </div>
+        <AcquiredDateHint hint={dateHint} />
       </fieldset>
 
       {error ? (
@@ -223,5 +238,39 @@ export function PropertyForm({
         ) : null}
       </div>
     </form>
+  );
+}
+
+/**
+ * Renders nothing on the happy path (current-year acquisitions). Shows a
+ * primary-toned callout for prior-year placed-in-service dates (Form 3115
+ * territory) and a destructive one for obvious typos (future dates).
+ */
+function AcquiredDateHint({ hint }: { hint: ReturnType<typeof acquiredDateHint> }) {
+  if (hint.kind === "empty" || hint.kind === "current-year") return null;
+
+  const destructive = hint.kind === "future";
+  return (
+    <div
+      className={
+        destructive
+          ? "border-destructive/40 bg-destructive/5 flex items-start gap-3 rounded-lg border p-4 text-sm"
+          : "border-primary/30 bg-primary/5 flex items-start gap-3 rounded-lg border p-4 text-sm"
+      }
+    >
+      {destructive ? (
+        <AlertTriangleIcon className="text-destructive mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      ) : (
+        <InfoIcon className="text-primary mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      )}
+      <div className="space-y-1">
+        {hint.title ? (
+          <p className="text-foreground leading-tight font-medium">{hint.title}</p>
+        ) : null}
+        {hint.message ? (
+          <p className="text-muted-foreground text-xs leading-relaxed">{hint.message}</p>
+        ) : null}
+      </div>
+    </div>
   );
 }

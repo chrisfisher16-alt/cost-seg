@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowRightIcon, DollarSignIcon, LandmarkIcon, SparklesIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  ArrowRightIcon,
+  DollarSignIcon,
+  InfoIcon,
+  LandmarkIcon,
+  SparklesIcon,
+} from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { parseUsdInputToCents } from "@/lib/estimator/format";
 import { PROPERTY_TYPES, PROPERTY_TYPE_LABELS, type PropertyType } from "@/lib/estimator/types";
+import { acquiredDateHint } from "@/lib/studies/acquired-date-hint";
 import { DEFAULT_LAND_PCT } from "@/lib/studies/diy-pipeline";
 
 interface InitialValues {
@@ -52,6 +60,10 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
   const buildingCents = Math.max(0, priceCents - landCents);
   const suggestedLandCents = Math.round(priceCents * DEFAULT_LAND_PCT[propertyType]);
   const showLandSuggestion = priceCents > 0 && landCents === 0 && suggestedLandCents > 0;
+  // Lazy useState init pins "now" to mount without tripping the
+  // react-hooks/purity rule.
+  const [nowMs] = useState(() => Date.now());
+  const dateHint = acquiredDateHint(acquiredAt, nowMs);
 
   function useSuggestion() {
     setLandValue(formatDollars(suggestedLandCents));
@@ -170,6 +182,8 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
             />
           </Field>
         </div>
+
+        <DiyAcquiredDateHint hint={dateHint} />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Square feet" hint="Optional">
@@ -290,4 +304,37 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
 function formatDollars(cents: number): string {
   if (cents <= 0) return "";
   return new Intl.NumberFormat("en-US").format(Math.round(cents / 100));
+}
+
+/**
+ * Same presentation as PropertyForm's AcquiredDateHint — kept local so
+ * each form file is self-contained and we don't pull a 3rd file in for a
+ * 20-line component.
+ */
+function DiyAcquiredDateHint({ hint }: { hint: ReturnType<typeof acquiredDateHint> }) {
+  if (hint.kind === "empty" || hint.kind === "current-year") return null;
+  const destructive = hint.kind === "future";
+  return (
+    <div
+      className={
+        destructive
+          ? "border-destructive/40 bg-destructive/5 flex items-start gap-3 rounded-lg border p-4 text-sm"
+          : "border-primary/30 bg-primary/5 flex items-start gap-3 rounded-lg border p-4 text-sm"
+      }
+    >
+      {destructive ? (
+        <AlertTriangleIcon className="text-destructive mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      ) : (
+        <InfoIcon className="text-primary mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+      )}
+      <div className="space-y-1">
+        {hint.title ? (
+          <p className="text-foreground leading-tight font-medium">{hint.title}</p>
+        ) : null}
+        {hint.message ? (
+          <p className="text-muted-foreground text-xs leading-relaxed">{hint.message}</p>
+        ) : null}
+      </div>
+    </div>
+  );
 }
