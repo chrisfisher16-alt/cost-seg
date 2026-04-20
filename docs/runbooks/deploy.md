@@ -10,8 +10,8 @@ single-operator; optimize for "boring and repeatable" over clever.
 3. Build command: `pnpm build`. Install command: `pnpm install`.
 4. Fill in **every** env var from [`.env.example`](../../.env.example).
    - Mark the `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`,
-     `STRIPE_WEBHOOK_SECRET`, `ANTHROPIC_API_KEY`, `INNGEST_SIGNING_KEY`,
-     and AWS Textract keys as **Sensitive**.
+     `STRIPE_WEBHOOK_SECRET`, `ANTHROPIC_API_KEY`, and
+     `INNGEST_SIGNING_KEY` as **Sensitive**.
    - Set `NEXT_PUBLIC_APP_URL` to the prod URL.
 5. Deploy. First deploy will fail any `useActionState`/Stripe flow without
    keys — expected.

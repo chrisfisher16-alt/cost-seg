@@ -12,8 +12,9 @@ Private and pre-V1. Single operator.
 - Next.js 16 (App Router, Turbopack), React 19, TypeScript strict
 - Supabase (auth + private storage), Postgres via Prisma 7 (driver adapter
   pattern), app-layer authorization (see `docs/adr/0002-authz-without-rls.md`)
-- Anthropic Claude for structured AI output (tool use only)
-- AWS Textract for closing-disclosure OCR
+- Anthropic Claude (vision-capable) for structured AI output and direct
+  document reading — no separate OCR step (see
+  `docs/adr/0006-claude-pdf-over-textract.md`)
 - Stripe Checkout + webhook-driven fulfillment
 - Resend + React Email for transactional mail
 - Inngest for durable background jobs

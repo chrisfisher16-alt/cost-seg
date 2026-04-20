@@ -1,3 +1,4 @@
+import { BRAND } from "@/lib/brand";
 import { aggregateBasisByClass } from "@/lib/pdf/macrs";
 import { computeYearOneProjection } from "@/lib/pdf/year-one";
 
@@ -209,4 +210,18 @@ export function renderPortfolioCsv(
   });
 
   return [header.join(","), ...rows].join("\n") + "\n";
+}
+
+/**
+ * Filename for the portfolio CSV download, scoped by BRAND.name rather than
+ * a hardcoded slug. Future rebrands only need lib/brand.ts to update.
+ *
+ * Shape: `<brand-slug>-portfolio-YYYY-MM-DD.csv`. The date is the UTC calendar
+ * day the export was generated; same-day re-exports reuse the filename (some
+ * browsers auto-suffix `(1)` on duplicates — that's fine).
+ */
+export function portfolioCsvFilename(now: Date = new Date()): string {
+  const slug = BRAND.name.toLowerCase();
+  const date = now.toISOString().slice(0, 10);
+  return `${slug}-portfolio-${date}.csv`;
 }

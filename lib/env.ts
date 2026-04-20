@@ -26,14 +26,10 @@ const serverEnvSchema = z.object({
   // Anthropic
   ANTHROPIC_API_KEY: z.string().min(20),
 
-  // AWS Textract
-  AWS_ACCESS_KEY_ID: z.string().min(10),
-  AWS_SECRET_ACCESS_KEY: z.string().min(10),
-  AWS_REGION: z.string().default("us-east-1"),
-
   // Stripe
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
+  STRIPE_PRICE_ID_DIY: z.string().startsWith("price_"),
   STRIPE_PRICE_ID_TIER_1: z.string().startsWith("price_"),
   STRIPE_PRICE_ID_TIER_2: z.string().startsWith("price_"),
 
@@ -47,6 +43,7 @@ const serverEnvSchema = z.object({
 
   // Sentry
   SENTRY_DSN: z.string().url().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),
@@ -62,6 +59,11 @@ const serverEnvSchema = z.object({
   // Upstash
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
+  // Promo bypass (founder / QA only). When set, enables the `promoCode`
+  // path on /get-started that skips Stripe and creates the study directly.
+  // Leave unset in production — presence of the var is the enable flag.
+  FISHER_PROMO_CODE: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -97,6 +99,7 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().default("https://us.i.posthog.com"),
   NEXT_PUBLIC_GOOGLE_MAPS_KEY: z.string().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
@@ -109,5 +112,6 @@ export function clientEnv(): ClientEnv {
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_GOOGLE_MAPS_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY,
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
   });
 }
