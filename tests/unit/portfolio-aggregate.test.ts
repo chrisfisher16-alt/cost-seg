@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildPortfolioTotals,
+  portfolioCsvFilename,
   renderPortfolioCsv,
   studyToPortfolioRow,
   type PortfolioStudyInput,
@@ -133,5 +134,24 @@ describe("renderPortfolioCsv", () => {
   it("uses the requested bracket in the header label", () => {
     const csv = renderPortfolioCsv([makeStudy()], 0.24);
     expect(csv.split("\n")[0]).toContain("24%");
+  });
+});
+
+describe("portfolioCsvFilename", () => {
+  it("uses the BRAND.name slug, not the legacy 'cost-seg' prefix", () => {
+    const filename = portfolioCsvFilename(new Date("2026-04-20T12:34:56Z"));
+    expect(filename).toBe("segra-portfolio-2026-04-20.csv");
+    expect(filename.startsWith("cost-seg-")).toBe(false);
+  });
+
+  it("formats the date as UTC YYYY-MM-DD (no locale drift)", () => {
+    // Midnight-UTC boundary — would slip to 2026-04-19 in most west-of-UTC
+    // locales if we used `toLocaleDateString` instead of `toISOString`.
+    const filename = portfolioCsvFilename(new Date("2026-04-20T00:00:00Z"));
+    expect(filename).toBe("segra-portfolio-2026-04-20.csv");
+  });
+
+  it("ends with .csv", () => {
+    expect(portfolioCsvFilename()).toMatch(/\.csv$/);
   });
 });

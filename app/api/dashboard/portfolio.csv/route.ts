@@ -1,6 +1,10 @@
 import { requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
-import { renderPortfolioCsv, type PortfolioStudyInput } from "@/lib/studies/aggregate";
+import {
+  portfolioCsvFilename,
+  renderPortfolioCsv,
+  type PortfolioStudyInput,
+} from "@/lib/studies/aggregate";
 
 /**
  * GET /api/dashboard/portfolio.csv
@@ -61,7 +65,7 @@ export async function GET() {
   }));
 
   const csv = renderPortfolioCsv(portfolio);
-  const filename = `cost-seg-portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
+  const filename = portfolioCsvFilename();
 
   return new Response(csv, {
     status: 200,
