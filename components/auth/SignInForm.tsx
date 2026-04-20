@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle2Icon, MailIcon, ShieldCheckIcon } from "lucide-react";
-import { useState, useTransition } from "react";
+import { CheckCircle2Icon, ClockIcon, MailIcon, ShieldCheckIcon } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
 
 import { sendMagicLinkAction } from "@/app/(auth)/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,7 +15,12 @@ type Stage =
   | { kind: "idle" }
   | { kind: "sending" }
   | { kind: "sent"; email: string }
-  | { kind: "error"; message: string };
+  /**
+   * When `retryAfterSec` is set, the submit button stays disabled for that
+   * many seconds — otherwise the user mashes the button and keeps resetting
+   * Supabase's per-email throttle window.
+   */
+  | { kind: "error"; message: string; retryAfterSec?: number };
 
 interface Props {
   next: string | undefined;
@@ -25,17 +30,36 @@ interface Props {
 export function SignInForm({ next, supabaseConfigured }: Props) {
   const [email, setEmail] = useState("");
   const [stage, setStage] = useState<Stage>({ kind: "idle" });
+  const [cooldownSec, setCooldownSec] = useState(0);
   const [isGooglePending, startGoogleTransition] = useTransition();
+
+  // Tick the cooldown down to zero once per second. We stop the interval the
+  // moment it hits 0 so idle users aren't paying a useless setInterval tax.
+  useEffect(() => {
+    if (cooldownSec <= 0) return;
+    const id = window.setInterval(() => {
+      setCooldownSec((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [cooldownSec]);
 
   async function submitEmail(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (stage.kind === "sending") return;
+    if (stage.kind === "sending" || cooldownSec > 0) return;
     setStage({ kind: "sending" });
     const result = await sendMagicLinkAction(email, next);
     if (result.ok) {
       setStage({ kind: "sent", email });
+      setCooldownSec(0);
     } else {
-      setStage({ kind: "error", message: result.error });
+      setStage({
+        kind: "error",
+        message: result.error,
+        retryAfterSec: result.retryAfterSec,
+      });
+      if (result.retryAfterSec && result.retryAfterSec > 0) {
+        setCooldownSec(result.retryAfterSec);
+      }
     }
   }
 
@@ -96,6 +120,18 @@ export function SignInForm({ next, supabaseConfigured }: Props) {
   }
 
   const sending = stage.kind === "sending";
+  const onCooldown = cooldownSec > 0;
+  // While the cooldown is ticking, we suppress the original "try again in
+  // Ns" copy and show a live countdown instead — otherwise the user reads
+  // a stale number as the real one ticks down silently.
+  const errorMessage =
+    stage.kind === "error"
+      ? onCooldown
+        ? `Supabase is throttling magic-link emails — try again in ${cooldownSec} ${
+            cooldownSec === 1 ? "second" : "seconds"
+          }.`
+        : stage.message
+      : null;
 
   return (
     <div className="space-y-6">
@@ -119,12 +155,14 @@ export function SignInForm({ next, supabaseConfigured }: Props) {
           className="w-full"
           loading={sending}
           loadingText="Sending magic link…"
+          disabled={onCooldown}
+          leadingIcon={onCooldown ? <ClockIcon /> : undefined}
         >
-          Email me a magic link
+          {onCooldown ? `Try again in ${cooldownSec}s` : "Email me a magic link"}
         </Button>
-        {stage.kind === "error" ? (
-          <Alert variant="destructive" role="alert">
-            <AlertDescription>{stage.message}</AlertDescription>
+        {errorMessage ? (
+          <Alert variant="destructive" role="alert" aria-live="polite">
+            <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         ) : null}
       </form>

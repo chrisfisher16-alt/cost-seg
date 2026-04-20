@@ -4,9 +4,20 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { classifyMagicLinkError } from "@/lib/auth/magic-link-error";
 import { createServerSupabase, isSupabaseConfigured } from "@/lib/supabase/server";
 
-export type SignInResult = { ok: true } | { ok: false; error: string };
+export type SignInResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      /**
+       * Present only when Supabase throttled the send. The client uses this
+       * to drive a countdown before re-enabling the submit button.
+       */
+      retryAfterSec?: number;
+    };
 
 const emailSchema = z.string().trim().min(3).max(254).email("Enter a valid email address.");
 
@@ -17,10 +28,12 @@ function callbackUrl(next: string | undefined): string {
 }
 
 /**
- * Email the visitor a magic link. Supabase throttles per-email, so we don't
- * add our own rate limit here; the browser shows a "check your email"
- * confirmation regardless of whether the account exists (prevents email
- * enumeration).
+ * Email the visitor a magic link. Supabase throttles per-email with a
+ * `status: 429` + "after N seconds" message — we classify the error so the
+ * UI can show an honest countdown instead of a generic "try again shortly."
+ *
+ * The success response is identical whether or not the email belongs to a
+ * real account (prevents email enumeration).
  */
 export async function sendMagicLinkAction(
   email: string,
@@ -48,7 +61,12 @@ export async function sendMagicLinkAction(
   });
 
   if (error) {
-    return { ok: false, error: "Could not send the magic link. Try again shortly." };
+    const classified = classifyMagicLinkError(error);
+    return {
+      ok: false,
+      error: classified.message,
+      ...(classified.retryAfterSec !== null ? { retryAfterSec: classified.retryAfterSec } : {}),
+    };
   }
   return { ok: true };
 }
