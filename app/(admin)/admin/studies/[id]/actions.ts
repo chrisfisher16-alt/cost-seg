@@ -208,3 +208,111 @@ export async function adminUploadSignedStudyAction(
   revalidatePath("/admin/engineer-queue");
   return { ok: true };
 }
+
+export type BulkMarkFailedOutcome =
+  | { studyId: string; ok: true }
+  | { studyId: string; ok: false; error: string };
+
+export type BulkMarkFailedResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      /** Per-study outcomes in the order they were submitted. */
+      results: BulkMarkFailedOutcome[];
+    };
+
+/**
+ * Mark multiple studies as FAILED with one shared reason. The typical use case
+ * is spotting a batch with the same blocker in the engineer queue (e.g. every
+ * closing disclosure got redacted) — this lets admin clear the queue with one
+ * action instead of opening each study individually.
+ *
+ * We process studies sequentially inside a single action call so partial
+ * failure is honest: the caller gets per-study `ok: true | false` so the UI
+ * can toast "N succeeded, M skipped" with specific reasons. We intentionally
+ * DON'T wrap the whole thing in a single Prisma transaction — one malformed
+ * study shouldn't roll back the other 4 that succeeded.
+ *
+ * Hard caps at 50 studies per call to keep the action under serverless
+ * timeouts even if the Prisma round-trips slow down.
+ */
+export async function adminBulkMarkFailedAction(
+  studyIds: string[],
+  reason: string,
+): Promise<BulkMarkFailedResult> {
+  const { user } = await requireRole(["ADMIN"]);
+
+  const trimmed = reason.trim();
+  if (trimmed.length < 3 || trimmed.length > 500) {
+    return { ok: false, error: "Reason must be 3–500 characters." };
+  }
+
+  // Dedup + cap. Order is preserved so the UI's "results" array lines up
+  // with the checkbox selection the admin submitted.
+  const unique = Array.from(new Set(studyIds.filter((id) => typeof id === "string" && id.length)));
+  if (unique.length === 0) {
+    return { ok: false, error: "No studies selected." };
+  }
+  if (unique.length > 50) {
+    return { ok: false, error: "Bulk mark is capped at 50 studies — do it in batches." };
+  }
+
+  const prisma = getPrisma();
+  const results: BulkMarkFailedOutcome[] = [];
+
+  for (const studyId of unique) {
+    const study = await prisma.study.findUnique({
+      where: { id: studyId },
+      select: { id: true, status: true },
+    });
+    if (!study) {
+      results.push({ studyId, ok: false, error: "Study not found" });
+      continue;
+    }
+    if (study.status === "DELIVERED") {
+      results.push({
+        studyId,
+        ok: false,
+        error: "Already DELIVERED — refund instead of marking failed.",
+      });
+      continue;
+    }
+    if (study.status === "FAILED") {
+      // Idempotent: re-marking a failed study is a no-op, not an error.
+      results.push({ studyId, ok: true });
+      continue;
+    }
+
+    try {
+      await prisma.$transaction([
+        prisma.study.update({
+          where: { id: studyId },
+          data: { status: "FAILED", failedReason: trimmed },
+        }),
+        prisma.studyEvent.create({
+          data: {
+            studyId,
+            kind: "admin.marked_failed",
+            actorId: user.id,
+            payload: {
+              priorStatus: study.status,
+              reason: trimmed,
+              bulk: true,
+            } as Prisma.InputJsonValue,
+          },
+        }),
+      ]);
+      results.push({ studyId, ok: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown DB error";
+      results.push({ studyId, ok: false, error: message });
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/engineer-queue");
+  for (const r of results) {
+    if (r.ok) revalidatePath(`/admin/studies/${r.studyId}`);
+  }
+  return { ok: true, results };
+}

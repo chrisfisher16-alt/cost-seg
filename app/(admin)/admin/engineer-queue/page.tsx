@@ -3,6 +3,7 @@ import type { PropertyType } from "@prisma/client";
 import Link from "next/link";
 import { ArrowRightIcon, ClockIcon } from "lucide-react";
 
+import { EngineerQueueList } from "@/components/admin/EngineerQueueList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -195,11 +196,13 @@ export default async function AdminEngineerQueuePage({ searchParams }: Props) {
           </CardContent>
         </Card>
       ) : (
-        <ul className="space-y-3">
-          {visible.map((row) => (
-            <QueueRowCard key={row.id} row={row} />
-          ))}
-        </ul>
+        <EngineerQueueList
+          items={visible.map((row) => ({
+            id: row.id,
+            label: `${row.property.address} · ${row.property.city}, ${row.property.state}`,
+            node: <QueueRowCard row={row} />,
+          }))}
+        />
       )}
     </div>
   );
@@ -250,53 +253,54 @@ function QueueRowCard({ row }: { row: QueueRow & { hours: number; bucket: AgeBuc
         ? "bg-warning/10 text-warning-foreground border-warning/30"
         : "bg-success/10 text-success border-success/30";
   const customerLabel = row.user.name?.trim() || row.user.email;
+  // The wrapping <li> is now provided by EngineerQueueList so each row can
+  // share a row with its selection checkbox. Rendering <li> here too would
+  // nest list-items invalidly.
   return (
-    <li>
-      <Card
-        className={cn(
-          "transition hover:shadow-md",
-          row.bucket === "overdue" && "border-destructive/40",
-          row.bucket === "aging" && "border-warning/40",
-        )}
-      >
-        <CardContent className="flex flex-wrap items-start gap-4 p-5">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-semibold">{row.property.address}</h2>
-              <Badge variant="muted" size="sm">
-                {PROPERTY_TYPE_SHORT[row.property.propertyType]}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {row.property.city}, {row.property.state}
-            </p>
-            <p className="text-muted-foreground mt-2 text-xs">
-              Customer <span className="text-foreground font-medium">{customerLabel}</span> ·{" "}
-              {formatCents(row.pricePaidCents)} · Created{" "}
-              {row.createdAt.toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}
-            </p>
+    <Card
+      className={cn(
+        "transition hover:shadow-md",
+        row.bucket === "overdue" && "border-destructive/40",
+        row.bucket === "aging" && "border-warning/40",
+      )}
+    >
+      <CardContent className="flex flex-wrap items-start gap-4 p-5">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-semibold">{row.property.address}</h2>
+            <Badge variant="muted" size="sm">
+              {PROPERTY_TYPE_SHORT[row.property.propertyType]}
+            </Badge>
           </div>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {row.property.city}, {row.property.state}
+          </p>
+          <p className="text-muted-foreground mt-2 text-xs">
+            Customer <span className="text-foreground font-medium">{customerLabel}</span> ·{" "}
+            {formatCents(row.pricePaidCents)} · Created{" "}
+            {row.createdAt.toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
+        </div>
 
-          <div className="flex flex-col items-end gap-3">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-[11px] font-medium tracking-wider uppercase",
-                agePillTone,
-              )}
-              data-tabular
-            >
-              <ClockIcon className="h-3 w-3" aria-hidden />
-              Waiting {formatAge(row.hours)}
-            </span>
-            <Button asChild size="sm" trailingIcon={<ArrowRightIcon />}>
-              <Link href={`/admin/studies/${row.id}` as Route}>Open inspector</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </li>
+        <div className="flex flex-col items-end gap-3">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-[11px] font-medium tracking-wider uppercase",
+              agePillTone,
+            )}
+            data-tabular
+          >
+            <ClockIcon className="h-3 w-3" aria-hidden />
+            Waiting {formatAge(row.hours)}
+          </span>
+          <Button asChild size="sm" trailingIcon={<ArrowRightIcon />}>
+            <Link href={`/admin/studies/${row.id}` as Route}>Open inspector</Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
