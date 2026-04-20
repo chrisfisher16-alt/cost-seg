@@ -6,13 +6,23 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 10 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 11 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
-- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (35 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 56/56 Playwright
+- ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 11 (UI hardening — error boundaries + loading skeletons + empty states):**
+
+- **Error boundaries for every route group.** Zero `error.tsx` files existed before this slice, which meant any unhandled server error threw a blank white screen. Now: `app/global-error.tsx` (catastrophic fallback, inline styles so it works even if Tailwind fails), `app/error.tsx` (minimal branded header), `app/(app)/error.tsx`, `app/(admin)/error.tsx`, `app/(marketing)/error.tsx`. All use Next 16's `unstable_retry` API; all surface `error.digest` for Sentry cross-referencing; all render inside their group's existing header so users keep nav context.
+- **`components/shared/ErrorFallback.tsx`** — shared card-based fallback UI with custom-action slot. Used by every error.tsx so tone, icon, retry button, and layout stay consistent.
+- **Loading skeletons on every slow authenticated route.** Six new `loading.tsx` files that mirror the actual page shape (not generic spinners): `/dashboard`, `/studies/[id]/view`, `/studies/[id]/diy`, `/admin`, `/admin/engineer-queue`, `/admin/studies/[id]`. Eliminates cumulative-layout-shift on first paint.
+- **Global `app/not-found.tsx`.** Real 404 page with brand header and three recovery CTAs (home, pricing, samples). Previously any bad URL showed Next.js's default error page.
+- **Empty-state hardening.** Admin pipeline now distinguishes "no filter matches" from "no studies yet" — filter-match state gets a "Clear all filters" link. Engineer queue explains **why** the queue is empty ("studies land here after AI pipeline completes") instead of a bare "Queue is empty." line.
+- **`.claude/launch.json`** — project-shared dev-server manifest with five entries: `next-dev`, `inngest-dev`, `stripe-listen`, `prisma-studio`, `vitest-ui`. Future Claude sessions can spin up exactly what they need.
+- **Two new e2e specs** verify the 404 page renders for both unknown routes (`/this-route-does-not-exist-*`) and unknown sample IDs (`/samples/this-sample-is-fake`).
 
 **What landed in Day 10 (Playwright e2e coverage):**
 
