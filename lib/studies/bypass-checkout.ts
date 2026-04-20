@@ -1,5 +1,7 @@
 import "server-only";
 
+import { timingSafeEqual } from "node:crypto";
+
 import type Stripe from "stripe";
 
 import type { PropertyType } from "@prisma/client";
@@ -130,9 +132,22 @@ export function promoBypassEnabled(): boolean {
   return Boolean(code && code.trim().length > 0);
 }
 
-/** Verify a user-supplied code. Case-insensitive, trim-safe. */
+/**
+ * Verify a user-supplied code. Case-insensitive, trim-safe.
+ *
+ * Uses `timingSafeEqual` so a byte-by-byte compare can't leak the prefix of
+ * the secret under timing analysis. The length pre-check is intentionally
+ * non-constant-time: the length of the promo env var is not the secret — the
+ * value is — and `timingSafeEqual` requires equal-length buffers.
+ */
 export function promoCodeMatches(userInput: string): boolean {
-  const expected = process.env.FISHER_PROMO_CODE?.trim();
+  const raw = process.env.FISHER_PROMO_CODE;
+  if (!raw) return false;
+  const expected = raw.trim().toLowerCase();
   if (!expected) return false;
-  return userInput.trim().toLowerCase() === expected.toLowerCase();
+  const provided = userInput.trim().toLowerCase();
+  const a = Buffer.from(provided, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }

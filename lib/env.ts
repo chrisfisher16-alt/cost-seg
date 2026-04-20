@@ -64,6 +64,11 @@ const serverEnvSchema = z.object({
   // Upstash
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
+  // Promo bypass (founder / QA only). When set, enables the `promoCode`
+  // path on /get-started that skips Stripe and creates the study directly.
+  // Leave unset in production — presence of the var is the enable flag.
+  FISHER_PROMO_CODE: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
