@@ -6,13 +6,21 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 12 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 13 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 13 (motion polish — the delivery celebration):**
+
+- **Confetti palette fix (`components/shared/Celebration.tsx`).** The brand OKLCH color strings had inconsistent browser support inside canvas `fillStyle` — on some browsers the confetti silently rendered transparent. Swapped to four hex equivalents of the brand tokens (emerald-700, emerald-500, info blue, amber). Also re-tuned the three-burst sequence with explicit angles so the left/right cannons emanate inward (previously they fell straight down).
+- **Headline KPI count-up (`components/shared/useCountUp.ts` — new 40-line hook).** The year-one deduction on the delivery celebration screen now pops from $0 and settles at the real number over 900ms with an ease-out-cubic curve. Pairs with the confetti burst — both animations land together. RAF-driven, respects `prefers-reduced-motion`, SSR-safe.
+- **Step-icon transitions (`PipelineLive` StepIcon).** Added `key` props on each state branch so React remounts the span when a step flips pending → active → done → error. The `scale-in` keyframe fires on the new icon — a subtle pop as each step completes. All `motion-safe:` so reduced-motion users get instant state swaps. The processing spinner stays always-active (functional "working" indicator, not decorative).
+- **Delivered-panel entrance.** The Card now slides in from the bottom with a 400ms ease-out-cubic on mount, paired with the headline count-up for a cohesive reveal.
+- **Reduced-motion coverage verified.** Every new animation is either `motion-safe:` (disabled under reduce) or checks `prefers-reduced-motion` internally (useCountUp, confetti).
 
 **What landed in Day 12 (marketing copy proofread — kill stale roadmap promises):**
 
