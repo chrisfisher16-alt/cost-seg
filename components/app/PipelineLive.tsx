@@ -22,6 +22,7 @@ import { CelebrationTrigger } from "@/components/shared/Celebration";
 import { ShareStudyDialog } from "@/components/app/ShareStudyDialog";
 import { Kpi } from "@/components/shared/Kpi";
 import { useCountUp } from "@/components/shared/useCountUp";
+import { BRAND } from "@/lib/brand";
 import { classifyFailure } from "@/lib/studies/failure-reason";
 import { estimatePipelineEta, type EtaStep, type EtaStepId } from "@/lib/studies/pipeline-eta";
 import { statusLabel } from "@/lib/studies/status-label";
@@ -225,10 +226,10 @@ function QueuedPanel({
                 It&rsquo;s been more than three minutes and the worker still hasn&rsquo;t picked up
                 the job. Email{" "}
                 <a
-                  href="mailto:support@segra.tax?subject=Segra%20pipeline%20never%20started"
+                  href={`mailto:${BRAND.email.support}?subject=${encodeURIComponent(`${BRAND.name} pipeline never started`)}`}
                   className="text-foreground underline-offset-2 hover:underline"
                 >
-                  support@segra.tax
+                  {BRAND.email.support}
                 </a>{" "}
                 and we&rsquo;ll kick it off manually — no charge until delivery.
               </p>
@@ -500,7 +501,7 @@ function DeliveredPanel({
 
 function FailedPanel({ state, studyId }: { state: ProcessingStateResult; studyId: string }) {
   const failure = classifyFailure(state.failureReason, studyId);
-  const mailto = `mailto:support@segra.tax?subject=${encodeURIComponent(failure.supportSubject)}`;
+  const mailto = `mailto:${BRAND.email.support}?subject=${encodeURIComponent(failure.supportSubject)}`;
 
   return (
     <Card className="border-destructive/40 bg-destructive/5">

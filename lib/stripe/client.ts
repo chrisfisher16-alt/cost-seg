@@ -2,6 +2,8 @@ import "server-only";
 
 import Stripe from "stripe";
 
+import { BRAND } from "@/lib/brand";
+
 let instance: Stripe | null = null;
 
 /**
@@ -16,9 +18,12 @@ export function getStripe(): Stripe {
   if (!key) {
     throw new Error("STRIPE_SECRET_KEY is required to use the Stripe client.");
   }
+  // `appInfo.name` surfaces in Stripe dashboards, webhook event logs, and
+  // billing reports — keyed on BRAND.name so it follows a rebrand rather
+  // than leaking the internal npm package slug.
   instance = new Stripe(key, {
     typescript: true,
-    appInfo: { name: "cost-seg", version: "0.1.0" },
+    appInfo: { name: BRAND.name, version: "0.1.0" },
   });
   return instance;
 }

@@ -7,6 +7,7 @@ import { BrandMark } from "@/components/shared/BrandMark";
 import { Container } from "@/components/shared/Container";
 import { Card, CardContent } from "@/components/ui/card";
 import { getOptionalAuth } from "@/lib/auth/require";
+import { BRAND } from "@/lib/brand";
 import { acceptShareByToken } from "@/lib/studies/share";
 import { classifyShareError } from "@/lib/studies/share-error";
 
@@ -65,7 +66,7 @@ function AcceptFailurePage({ error }: { error: unknown }) {
                   <a href={classified.recoveryHref}>{classified.recoveryLabel}</a>
                 </Button>
                 <Button asChild variant="ghost">
-                  <a href="mailto:support@segra.tax">Contact support</a>
+                  <a href={`mailto:${BRAND.email.support}`}>Contact support</a>
                 </Button>
               </div>
             </CardContent>

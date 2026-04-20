@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { Container } from "@/components/shared/Container";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Terms" };
 
@@ -18,9 +19,12 @@ export default function TermsPage() {
         <p className="text-muted-foreground text-sm">Effective {EFFECTIVE}.</p>
 
         <p>
-          These terms govern your use of Segra (the &ldquo;Service&rdquo;). By creating an account
-          or paying for a study, you agree to them. If something&rsquo;s unclear, write to{" "}
-          <span className="font-mono">support@segra.tax</span>.
+          These terms govern your use of {BRAND.name} (the &ldquo;Service&rdquo;). By creating an
+          account or paying for a study, you agree to them. If something&rsquo;s unclear, write to{" "}
+          <a href={`mailto:${BRAND.email.support}`} className="font-mono">
+            {BRAND.email.support}
+          </a>
+          .
         </p>
 
         <h2>What the Service is</h2>
@@ -138,9 +142,12 @@ export default function TermsPage() {
         <h2>Termination</h2>
         <p>
           You can close your account at any time by emailing{" "}
-          <span className="font-mono">support@segra.tax</span>. We may suspend or terminate accounts
-          that violate acceptable use, with notice where practical. Delivered studies remain yours;
-          you&rsquo;ll get a 30-day window to export them before we honor any deletion request.
+          <a href={`mailto:${BRAND.email.support}`} className="font-mono">
+            {BRAND.email.support}
+          </a>
+          . We may suspend or terminate accounts that violate acceptable use, with notice where
+          practical. Delivered studies remain yours; you&rsquo;ll get a 30-day window to export them
+          before we honor any deletion request.
         </p>
 
         <h2>Governing law</h2>
@@ -160,7 +167,10 @@ export default function TermsPage() {
         <h2>Contact</h2>
         <p>
           Questions, complaints, or weird legal requests?{" "}
-          <span className="font-mono">legal@segra.tax</span>.
+          <a href={`mailto:${BRAND.email.legal}`} className="font-mono">
+            {BRAND.email.legal}
+          </a>
+          .
         </p>
       </div>
     </Container>

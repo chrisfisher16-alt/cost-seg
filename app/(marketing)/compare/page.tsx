@@ -8,6 +8,7 @@ import { Section, SectionHeader } from "@/components/shared/Section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
   title: "Compare",
@@ -163,8 +164,11 @@ export default function ComparePage() {
           </h1>
           <p className="text-muted-foreground mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-balance">
             Every claim below is sourced to the competitor&rsquo;s public website. If you spot a
-            mistake, email <span className="font-mono">compare@segra.tax</span> and we&rsquo;ll
-            update.
+            mistake, email{" "}
+            <a href={`mailto:${BRAND.email.compare}`} className="font-mono">
+              {BRAND.email.compare}
+            </a>{" "}
+            and we&rsquo;ll update.
           </p>
           <p className="text-muted-foreground mt-4 text-xs">
             Comparison reflects public information as of April 2026. Features and pricing subject to

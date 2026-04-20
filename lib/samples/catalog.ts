@@ -1,5 +1,7 @@
 import type { PropertyType } from "@prisma/client";
 
+import { BRAND } from "@/lib/brand";
+
 /**
  * Public-facing sample studies. These power the /samples gallery, the
  * /samples/[id] deep-dive, and the /api/samples/[id]/pdf route that renders
@@ -334,6 +336,17 @@ export const DEFAULT_SAMPLE_ID = "oak-ridge";
 /** Look up a sample by id. Returns null for unknown ids — callers should 404. */
 export function getSample(id: string): Sample | null {
   return SAMPLES[id] ?? null;
+}
+
+/**
+ * Filename for a sample-PDF download. Keyed on `BRAND.name` so future
+ * rebrands don't leak the old slug into every file visitors save. Mirrors
+ * the `portfolioCsvFilename` pattern (see lib/studies/aggregate.ts) —
+ * `<brand-slug>-sample-<sample-id>.pdf`.
+ */
+export function samplePdfFilename(sampleId: string): string {
+  const slug = BRAND.name.toLowerCase();
+  return `${slug}-sample-${sampleId}.pdf`;
 }
 
 const CATEGORY_TO_MACRS: Record<SampleCategory, "5yr" | "7yr" | "15yr" | "39yr"> = {

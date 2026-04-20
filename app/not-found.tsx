@@ -5,6 +5,7 @@ import { BrandMark } from "@/components/shared/BrandMark";
 import { Container } from "@/components/shared/Container";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BRAND } from "@/lib/brand";
 
 export const metadata = { title: "Not found" };
 
@@ -49,10 +50,10 @@ export default function NotFoundPage() {
               <p className="text-muted-foreground border-border/60 border-t pt-5 text-xs">
                 Followed a link that should work? Let us know at{" "}
                 <a
-                  href="mailto:support@segra.tax"
+                  href={`mailto:${BRAND.email.support}`}
                   className="text-foreground font-medium underline-offset-2 hover:underline"
                 >
-                  support@segra.tax
+                  {BRAND.email.support}
                 </a>
                 .
               </p>

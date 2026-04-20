@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Container } from "@/components/shared/Container";
+import { BRAND } from "@/lib/brand";
 
 interface Props {
   /** The caught error — Next passes this to every `error.tsx`. */
@@ -56,10 +57,10 @@ export function ErrorFallback({ error, retry, title, description, action }: Prop
           <p className="text-muted-foreground border-border/60 border-t pt-4 text-xs">
             Still stuck? Email{" "}
             <a
-              href="mailto:support@segra.tax"
+              href={`mailto:${BRAND.email.support}`}
               className="text-foreground font-medium underline-offset-2 hover:underline"
             >
-              support@segra.tax
+              {BRAND.email.support}
             </a>
             {error.digest ? " and include the error ref above" : ""}.
           </p>

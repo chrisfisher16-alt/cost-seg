@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { PROPERTY_TYPE_LABELS } from "@/lib/estimator/types";
 import { renderAiReportPdf } from "@/lib/pdf/render";
 import { samplePdfLimiter } from "@/lib/ratelimit";
-import { buildSampleSchedule, getSample } from "@/lib/samples/catalog";
+import { buildSampleSchedule, getSample, samplePdfFilename } from "@/lib/samples/catalog";
 import { hashIp, resolveIp } from "@/lib/server/request-ip";
 
 /**
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     bonusEligible: sample.bonusRate >= 100,
   });
 
-  const filename = `cost-seg-sample-${sample.id}.pdf`;
+  const filename = samplePdfFilename(sample.id);
 
   const body = new Uint8Array(buffer);
   return new Response(body, {

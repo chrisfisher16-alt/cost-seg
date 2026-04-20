@@ -23,6 +23,10 @@ export const BRAND = {
     from: "Segra <noreply@segra.tax>",
     domain: "segra.tax",
     support: "support@segra.tax",
+    sales: "sales@segra.tax",
+    legal: "legal@segra.tax",
+    privacy: "privacy@segra.tax",
+    compare: "compare@segra.tax",
   },
   colors: {
     navy: "#0F2E47",

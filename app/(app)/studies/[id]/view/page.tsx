@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { requireAuth } from "@/lib/auth/require";
+import { BRAND } from "@/lib/brand";
 import { getPrisma } from "@/lib/db/client";
 import { DEFAULT_BRACKET } from "@/lib/estimator/compute";
 import { PROPERTY_TYPE_LABELS } from "@/lib/estimator/types";
@@ -362,7 +363,8 @@ export default async function StudyViewPage({ params }: Props) {
                   <p className="text-sm font-medium">Questions?</p>
                   <p className="text-muted-foreground text-xs leading-relaxed">
                     You have read-only access. Reach out to {study.user.email} for context or
-                    changes. For anything Segra–side, email support@segra.tax.
+                    changes. For anything {BRAND.name}–side, email{" "}
+                    <a href={`mailto:${BRAND.email.support}`}>{BRAND.email.support}</a>.
                   </p>
                 </CardContent>
               </Card>

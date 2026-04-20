@@ -26,6 +26,9 @@ test.describe("sample PDF endpoint (Day 5)", () => {
       const disposition = res.headers()["content-disposition"] ?? "";
       expect(disposition).toMatch(/attachment|inline/i);
       expect(disposition).toMatch(/\.pdf/);
+      // Filename must use the Segra brand slug — no regression to `cost-seg-*`.
+      expect(disposition).toContain(`segra-sample-${id}.pdf`);
+      expect(disposition).not.toMatch(/cost-seg-sample-/);
       const body = await res.body();
       expect(body.byteLength, `${id} pdf body empty`).toBeGreaterThan(1000);
       expect(body.subarray(0, 5).toString("ascii")).toBe("%PDF-");
@@ -134,6 +137,35 @@ test.describe("Stripe webhook endpoint", () => {
     // exports POST — confirms the endpoint doesn't accidentally leak 200s
     // to a curious browser.
     expect(res.status()).toBe(405);
+  });
+});
+
+test.describe("legal pages — effective-date stability", () => {
+  // `/legal/scope-disclosure` previously rendered `Last updated ${new
+  // Date().toLocaleDateString()}` — so the date ticked forward on every reload
+  // and mutated with the viewer's locale (4/20/2026 vs 20/04/2026). A legal
+  // page's last-updated timestamp is load-bearing trust signal; it must be a
+  // static string derived from the last actual edit, not the request time.
+
+  test("/legal/scope-disclosure last-updated is static across reloads", async ({ page }) => {
+    await page.goto("/legal/scope-disclosure");
+    const firstText = (await page.locator("body").textContent()) ?? "";
+    const firstMatch = firstText.match(/Last updated ([^.]+)\./);
+    expect(firstMatch, "last-updated line missing").not.toBeNull();
+
+    // Reload — same string must render. If Date.now() is leaking into the
+    // page, two renders under Playwright are guaranteed to share a date, so
+    // we also check the value doesn't look like a locale-formatted date.
+    await page.reload();
+    const secondText = (await page.locator("body").textContent()) ?? "";
+    const secondMatch = secondText.match(/Last updated ([^.]+)\./);
+    expect(secondMatch?.[1]).toBe(firstMatch?.[1]);
+
+    // Plain US locale would render `4/20/2026` — reject that shape.
+    expect(
+      firstMatch?.[1],
+      "last-updated is locale-formatted — should be a static English date string",
+    ).not.toMatch(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
   });
 });
 
