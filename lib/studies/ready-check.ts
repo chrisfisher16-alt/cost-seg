@@ -83,10 +83,24 @@ export async function emitDocumentsReadyIfComplete(studyId: string): Promise<boo
   });
   if (prior) return false;
 
-  await inngest.send({
-    name: "study.documents.ready",
-    data: { studyId, tier: study.tier },
-  });
+  // A failed Inngest emit must not take down the caller — the customer's
+  // upload already succeeded and their Document row is persisted. If the
+  // Inngest dev server is down (ECONNREFUSED) or the cloud endpoint is
+  // unreachable, we log + swallow; the next finalize retries automatically
+  // because we haven't written the documents.ready guard row yet.
+  try {
+    await inngest.send({
+      name: "study.documents.ready",
+      data: { studyId, tier: study.tier },
+    });
+  } catch (err) {
+    console.error("[ready-check] inngest.send failed — study will retry on next finalize", {
+      studyId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+
   await prisma.studyEvent.create({
     data: {
       studyId,
