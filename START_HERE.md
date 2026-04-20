@@ -6,13 +6,20 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 14 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 15 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 15 (dashboard UX hardening):**
+
+- **Share revoke now confirms before firing.** Clicking the trash icon on a share row used to revoke access instantly — one misclick would cut off a CPA mid-review. Now prompts with an action-specific message: for ACCEPTED shares "Revoke X's access? They will immediately lose access to this study"; for PENDING shares "Cancel the invite to X?". Toast feedback and aria-labels both updated to match the actual action.
+- **CPA role surfaced in `AppHeader`.** Previously a CPA user only saw the workspace badge on the dashboard PageHeader — easy to miss when navigating to other pages. Now a small "CPA" badge sits next to the BrandMark in the header on every authenticated page, so the role is always visible.
+- **Shared-studies load: error vs empty now render differently.** Before, the try/catch in `safeListShared` swallowed errors into an empty array — customers couldn't tell if zero clients had shared or if the DB was down. Now the helper returns a discriminated `{ ok: true, shares } | { ok: false, error }` result. On error the dashboard shows a warning banner with a support email; on true-empty the section is hidden for customers and shows a scoped empty-state card for CPAs ("When your clients run a study, they can share it with you in one click").
+- **Null-safety on shared-study card owner label.** The "Shared by X" badge used `name ?? email`. If both columns were null/empty (pathological but possible), the label rendered "undefined". Now falls through `name.trim()` → `email.trim()` → "the owner".
 
 **What landed in Day 14 (legal pages proofread — Privacy, Terms, Methodology):**
 
