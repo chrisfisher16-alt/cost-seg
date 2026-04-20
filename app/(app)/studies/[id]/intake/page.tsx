@@ -1,7 +1,13 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { EyeIcon, FileIcon, HelpCircleIcon, ShieldCheckIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  EyeIcon,
+  FileIcon,
+  HelpCircleIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 
 import { IntakeProgress } from "@/components/intake/IntakeProgress";
 import { PropertyForm } from "@/components/intake/PropertyForm";
@@ -15,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { assertOwnership, requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { CATALOG, formatCents } from "@/lib/stripe/catalog";
+import { computeNextAction } from "@/lib/studies/next-action";
 import { getIntakeCompleteness } from "@/lib/studies/ready-check";
 import type { DocumentKind } from "@prisma/client";
 
@@ -33,6 +40,7 @@ async function loadStudy(studyId: string) {
         status: true,
         pricePaidCents: true,
         createdAt: true,
+        updatedAt: true,
         property: {
           select: {
             address: true,
@@ -78,6 +86,24 @@ export default async function StudyIntakePage({ params }: Props) {
   const entry = CATALOG[study.tier];
   const processing = study.status === "PROCESSING" || study.status === "AI_COMPLETE";
 
+  // Server Component: eslint disables purity because Date.now() here is
+  // pinned to the request timestamp, same pattern used on the dashboard.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+  const nextAction = computeNextAction({
+    status: study.status,
+    tier: study.tier,
+    updatedAtMs: study.updatedAt.getTime(),
+    nowMs,
+    missingRequiredDocs: completeness.missingKinds.length,
+  });
+  // Stuck = AWAITING_DOCUMENTS for ≥72h. Dashboard StudyCards already show
+  // this; the intake page itself didn't — so a user who opened their old
+  // welcome email landed on intake without any signal that their study has
+  // been sitting. Warning tone banner replaces the "close this tab" copy
+  // in the stuck case.
+  const showStuckWarning = !locked && !processing && nextAction.tone === "warning";
+
   const docsByKind = new Map<DocumentKind, typeof study.documents>();
   for (const d of study.documents) {
     const bucket = docsByKind.get(d.kind) ?? [];
@@ -114,7 +140,25 @@ export default async function StudyIntakePage({ params }: Props) {
         }
       />
 
-      {!locked && !processing ? (
+      {showStuckWarning ? (
+        <div className="border-warning/40 bg-warning/5 text-foreground mt-6 flex items-start gap-3 rounded-lg border p-4 text-sm">
+          <AlertTriangleIcon className="text-warning mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <div>
+            <p className="font-medium">This study has been waiting on you.</p>
+            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+              {nextAction.hint} If you&rsquo;re blocked on a document, reply to your welcome email
+              or ping{" "}
+              <a
+                href="mailto:support@segra.tax"
+                className="text-foreground underline-offset-2 hover:underline"
+              >
+                support@segra.tax
+              </a>{" "}
+              and we&rsquo;ll help.
+            </p>
+          </div>
+        </div>
+      ) : !locked && !processing ? (
         <div className="border-primary/30 bg-primary/5 text-foreground mt-6 flex items-start gap-3 rounded-lg border p-4 text-sm">
           <ShieldCheckIcon className="text-primary mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <div>
