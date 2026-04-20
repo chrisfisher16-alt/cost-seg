@@ -6,13 +6,21 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 13 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 14 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 14 (legal pages proofread — Privacy, Terms, Methodology):**
+
+- **Privacy policy — skeletal stub replaced with substantive copy.** Seven data-category enumeration, a "what we don't collect" section (no SSNs, no card numbers, no location beyond the address you type), full sub-processor list with Anthropic's training-opt-out noted, per-category retention periods (7yr source docs, account-lifetime+1yr study outputs, 7yr Stripe metadata, 24mo analytics), CCPA/CPRA honored explicitly, GDPR-style rights honored on request regardless of residence, GDPR Article 22 compliance via the automated-decisions disclosure pointing at the methodology page, 72-hour breach-notification commitment.
+- **Terms of service — skeletal stub replaced.** Three-tier product description with prices, account terms (18+, truthful info), acceptable use (no uploading docs you don't own, no reverse-engineering, no abusive traffic), refund policy (DIY/AI 7-day no-questions-asked, Engineer-Reviewed prorated after review starts, pipeline failures always fully refunded), ownership split ("your data stays yours, our software stays ours"), warranty disclaimer, liability cap at study price, indemnification for unauthorized uploads, 30-day export window before termination, California governing law + SF County venue.
+- **Methodology — expanded the existing technical page.** Added IRC §168(k) and §481(a) to the regulatory framework, new "Tier 1 — DIY Self-Serve" section explaining the deterministic calculator approach, new "Land-value decomposition" section documenting the three-method fallback order, new "Method change — Form 3115 / Form 4562 (Appendix E)" section surfacing the Day 6 worksheet publicly with Rev. Proc. 2015-13 and 2022-14 citations, and a new "Reproducibility" section enumerating all five PDF appendices. Classification-decisions now cites HCA v. Commissioner (109 T.C. 21) and Rev. Rul. 79-181.
+- **All three pages carry an `EFFECTIVE` date constant** at the top so future revisions are explicit.
+- ⚠️ **Counsel still needed.** These are substantive drafts that match how we actually operate — not legal advice. Before launch, get a California SaaS attorney to review (especially the governing-law and liability clauses).
 
 **What landed in Day 13 (motion polish — the delivery celebration):**
 
