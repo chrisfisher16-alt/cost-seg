@@ -136,8 +136,8 @@ Edit `.github/workflows/e2e.yml`:
    STRIPE_PRICE_ID_TIER_2: ${{ secrets.CI_STRIPE_PRICE_ID_TIER_2 }}
    ```
 
-   The remaining placeholders (ANTHROPIC*API_KEY, AWS*_, RESEND\__,
-   INNGEST\_\*) stay — the e2e suite doesn't exercise those paths.
+   The remaining placeholders (`ANTHROPIC_API_KEY`, `AWS_*`, `RESEND_*`,
+   `INNGEST_*`) stay — the e2e suite doesn't exercise those paths.
 
 3. Commit + push. The next push should show both `CI` and `E2E` jobs
    running on the PR check list.
