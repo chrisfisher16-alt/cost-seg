@@ -6,13 +6,22 @@ and what to expect.
 **Status when you wake up:**
 
 - ✅ Branch: `claude/hopeful-proskuriakova-19300e`
-- ✅ **Day 1 through Day 17 + polish fixes committed** — review with `git log` / `git show <sha>`
+- ✅ **Day 1 through Day 18 + polish fixes committed** — review with `git log` / `git show <sha>`
 - ✅ `pnpm install` done · Prisma client generated
 - ✅ `pnpm typecheck` passes · `pnpm lint` clean · `pnpm build` succeeds (38 routes) · `pnpm test` 89/89 unit · `pnpm test:e2e` 58/58 Playwright
 - ⚠️ Not pushed to remote — staying local until you say go
 - ⚠️ **Prisma migrations pending** — Day 3 added the `DIY` tier enum; Day 4 added the `CPA` role + the `StudyShare` model. Run `pnpm prisma:migrate` once your DB is live — both migration SQLs are already written in `prisma/migrations/`.
 - ⚠️ **Stripe keys missing from `.env.local`** — `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are both empty. The test keys you pasted in chat a week ago never made it into the env file. Grab them from Stripe dashboard → Developers → API keys (test mode) + `stripe listen` for the webhook secret. Also create a DIY one-time $149 price and set `STRIPE_PRICE_ID_DIY`.
 - ✅ **Supabase + Anthropic + Resend + Inngest keys are live** — copied from `nice-noyce-5bbed3` worktree into `.env.local` in this worktree.
+
+**What landed in Day 18 (intake-flow polish — the first authenticated surface after checkout):**
+
+- **Upload success toasts.** The previous flow fired the server action, refreshed the router, and gave zero positive feedback — files just silently appeared in the list. Now: success toast with the filename and a reassurance line ("Stored encrypted — safe to close this tab and come back") on every completed upload.
+- **Remove-file confirms before firing.** Consistent with the share-revoke pattern from Day 15. "Remove X? You can re-upload it any time before we start processing." Toast on success/error.
+- **Drop-zone reassurance sub-line.** Added a lock icon + "Encrypted at rest · only you and your engineer can see it" directly under the drop zone — the reassurance is inline at the exact moment of upload, not buried in a sidebar card.
+- **Mobile-friendly copy.** "Drop a file or click to browse" → "Drop a file or tap to upload". Allowed types now shown as three pill chips (PDF / JPG / PNG) instead of a dense "PDF, JPG, or PNG" line.
+- **"You can close this tab" banner.** Primary-tinted callout directly under the page header, only when not locked and not processing. "Each upload saves automatically. When every required document is in, we kick off the pipeline without you having to click anything else." Addresses the #1 nervous-user UX worry.
+- **Sidebar card layout fix.** The Privacy / Stuck-on-a-doc cards had the icon floating above the title with `space-y-3`. Now the icon sits in a left-aligned rounded tile next to the title, matching the DocumentKind cards — consistent icon-left-of-text pattern across the whole intake page.
 
 **What landed in Day 17 (engineer-queue workflow — SLA buckets + filters):**
 
