@@ -4,6 +4,7 @@ import { SearchIcon } from "lucide-react";
 
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Container } from "@/components/shared/Container";
+import { statusChipTone, type StatusChipTone } from "@/components/shared/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -192,6 +193,7 @@ export default async function AdminPipelinePage({ searchParams }: Props) {
                     label={statusLabel(s)}
                     count={counts[s]}
                     active={status === s}
+                    tone={statusChipTone(s)}
                   />
                 ))}
               </div>
@@ -319,25 +321,39 @@ function FilterChip({
   label,
   count,
   active,
+  tone = "default",
 }: {
   href: Route;
   label: string;
   count: number | null;
   active: boolean;
+  tone?: StatusChipTone;
 }) {
+  // Active styling tracks the status tone so an active "Failed" chip
+  // reads destructive-red (matching the badge beside the row), not
+  // emerald-primary (the old default that was semantically backwards
+  // for failure states).
+  const activeClasses =
+    tone === "success"
+      ? "bg-success text-success-foreground"
+      : tone === "warning"
+        ? "bg-warning text-warning-foreground"
+        : tone === "destructive"
+          ? "bg-destructive text-destructive-foreground"
+          : tone === "muted"
+            ? "bg-muted text-muted-foreground"
+            : "bg-primary text-primary-foreground";
   return (
     <Link
       href={href}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-        active
-          ? "bg-primary text-primary-foreground"
-          : "border-border bg-card text-foreground hover:bg-muted border",
+        active ? activeClasses : "border-border bg-card text-foreground hover:bg-muted border",
       )}
     >
       <span>{label}</span>
       {count !== null ? (
-        <span className={cn(active ? "opacity-70" : "text-muted-foreground")}>{count}</span>
+        <span className={cn(active ? "opacity-80" : "text-muted-foreground")}>{count}</span>
       ) : null}
     </Link>
   );

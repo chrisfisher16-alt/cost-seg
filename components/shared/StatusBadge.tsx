@@ -47,3 +47,28 @@ export function StudyStatusBadge({
     </Badge>
   );
 }
+
+export type StatusChipTone = "default" | "success" | "warning" | "destructive" | "muted";
+
+/**
+ * The narrower "chip" tone palette for filter pills — maps the full Badge
+ * variant set into the four accent colors the engineer-queue filter chips
+ * already use. Keeps admin filter chips visually coherent with the status
+ * badges on the same page: a "Failed" chip, when active, renders the same
+ * destructive red as the badge beside it, not an emerald primary.
+ */
+export function statusChipTone(status: StudyStatus): StatusChipTone {
+  const variant = TONE[status]?.variant;
+  switch (variant) {
+    case "success":
+      return "success";
+    case "warning":
+      return "warning";
+    case "destructive":
+      return "destructive";
+    case "muted":
+      return "muted";
+    default:
+      return "default";
+  }
+}
