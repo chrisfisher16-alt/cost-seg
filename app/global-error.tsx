@@ -69,10 +69,10 @@ export default function GlobalError({
             This page failed before we could even load our normal error screen. Try again — if it
             keeps happening, email{" "}
             <a
-              href="mailto:support@costseg.app"
+              href="mailto:support@segra.tax"
               style={{ color: "#047857", textDecoration: "underline" }}
             >
-              support@costseg.app
+              support@segra.tax
             </a>{" "}
             with the error ref below and we&rsquo;ll get right on it.
           </p>

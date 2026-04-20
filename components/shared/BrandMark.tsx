@@ -1,21 +1,22 @@
+import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
 
+import { BRAND } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 /**
- * Brand mark — a stylized stacked-basis glyph in emerald + cobalt, paired with
- * the Cost Seg wordmark. Tuned for 14–32px heights in nav and 48+px on marketing.
+ * Brand mark — the Segra icon (ascending bars + velocity curve on a navy
+ * ground) paired with the Segra wordmark. Tuned for 14–32px heights in nav and
+ * 48+px on marketing.
  *
  * `wordmarkClassName` is the knob for headers that need the wordmark to fall
  * away on very narrow viewports. Pass `"hidden min-[420px]:inline"` to keep
  * the icon anchoring the brand while CTAs reclaim the horizontal space.
  *
  * Accessibility: when the wordmark is visible only at certain breakpoints, we
- * still want screen readers to announce "Cost Seg" — so we add an sr-only
- * fallback plus an `aria-label` on the link. The <span> rendering the visible
- * wordmark is aria-hidden for breakpoints where it's hidden (the sr-only
- * duplicate carries the name).
+ * still want screen readers to announce the brand name — so we add an sr-only
+ * fallback plus an `aria-label` on the link.
  */
 export function BrandMark({
   size = "default",
@@ -41,33 +42,20 @@ export function BrandMark({
         className,
       )}
     >
-      <svg
+      <Image
+        src={BRAND.assets.iconSvg}
+        alt=""
         width={iconSize}
         height={iconSize}
-        viewBox="0 0 32 32"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden
         className="shrink-0"
-      >
-        <defs>
-          <linearGradient id="cs-brand-g" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="oklch(0.508 0.118 165)" />
-            <stop offset="100%" stopColor="oklch(0.6 0.14 235)" />
-          </linearGradient>
-        </defs>
-        <rect x="3" y="3" width="26" height="26" rx="7" fill="url(#cs-brand-g)" />
-        <g fill="white" fillOpacity="0.95">
-          <rect x="8" y="20" width="16" height="3" rx="1" />
-          <rect x="10" y="15" width="12" height="3" rx="1" fillOpacity="0.75" />
-          <rect x="12" y="10" width="8" height="3" rx="1" fillOpacity="0.5" />
-        </g>
-      </svg>
+        priority
+      />
       {showWordmark ? (
         <>
-          <span className={wordmarkClassName}>Cost Seg</span>
+          <span className={wordmarkClassName}>{BRAND.name}</span>
           {/* When wordmarkClassName hides the visible span at narrow widths,
               the sr-only copy ensures screen readers still announce the name. */}
-          {wordmarkClassName ? <span className="sr-only">Cost Seg</span> : null}
+          {wordmarkClassName ? <span className="sr-only">{BRAND.name}</span> : null}
         </>
       ) : null}
     </span>
@@ -77,7 +65,7 @@ export function BrandMark({
     return (
       <Link
         href="/"
-        aria-label="Cost Seg — home"
+        aria-label={`${BRAND.name} — home`}
         className="focus-visible:ring-ring rounded-md transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:outline-none"
       >
         {inner}

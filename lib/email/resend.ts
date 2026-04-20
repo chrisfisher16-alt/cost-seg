@@ -2,6 +2,8 @@ import "server-only";
 
 import { Resend } from "resend";
 
+import { BRAND } from "@/lib/brand";
+
 let instance: Resend | null = null;
 
 /**
@@ -17,5 +19,5 @@ export function getResend(): Resend | null {
 }
 
 export function getFromAddress(): string {
-  return process.env.RESEND_FROM_EMAIL ?? "Cost Seg <onboarding@resend.dev>";
+  return process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <onboarding@resend.dev>`;
 }

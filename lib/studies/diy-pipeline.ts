@@ -118,21 +118,21 @@ export function buildDiySchedule(input: DiyScheduleInput): DiyStoredSchedule {
     landValueCents: input.landValueCents,
     buildingValueCents,
     landAllocationPct,
-    methodology: `DIY Self-Serve allocation. You declared a land value of ${fmtUsd(input.landValueCents)} (${(landAllocationPct * 100).toFixed(1)}% of the ${fmtUsd(input.purchasePriceCents)} cost basis). The depreciable basis of ${fmtUsd(buildingValueCents)} is distributed across MACRS classes using the midpoint of each category's typical band in Cost Seg's ${typeLabel} asset library.`,
+    methodology: `DIY Self-Serve allocation. You declared a land value of ${fmtUsd(input.landValueCents)} (${(landAllocationPct * 100).toFixed(1)}% of the ${fmtUsd(input.purchasePriceCents)} cost basis). The depreciable basis of ${fmtUsd(buildingValueCents)} is distributed across MACRS classes using the midpoint of each category's typical band in Segra's ${typeLabel} asset library.`,
     confidence: 0.55,
   };
 
   const narrative = {
     executiveSummary:
       `This Tier-1 DIY Self-Serve cost segregation study allocates the depreciable basis of ${input.propertyAddress}` +
-      `, ${input.city}, ${input.state} across MACRS classes using Cost Seg's ${typeLabel.toLowerCase()} asset library.` +
+      `, ${input.city}, ${input.state} across MACRS classes using Segra's ${typeLabel.toLowerCase()} asset library.` +
       `\n\n` +
       `You declared a purchase price of ${fmtUsd(input.purchasePriceCents)} and a land value of ${fmtUsd(input.landValueCents)}, leaving a depreciable basis of ${fmtUsd(buildingValueCents)}. ` +
       `The schedule reclassifies approximately ${(acceleratedPct(lineItems) * 100).toFixed(1)}% of building basis into 5/7/15-year accelerated property.`,
     propertyDescription: `${input.propertyAddress}, ${input.city}, ${input.state} is a ${typeLabel.toLowerCase()} acquired on ${input.acquiredAtIso}. This DIY Self-Serve study relies on the numbers you provided — no document parsing was performed. Upgrade to AI Report or Engineer-Reviewed for a schedule built from your closing disclosure, improvement receipts, and photographs.`,
     methodology: `The Residual Estimation Method endorsed in Chapter 3, Section C.4 of the IRS Cost Segregation Audit Techniques Guide allocates total basis across components adjusted for time, location, physical depreciation, and functional obsolescence. The DIY Self-Serve tier uses the midpoint of each category's typical allocation band for your property type — a conservative, defensible starting point that your CPA (or an engineer if you upgrade to Tier-2) can refine with site-specific data. 5-, 7-, and 15-year classes use the half-year convention; 27.5- or 39-year real property uses the straight-line mid-month convention.`,
     assetScheduleExplanation: `The schedule reclassifies every component of building basis into one of five MACRS recovery periods. Personal property (Section 1245) — appliances, furnishings, removable fixtures — carries a 5-year life. Office-type property (rarely applicable to residential rentals) carries a 7-year life. Land improvements carry a 15-year life. Residual Section 1250 real property covers the building shell and its integral components (HVAC, core plumbing, electrical rough-in, structural finishes).`,
-    scheduleSummaryTable: `Recovery classes below use Cost Seg's ${typeLabel} library midpoints. Upgrade to AI Report or Engineer-Reviewed for a study built from your specific documents.`,
+    scheduleSummaryTable: `Recovery classes below use Segra's ${typeLabel} library midpoints. Upgrade to AI Report or Engineer-Reviewed for a study built from your specific documents.`,
   };
 
   return {

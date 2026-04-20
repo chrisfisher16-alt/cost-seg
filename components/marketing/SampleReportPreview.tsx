@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon, FileTextIcon } from "lucide-react";
 
@@ -5,6 +6,7 @@ import { Container } from "@/components/shared/Container";
 import { Section, SectionHeader } from "@/components/shared/Section";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { BRAND } from "@/lib/brand";
 
 export function SampleReportPreview() {
   return (
@@ -77,21 +79,8 @@ function MockCoverPage() {
     <div className="from-background to-muted/40 aspect-[8.5/11] w-full bg-gradient-to-br p-8 sm:p-10">
       <div className="flex h-full flex-col">
         <div className="flex items-center gap-2">
-          <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden>
-            <defs>
-              <linearGradient id="sample-brand" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="oklch(0.508 0.118 165)" />
-                <stop offset="100%" stopColor="oklch(0.6 0.14 235)" />
-              </linearGradient>
-            </defs>
-            <rect x="3" y="3" width="26" height="26" rx="7" fill="url(#sample-brand)" />
-            <g fill="white" fillOpacity="0.95">
-              <rect x="8" y="20" width="16" height="3" rx="1" />
-              <rect x="10" y="15" width="12" height="3" rx="1" fillOpacity="0.75" />
-              <rect x="12" y="10" width="8" height="3" rx="1" fillOpacity="0.5" />
-            </g>
-          </svg>
-          <span className="font-semibold tracking-tight">Cost Seg</span>
+          <Image src={BRAND.assets.iconSvg} alt="" width={24} height={24} aria-hidden />
+          <span className="font-semibold tracking-tight">{BRAND.name}</span>
         </div>
 
         <div className="from-primary/15 via-info/10 to-accent/20 ring-border mt-6 aspect-[4/3] w-full overflow-hidden rounded-md bg-gradient-to-br ring-1">
@@ -115,8 +104,8 @@ function MockCoverPage() {
             <p className="text-muted-foreground font-mono tracking-[0.18em] uppercase">
               Prepared by
             </p>
-            <p className="mt-1 font-medium">Cost Seg · AI Modeling</p>
-            <p className="text-muted-foreground">support@costseg.app</p>
+            <p className="mt-1 font-medium">{BRAND.name} · AI Modeling</p>
+            <p className="text-muted-foreground">{BRAND.email.support}</p>
           </div>
           <div>
             <p className="text-muted-foreground font-mono tracking-[0.18em] uppercase">Tax year</p>

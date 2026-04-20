@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { FinalCta } from "@/components/marketing/FinalCta";
 import { Container } from "@/components/shared/Container";
 import { Section } from "@/components/shared/Section";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { BRAND } from "@/lib/brand";
 
-export const metadata: Metadata = { title: "About" };
+export const metadata: Metadata = {
+  title: "About",
+  description: `${BRAND.name} builds AI-powered cost segregation studies for real estate investors. Here's the why, the how, and where the name came from.`,
+};
 
 export default function AboutPage() {
   return (
@@ -16,20 +17,15 @@ export default function AboutPage() {
       <section className="relative overflow-hidden pt-20 pb-10 sm:pt-28">
         <div className="brand-gradient-bg absolute inset-0 -z-10" aria-hidden />
         <Container size="md" className="text-center">
-          <Badge
-            variant="outline"
-            size="default"
-            className="border-primary/30 bg-primary/5 text-primary mx-auto"
-          >
-            About
-          </Badge>
-          <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-            Cost segregation, rebuilt for how investors actually file.
+          <p className="text-muted-foreground mb-4 font-mono text-xs tracking-widest uppercase">
+            About {BRAND.name}
+          </p>
+          <h1 className="text-foreground text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+            Cost segregation, without the six-week wait.
           </h1>
-          <p className="text-muted-foreground mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-balance">
-            The industry has been stuck at $5,000 engagements and six-week turnarounds for a decade.
-            We think an AI that shows its work, paired with a licensed PE on Tier 2, delivers the
-            same audit-defensible result in minutes to days — at a tenth of the cost.
+          <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-balance">
+            {BRAND.name} is software for real estate investors who are tired of leaving tens of
+            thousands of dollars on the table every April.
           </p>
         </Container>
       </section>
@@ -37,57 +33,84 @@ export default function AboutPage() {
       <Section>
         <Container size="md">
           <div className="prose prose-neutral dark:prose-invert max-w-none">
-            <h2>Why now</h2>
+            <h2>What we do</h2>
             <p>
-              The One Big Beautiful Bill Act (OBBBA) restored 100% bonus depreciation for qualifying
-              property placed in service on or after January 19, 2025. That makes cost segregation
-              the single highest-leverage tax move available to US real-estate investors.
+              A cost segregation study reclassifies the components of a property — flooring,
+              cabinetry, specialty electrical, land improvements, and more — out of the default
+              27.5-year (residential) or 39-year (commercial) depreciation schedule and into 5-, 7-,
+              and 15-year buckets. Those shorter buckets qualify for 100% bonus depreciation, which
+              was permanently restored under the 2025 One Big Beautiful Bill Act. The result: tens
+              of thousands of dollars in year-one tax savings on a property most CPAs would have
+              depreciated over three decades by default.
             </p>
-            <h2>Our approach</h2>
             <p>
-              Every report follows IRS Publication 5653 methodology — Residual Estimation combined
-              with Replacement Cost New Less Depreciation (RCNLD), backed by Rev. Proc. 87-56 asset
-              classes and Treasury Reg. §1.167(a)-1 depreciation rules. Our AI does the extraction
-              and classification. A licensed Professional Engineer reviews and signs when
-              you&rsquo;re filing.
+              Traditionally, a study costs $5,000 to $15,000 and takes an engineering firm four to
+              six weeks to produce. {BRAND.name} runs the same analysis in minutes using AI and a
+              purpose-built rules engine, delivering a planning-grade AI Report for a few hundred
+              dollars, or an engineer-reviewed, audit-defensible study in three to seven days for a
+              fraction of the traditional cost.
             </p>
-            <h2>Principles</h2>
+
+            <h2>Where the name comes from</h2>
+            <p>
+              {BRAND.name} is from the Latin <em>segregare</em> — &ldquo;to set apart&rdquo; — the
+              same root as the word segregate. That verb is the literal job description of the
+              product: we set apart the parts of a property that can be depreciated quickly from the
+              ones that can&rsquo;t, at a speed that software finally makes possible.
+            </p>
+            <p>
+              We picked a coined name rather than a descriptive one because this space is crowded
+              with interchangeable brands (DIY Cost Seg, CostSegregation.com, Cost Seg EZ,
+              CostSegSmart) and we wanted a name that could travel. {BRAND.name} works for
+              today&rsquo;s product and for the broader real-estate tax toolkit we intend to build
+              around it.
+            </p>
+
+            <h2>Who this is for</h2>
+            <p>
+              Short-term-rental hosts with 1+ properties. Small-multifamily operators. Single-family
+              rental investors who qualify for Real Estate Professional Status or the short-term
+              rental exception. Syndicators looking to hand LPs a cleaner first-year tax position.
+              And the CPAs who advise them — we&rsquo;re building a white-label program for CPA
+              firms who want to offer cost seg to their existing book without hiring engineering
+              staff.
+            </p>
+
+            <h2>How we work</h2>
+            <p>
+              You upload three documents: a closing disclosure, any improvement receipts, and a few
+              property photos. Our AI pipeline normalizes the documents, allocates purchase price
+              between land and building, classifies building basis into the correct IRS depreciation
+              categories against a property-type-specific asset library, and generates a branded
+              report your CPA can paste directly into their tax software. Every Tier 2
+              Engineer-Reviewed Study is then reviewed and signed by a US-licensed professional
+              engineer before it&rsquo;s delivered to you.
+            </p>
+            <p>
+              We are deliberately transparent about what each tier is and isn&rsquo;t. The AI Report
+              is a planning and modeling tool. The Engineer-Reviewed Study is audit-defensible. We
+              never let someone buy the wrong product by accident.
+            </p>
+
+            <h2>Who we are</h2>
+            <p>
+              {BRAND.name} is built by a small team of real estate investors and software engineers
+              who got tired of watching friends overpay the IRS. We operate lean and ship fast — and
+              we aren&rsquo;t a big firm pretending to be small software. We&rsquo;re actual
+              software.
+            </p>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {[
-              {
-                t: "Show the math",
-                b: "Every number traces back to a source document and an assumption you can inspect.",
-              },
-              {
-                t: "Trust the engineer",
-                b: "AI accelerates; a licensed PE signs. No black-box numbers on a filed return.",
-              },
-              {
-                t: "Respect the CPA",
-                b: "Our second user is the accountant. Share, rollup, export — all first-class.",
-              },
-              {
-                t: "Speed without corner-cutting",
-                b: "Minutes matter. So does the 13-element ATG checklist.",
-              },
-            ].map((p) => (
-              <Card key={p.t}>
-                <CardContent className="p-5">
-                  <p className="font-semibold">{p.t}</p>
-                  <p className="text-muted-foreground mt-1 text-sm">{p.b}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <div className="mt-10">
+
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg">
+              <Link href="/#estimator">Estimate your savings</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
               <Link href="/pricing">See pricing</Link>
             </Button>
           </div>
         </Container>
       </Section>
-      <FinalCta />
     </>
   );
 }

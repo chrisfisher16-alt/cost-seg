@@ -1,5 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 
+import { BRAND } from "@/lib/brand";
 import { TIER_1_SCOPE_DISCLOSURE } from "@/lib/pdf/disclosure";
 import {
   computeForm3115Worksheet,
@@ -175,11 +176,11 @@ export function AiReportTemplate(props: AiReportProps) {
 
   return (
     <Document
-      title={`Cost Segregation Study — ${props.property.address}`}
-      author="Cost Seg"
+      title={`Cost Segregation Study — ${props.property.address} — ${BRAND.name}`}
+      author={BRAND.name}
       subject={`Tier-1 AI modeling report for ${props.property.address}`}
-      creator="Cost Seg · costseg.app"
-      producer="Cost Seg"
+      creator={`${BRAND.name} · ${BRAND.email.domain}`}
+      producer={BRAND.name}
     >
       <CoverPage {...props} taxYear={taxYear} />
       <TableOfContents {...props} />
@@ -213,7 +214,7 @@ export function AiReportTemplate(props: AiReportProps) {
       <AppendixCover
         letter="C"
         title="Reference Documentation"
-        subtitle="Supporting source materials — available on your Cost Seg dashboard"
+        subtitle={`Supporting source materials — available on your ${BRAND.name} dashboard`}
         studyId={props.studyId}
       />
       <AppendixCContent {...props} />
@@ -265,7 +266,9 @@ function CoverPage(props: AiReportProps & { taxYear: number }) {
           justifyContent: "center",
         }}
       >
-        <Text style={baseStyles.eyebrow}>Cost Seg · {props.tierLabel}</Text>
+        <Text style={baseStyles.eyebrow}>
+          {BRAND.name} · {props.tierLabel}
+        </Text>
         <Text style={baseStyles.coverTitle}>Cost Segregation Study</Text>
         <Text style={[baseStyles.coverSubtitle, { marginTop: 14 }]}>
           {props.property.address}, {props.property.city}, {props.property.state}{" "}
@@ -298,9 +301,11 @@ function CoverPage(props: AiReportProps & { taxYear: number }) {
           >
             Prepared by
           </Text>
-          <Text style={{ fontSize: 10, marginTop: 3, fontFamily: "Helvetica-Bold" }}>Cost Seg</Text>
-          <Text style={{ fontSize: 9, color: pdfColors.subtle }}>support@costseg.app</Text>
-          <Text style={{ fontSize: 9, color: pdfColors.subtle }}>costseg.app</Text>
+          <Text style={{ fontSize: 10, marginTop: 3, fontFamily: "Helvetica-Bold" }}>
+            {BRAND.name}
+          </Text>
+          <Text style={{ fontSize: 9, color: pdfColors.subtle }}>{BRAND.email.support}</Text>
+          <Text style={{ fontSize: 9, color: pdfColors.subtle }}>{BRAND.email.domain}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text
@@ -1288,9 +1293,9 @@ function AppendixCContent(props: AiReportProps) {
       <Text style={baseStyles.h2}>Reference Documentation</Text>
       <Text style={baseStyles.lead}>
         Supporting source materials used to produce this study. Encrypted originals are accessible
-        from your Cost Seg dashboard at{" "}
+        from your {BRAND.name} dashboard at{" "}
         <Text style={{ fontFamily: "Courier" }}>
-          costseg.app/studies/{props.studyId.slice(0, 8)}
+          {BRAND.email.domain}/studies/{props.studyId.slice(0, 8)}
         </Text>
         .
       </Text>

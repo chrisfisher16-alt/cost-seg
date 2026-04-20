@@ -7,18 +7,20 @@ import { ReportDeliveredEmail } from "./templates/ReportDeliveredEmail";
 import { WelcomeEmail } from "./templates/WelcomeEmail";
 import { getFromAddress, getResend } from "./resend";
 
+import { BRAND } from "@/lib/brand";
+
 import type { Tier } from "@/lib/stripe/catalog";
 
 const TIER_WELCOME_SUBJECT: Record<Tier, string> = {
-  DIY: "Generate your DIY Self-Serve cost seg study",
-  AI_REPORT: "Upload your documents to start your AI Report",
-  ENGINEER_REVIEWED: "Upload your documents to start your Engineer-Reviewed Study",
+  DIY: `Welcome to ${BRAND.name} — generate your DIY Self-Serve study`,
+  AI_REPORT: `Welcome to ${BRAND.name} — upload your documents to start your AI Report`,
+  ENGINEER_REVIEWED: `Welcome to ${BRAND.name} — upload your documents to start your Engineer-Reviewed Study`,
 };
 
 const TIER_DELIVERY_SUBJECT: Record<Tier, string> = {
-  DIY: "Your DIY Self-Serve Cost Segregation Report is ready",
-  AI_REPORT: "Your AI Cost Segregation Report is ready",
-  ENGINEER_REVIEWED: "Your Engineer-Reviewed Cost Segregation Study is ready",
+  DIY: `Your ${BRAND.name} DIY Self-Serve Report is ready`,
+  AI_REPORT: `Your ${BRAND.name} AI Report is ready`,
+  ENGINEER_REVIEWED: `Your ${BRAND.name} Engineer-Reviewed Study is ready`,
 };
 
 interface SendWelcomeArgs {
@@ -143,7 +145,7 @@ export async function sendCpaInviteEmail(args: SendCpaInviteArgs): Promise<void>
   });
   const [html, text] = await Promise.all([render(element), render(element, { plainText: true })]);
 
-  const subject = `Review a Cost Seg study for ${args.propertyAddress}`;
+  const subject = `Review a ${BRAND.name} study for ${args.propertyAddress}`;
 
   if (!client) {
     console.info("[email] RESEND_API_KEY unset — CPA invite not sent.", {

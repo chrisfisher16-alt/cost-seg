@@ -222,7 +222,7 @@ export default async function DashboardPage() {
             </p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
               This is usually a transient database hiccup — refresh in a moment. If it persists,
-              email <span className="font-mono">support@costseg.app</span>.
+              email <span className="font-mono">support@segra.tax</span>.
             </p>
           </div>
         </Section>
@@ -248,7 +248,7 @@ export default async function DashboardPage() {
                 No clients have shared a study yet.
               </p>
               <p className="text-muted-foreground mx-auto max-w-sm text-sm leading-relaxed">
-                When your clients run a Cost Seg study, they can share it with you in one click.
+                When your clients run a Segra study, they can share it with you in one click.
                 You&rsquo;ll see it here read-only — same schedule and methodology as the owner.
               </p>
             </CardContent>
@@ -402,9 +402,9 @@ function CustomerEmptyState() {
  * share studies with them. Frame the state accordingly.
  */
 function CpaEmptyState() {
-  const subject = encodeURIComponent("Cost Seg — share your study with me");
+  const subject = encodeURIComponent("Segra — share your study with me");
   const body = encodeURIComponent(
-    "Hi,\n\nI can review your Cost Seg study through my CPA account. When you're ready, open the study's pipeline page, click 'Share with your CPA', and enter my email. I'll get read-only access to the schedule and PDF.\n\n— Your CPA",
+    "Hi,\n\nI can review your Segra study through my CPA account. When you're ready, open the study's pipeline page, click 'Share with your CPA', and enter my email. I'll get read-only access to the schedule and PDF.\n\n— Your CPA",
   );
   return (
     <Card className="bg-muted/20 border-dashed">
@@ -416,8 +416,8 @@ function CpaEmptyState() {
           Waiting for a client to share a study.
         </h3>
         <p className="text-muted-foreground mx-auto mt-2 max-w-lg text-sm">
-          When a client runs a Cost Seg study, they can share it with you in one click. The study
-          lands here read-only — same schedule, methodology, and PDF they see.
+          When a client runs a Segra study, they can share it with you in one click. The study lands
+          here read-only — same schedule, methodology, and PDF they see.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button asChild size="lg">

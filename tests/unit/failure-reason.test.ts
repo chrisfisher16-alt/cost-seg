@@ -64,6 +64,6 @@ describe("classifyFailure", () => {
 
   it("no studyId → subject omits the id portion entirely", () => {
     const r = classifyFailure("Step C asset balance drift");
-    expect(r.supportSubject).toBe("Cost Seg — unbalanced asset schedule");
+    expect(r.supportSubject).toBe("Segra — unbalanced asset schedule");
   });
 });

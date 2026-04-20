@@ -55,7 +55,7 @@ export function classifyFailure(
         "Our AI pipeline looks for a standard HUD-1 or Closing Disclosure among the files you uploaded. None of them read as one — possibly a redacted copy, a loan-estimate instead of the final CD, or a scan with the text flattened into an unreadable image.",
       recovery:
         "We'll reach out within one business day to help you identify the right file from your closing packet. In the meantime, nothing you uploaded has been lost and you haven't been charged.",
-      supportSubject: `Cost Seg — closing disclosure not identified${shortId ? ` (study ${shortId})` : ""}`,
+      supportSubject: `Segra — closing disclosure not identified${shortId ? ` (study ${shortId})` : ""}`,
     };
   }
 
@@ -71,7 +71,7 @@ export function classifyFailure(
         "Our AI produces a line-by-line depreciation schedule and then checks that every dollar is accounted for. Two attempts in, the numbers still didn't balance to the penny — usually a sign the property is unusually complex (mixed-use, heavy improvements, or a non-standard purchase structure).",
       recovery:
         "A licensed engineer on our team will review the study manually and rebuild it. Expect an email update within two business days. You haven't been charged, and you can reply to that email with questions.",
-      supportSubject: `Cost Seg — unbalanced asset schedule${shortId ? ` (study ${shortId})` : ""}`,
+      supportSubject: `Segra — unbalanced asset schedule${shortId ? ` (study ${shortId})` : ""}`,
     };
   }
 
@@ -85,7 +85,7 @@ export function classifyFailure(
       explanation: reason || "Our team flagged this study as something we can't deliver as-is.",
       recovery:
         "We've marked this as un-recoverable on our side. Reply to any prior email, or email support directly — we'll help figure out next steps, including a refund if money changed hands.",
-      supportSubject: `Cost Seg — paused study${shortId ? ` (${shortId})` : ""}`,
+      supportSubject: `Segra — paused study${shortId ? ` (${shortId})` : ""}`,
     };
   }
 
@@ -96,6 +96,6 @@ export function classifyFailure(
     explanation: reason || "An unexpected error interrupted the pipeline before it could finish.",
     recovery:
       "Our team has been notified and the job is paused. You haven't been charged — any payment will be refunded if we can't recover. Email support and we'll walk you through what happened.",
-    supportSubject: `Cost Seg pipeline failure${shortId ? ` (study ${shortId})` : ""}`,
+    supportSubject: `Segra pipeline failure${shortId ? ` (study ${shortId})` : ""}`,
   };
 }

@@ -258,8 +258,8 @@ export default async function StudyIntakePage({ params }: Props) {
                 <div className="space-y-1.5">
                   <p className="text-sm leading-tight font-medium">Stuck on a document?</p>
                   <p className="text-muted-foreground text-xs leading-relaxed">
-                    Email <span className="font-mono">support@costseg.app</span> and we&rsquo;ll
-                    help you find the right file from your closing packet.
+                    Email <span className="font-mono">support@segra.tax</span> and we&rsquo;ll help
+                    you find the right file from your closing packet.
                   </p>
                 </div>
               </div>

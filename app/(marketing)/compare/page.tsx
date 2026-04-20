@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 export const metadata: Metadata = {
   title: "Compare",
   description:
-    "How Cost Seg compares to CostSegregation.com (KBKG), Cost Seg EZ, Segtax, FIXR.ai, and DIY Cost Seg. Features and pricing sourced to each provider.",
+    "How Segra compares to CostSegregation.com (KBKG), Cost Seg EZ, Segtax, FIXR.ai, and DIY Cost Seg. Features and pricing sourced to each provider.",
 };
 
 type Cell = string | { value: string; note?: string } | boolean;
@@ -137,7 +137,7 @@ const COLS: Array<{
   label: string;
   highlight?: boolean;
 }> = [
-  { key: "us", label: "Cost Seg", highlight: true },
+  { key: "us", label: "Segra", highlight: true },
   { key: "costSegregation", label: "CostSegregation.com" },
   { key: "costSegEz", label: "Cost Seg EZ" },
   { key: "segtax", label: "Segtax" },
@@ -163,7 +163,7 @@ export default function ComparePage() {
           </h1>
           <p className="text-muted-foreground mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-balance">
             Every claim below is sourced to the competitor&rsquo;s public website. If you spot a
-            mistake, email <span className="font-mono">compare@costseg.app</span> and we&rsquo;ll
+            mistake, email <span className="font-mono">compare@segra.tax</span> and we&rsquo;ll
             update.
           </p>
           <p className="text-muted-foreground mt-4 text-xs">

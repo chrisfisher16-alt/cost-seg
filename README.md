@@ -1,7 +1,9 @@
-# Cost Seg
+# Segra
 
 AI-powered cost segregation. Tier 1 software-generated modeling reports in
-minutes; Tier 2 engineer-reviewed, audit-defensible studies in days.
+minutes; Tier 2 engineer-reviewed, audit-defensible studies in days. Internal
+npm package name is still `cost-seg` — see `lib/brand.ts` for the user-facing
+brand surface.
 
 Private and pre-V1. Single operator.
 

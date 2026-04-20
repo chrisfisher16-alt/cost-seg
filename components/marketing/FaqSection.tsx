@@ -153,7 +153,7 @@ export function FaqSection({ limit }: { limit?: number }) {
         <SectionHeader
           eyebrow="FAQ"
           title="Answers to the questions we get most."
-          description="Missing something? Write to support@costseg.app — we answer every email within one business day."
+          description="Missing something? Write to support@segra.tax — we answer every email within one business day."
         />
         <div className="border-border bg-card mt-10 rounded-2xl border p-2 sm:p-4">
           <Accordion type="single" collapsible className="w-full">

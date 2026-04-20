@@ -86,7 +86,7 @@ export function classifyMagicLinkError(err: unknown): ClassifiedMagicLinkError {
   ) {
     return {
       kind: "disabled",
-      message: "Email sign-in is disabled for this project. Reach out to support@costseg.app.",
+      message: "Email sign-in is disabled for this project. Reach out to support@segra.tax.",
       retryAfterSec: null,
     };
   }

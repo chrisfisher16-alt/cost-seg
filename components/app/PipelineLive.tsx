@@ -225,10 +225,10 @@ function QueuedPanel({
                 It&rsquo;s been more than three minutes and the worker still hasn&rsquo;t picked up
                 the job. Email{" "}
                 <a
-                  href="mailto:support@costseg.app?subject=Cost%20Seg%20pipeline%20never%20started"
+                  href="mailto:support@segra.tax?subject=Segra%20pipeline%20never%20started"
                   className="text-foreground underline-offset-2 hover:underline"
                 >
-                  support@costseg.app
+                  support@segra.tax
                 </a>{" "}
                 and we&rsquo;ll kick it off manually — no charge until delivery.
               </p>
@@ -500,7 +500,7 @@ function DeliveredPanel({
 
 function FailedPanel({ state, studyId }: { state: ProcessingStateResult; studyId: string }) {
   const failure = classifyFailure(state.failureReason, studyId);
-  const mailto = `mailto:support@costseg.app?subject=${encodeURIComponent(failure.supportSubject)}`;
+  const mailto = `mailto:support@segra.tax?subject=${encodeURIComponent(failure.supportSubject)}`;
 
   return (
     <Card className="border-destructive/40 bg-destructive/5">

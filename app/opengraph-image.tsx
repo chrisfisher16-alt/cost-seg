@@ -1,12 +1,14 @@
 import { ImageResponse } from "next/og";
 
+import { BRAND } from "@/lib/brand";
+
 /**
  * Default OpenGraph image for every page that doesn't declare its own.
  * Rendered at build time at 1200×630 — the canonical social-preview size.
  */
 
 export const runtime = "edge";
-export const alt = "Cost Seg — AI-powered cost segregation studies, without the six-week wait";
+export const alt = `${BRAND.name} — ${BRAND.tagline}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -21,38 +23,32 @@ export default async function OpengraphImage() {
         justifyContent: "space-between",
         padding: 72,
         background:
-          "radial-gradient(ellipse at top left, rgba(4,120,87,0.18), transparent 60%), radial-gradient(ellipse at bottom right, rgba(30,64,175,0.15), transparent 60%), #FAFAF9",
+          "radial-gradient(ellipse at top left, rgba(15,46,71,0.12), transparent 60%), radial-gradient(ellipse at bottom right, rgba(232,154,74,0.18), transparent 60%), #FAFAF9",
         color: "#0A0A0A",
         fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <div
           style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            background: "linear-gradient(135deg, #047857, #1E40AF)",
+            width: 56,
+            height: 56,
+            borderRadius: 12,
+            background: BRAND.colors.navy,
             display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            padding: "0 0 10px 0",
-            gap: 2.5,
+            alignItems: "flex-end",
+            justifyContent: "center",
+            gap: 4,
+            padding: "0 0 12px 0",
           }}
         >
-          <div
-            style={{ width: 28, height: 6, borderRadius: 2, background: "rgba(255,255,255,0.95)" }}
-          />
-          <div
-            style={{ width: 22, height: 6, borderRadius: 2, background: "rgba(255,255,255,0.75)" }}
-          />
-          <div
-            style={{ width: 16, height: 6, borderRadius: 2, background: "rgba(255,255,255,0.5)" }}
-          />
+          <div style={{ width: 6, height: 12, borderRadius: 2, background: "#5B89AD" }} />
+          <div style={{ width: 6, height: 20, borderRadius: 2, background: "#8FB4D1" }} />
+          <div style={{ width: 6, height: 28, borderRadius: 2, background: "#F2C17A" }} />
+          <div style={{ width: 6, height: 36, borderRadius: 2, background: BRAND.colors.amber }} />
         </div>
-        <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.8, display: "flex" }}>
-          Cost Seg
+        <div style={{ fontSize: 36, fontWeight: 700, letterSpacing: -0.8, display: "flex" }}>
+          {BRAND.name}
         </div>
       </div>
 
@@ -63,8 +59,8 @@ export default async function OpengraphImage() {
             alignSelf: "flex-start",
             padding: "8px 14px",
             borderRadius: 999,
-            background: "rgba(4,120,87,0.12)",
-            color: "#047857",
+            background: "rgba(15,46,71,0.08)",
+            color: BRAND.colors.navy,
             fontWeight: 600,
             fontSize: 18,
             letterSpacing: 1.2,
@@ -90,7 +86,7 @@ export default async function OpengraphImage() {
             fontWeight: 700,
             letterSpacing: -2,
             lineHeight: 1.02,
-            background: "linear-gradient(135deg, #047857, #1E40AF)",
+            background: `linear-gradient(135deg, ${BRAND.colors.navy}, ${BRAND.colors.amber})`,
             backgroundClip: "text",
             color: "transparent",
             display: "flex",
@@ -99,7 +95,7 @@ export default async function OpengraphImage() {
           without the six-week wait.
         </div>
         <div style={{ fontSize: 28, color: "#4B5563", lineHeight: 1.35, display: "flex" }}>
-          AI modeling in minutes. Engineer-signed in days. From $149.
+          AI modeling in minutes. Engineer-reviewed in days. From $149.
         </div>
       </div>
 
@@ -112,7 +108,7 @@ export default async function OpengraphImage() {
           color: "#6B7280",
         }}
       >
-        <div style={{ display: "flex" }}>costseg.app</div>
+        <div style={{ display: "flex" }}>{BRAND.email.domain}</div>
         <div style={{ display: "flex", gap: 28 }}>
           <span>DIY $149</span>
           <span>AI Report $295</span>
