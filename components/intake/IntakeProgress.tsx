@@ -1,4 +1,5 @@
 import { CheckCircle2Icon, Loader2Icon, SparklesIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import type { DocumentKind } from "@prisma/client";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +17,13 @@ interface Props {
   totalRequired?: number;
   /** How many of those kinds are already satisfied. */
   satisfied?: number;
+  /**
+   * Slot for the "Start my report" client-component button. Rendered inside
+   * the `complete && !processing` card. Kept as a slot (instead of importing
+   * the client component directly) so this server component stays server-only
+   * and the page controls when the trigger is available.
+   */
+  startSlot?: ReactNode;
 }
 
 export function IntakeProgress({
@@ -25,6 +33,7 @@ export function IntakeProgress({
   processing,
   totalRequired,
   satisfied,
+  startSlot,
 }: Props) {
   if (processing) {
     return (
@@ -48,17 +57,21 @@ export function IntakeProgress({
   if (complete) {
     return (
       <Card className="border-success/30 bg-success/5">
-        <CardContent className="flex items-start gap-4 p-5">
-          <div className="bg-success text-success-foreground mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full">
-            <SparklesIcon className="h-4 w-4" aria-hidden />
+        <CardContent className="space-y-4 p-5">
+          <div className="flex items-start gap-4">
+            <div className="bg-success text-success-foreground mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full">
+              <SparklesIcon className="h-4 w-4" aria-hidden />
+            </div>
+            <div>
+              <p className="font-semibold">Ready to start.</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Property details saved and every required document is in. When you click
+                &ldquo;Start my report&rdquo;, we lock the uploads and kick off the pipeline —
+                you&rsquo;ll get an email the moment the PDF is ready.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold">All set — processing is queued.</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              We have everything we need. Your pipeline will kick off within a minute. We&rsquo;ll
-              email you the moment the PDF is ready.
-            </p>
-          </div>
+          {startSlot}
         </CardContent>
       </Card>
     );
@@ -89,7 +102,7 @@ export function IntakeProgress({
       id: "processing",
       label: "Start processing",
       state: "pending",
-      description: "We queue the pipeline automatically",
+      description: "Click Start my report once everything is uploaded",
     },
   ];
 
@@ -104,7 +117,7 @@ export function IntakeProgress({
           <div>
             <p className="font-semibold">What&rsquo;s left</p>
             <p className="text-muted-foreground mt-1 text-sm">
-              Complete these steps and we kick off your pipeline automatically.
+              Complete these steps and you&rsquo;ll be able to start the pipeline.
             </p>
           </div>
           <p data-tabular className="text-muted-foreground font-mono text-xs tracking-wide">

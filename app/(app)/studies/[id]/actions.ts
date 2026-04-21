@@ -16,7 +16,7 @@ import {
   storageKey,
 } from "@/lib/storage/studies";
 import { ALLOWED_MIMES, MAX_UPLOAD_BYTES, validateUploadedFile } from "@/lib/storage/validate";
-import { emitDocumentsReadyIfComplete } from "@/lib/studies/ready-check";
+import { emitDocumentsReadyIfComplete, getIntakeCompleteness } from "@/lib/studies/ready-check";
 import type { DocumentKind } from "@prisma/client";
 
 type ActionOk<T> = { ok: true } & T;
@@ -97,7 +97,6 @@ export async function updatePropertyAction(
     },
   });
 
-  await emitDocumentsReadyIfComplete(studyId);
   revalidatePath(`/studies/${studyId}/intake`);
   return { ok: true };
 }
@@ -234,7 +233,6 @@ export async function finalizeUploadAction(
     return { ok: false, error: "Could not record the upload. Try again." };
   }
 
-  await emitDocumentsReadyIfComplete(studyId);
   await captureServer(user.id, "documents_uploaded", {
     studyId,
     documentId: parsed.data.documentId,
@@ -244,6 +242,54 @@ export async function finalizeUploadAction(
   });
   revalidatePath(`/studies/${studyId}/intake`);
   return { ok: true, documentId: parsed.data.documentId };
+}
+
+// -----------------------------------------------------------------------------
+// Explicit pipeline start
+// -----------------------------------------------------------------------------
+
+/**
+ * Customer clicks "Start my report" once they believe all docs are uploaded.
+ * This is the single entry point that fires `study.documents.ready` and flips
+ * the study from AWAITING_DOCUMENTS → PROCESSING.
+ *
+ * Uploads no longer auto-trigger this: Inngest snapshots documents at
+ * `load-study`, so any file uploaded after autostart was silently ignored.
+ * Making the trigger explicit means the customer controls when the snapshot
+ * is taken, matching their mental model of "I'm done uploading now."
+ */
+export async function startPipelineAction(studyId: string): Promise<ActionOk<object> | ActionErr> {
+  const { user } = await requireAuth();
+  const prisma = getPrisma();
+  const study = await prisma.study.findUnique({
+    where: { id: studyId },
+    select: { id: true, userId: true, status: true },
+  });
+  if (!study) return { ok: false, error: "Study not found." };
+  assertOwnership(user, study);
+  if (study.status !== "AWAITING_DOCUMENTS") {
+    return { ok: false, error: "This study has already started processing." };
+  }
+
+  const completeness = await getIntakeCompleteness(studyId);
+  if (!completeness.complete) {
+    const missing = completeness.missingKinds.length;
+    const reason = !completeness.propertyReady
+      ? "Save your property details first."
+      : `${missing} required document${missing === 1 ? "" : "s"} still needed.`;
+    return { ok: false, error: reason };
+  }
+
+  const emitted = await emitDocumentsReadyIfComplete(studyId);
+  if (!emitted) {
+    return {
+      ok: false,
+      error: "Could not start the pipeline. Try again in a minute.",
+    };
+  }
+
+  revalidatePath(`/studies/${studyId}/intake`);
+  return { ok: true };
 }
 
 export async function removeDocumentAction(

@@ -244,7 +244,7 @@ export function PropertyForm({
         <p className="text-muted-foreground text-xs">
           {locked
             ? "Property details are locked — processing has started."
-            : "Save whenever you need to step away. Nothing is submitted yet."}
+            : "Save whenever you need to step away. Your report starts when you click Start my report."}
         </p>
         {!locked ? (
           <Button
