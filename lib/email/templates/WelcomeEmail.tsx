@@ -13,6 +13,7 @@ import {
 } from "@react-email/components";
 
 import { BRAND } from "@/lib/brand";
+import { SCOPE_DISCLOSURE_SHORT } from "@/lib/pdf/disclosure-short";
 
 import type { Tier } from "@/lib/stripe/catalog";
 
@@ -82,12 +83,13 @@ export function WelcomeEmail({ firstName, tier, intakeUrl, appUrl }: WelcomeEmai
           <Hr style={hr} />
           <Text style={paragraphSmall}>{copy.eta}</Text>
           {tier === "AI_REPORT" || tier === "DIY" ? (
-            <Text style={disclosure}>
-              Important: {tier === "DIY" ? "DIY Self-Serve" : "the AI Report"} is a planning and
-              modeling tool produced by software. It is not a complete cost segregation study under
-              IRS Pub 5653. Do not file a return relying on it without CPA review. If you need an
-              audit-defensible study, reply and we can upgrade you.
-            </Text>
+            <>
+              <Text style={disclosure}>Important: {SCOPE_DISCLOSURE_SHORT}</Text>
+              <Text style={disclosure}>
+                If you need an audit-defensible study, reply and we can upgrade you to the
+                Engineer-Reviewed tier.
+              </Text>
+            </>
           ) : null}
           <Text style={paragraphSmall}>Questions? Just reply to this email.</Text>
           <Text style={footer}>
