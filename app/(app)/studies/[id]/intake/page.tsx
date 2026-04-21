@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { IntakeProgress } from "@/components/intake/IntakeProgress";
+import { IntakeStartButton } from "@/components/intake/IntakeStartButton";
 import { PropertyForm } from "@/components/intake/PropertyForm";
 import { UploadZone } from "@/components/intake/UploadZone";
 import { DOCUMENT_KIND_META, DOCUMENT_KIND_ORDER } from "@/components/intake/meta";
@@ -165,9 +166,9 @@ export default async function StudyIntakePage({ params }: Props) {
           <div>
             <p className="font-medium">You can close this tab at any time.</p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              Each upload saves automatically. When every required document is in, we kick off the
-              pipeline without you having to click anything else — and you&rsquo;ll get an email the
-              moment the PDF is ready.
+              Each upload saves automatically. Once you&rsquo;ve added every document you want
+              included, click <span className="font-semibold">Start my report</span> in the sidebar
+              — we&rsquo;ll email you the moment the PDF is ready.
             </p>
           </div>
         </div>
@@ -277,6 +278,11 @@ export default async function StudyIntakePage({ params }: Props) {
             missingKinds={completeness.missingKinds}
             complete={completeness.complete}
             processing={processing}
+            startSlot={
+              completeness.complete && !processing && !locked ? (
+                <IntakeStartButton studyId={study.id} />
+              ) : null
+            }
           />
           <Card className="bg-muted/30">
             <CardContent className="p-5">
