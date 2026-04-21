@@ -52,21 +52,25 @@ enum PropertyType {
 }
 
 model Property {
-  id            String       @id @default(uuid()) @db.Uuid
-  userId        String       @db.Uuid
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  address       String
-  city          String
-  state         String       @db.Char(2)
-  zip           String
-  purchasePrice Decimal      @db.Decimal(14, 2)
-  acquiredAt    DateTime     @db.Date
-  propertyType  PropertyType
-  squareFeet    Int?
-  yearBuilt     Int?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  studies       Study[]
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address        String
+  city           String
+  state          String       @db.Char(2)
+  zip            String
+  purchasePrice  Decimal      @db.Decimal(14, 2)
+  acquiredAt     DateTime     @db.Date
+  propertyType   PropertyType
+  squareFeet     Int?
+  yearBuilt      Int?
+  // v2 Phase 4 (ADR 0011): structured output of the `enrich-property`
+  // step — assessor values, listing facts, and source URLs. Null until
+  // V2_REPORT_PROPERTY_ENRICH is enabled + the step has run.
+  enrichmentJson Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  studies        Study[]
 
   @@index([userId])
 }
@@ -177,6 +181,13 @@ model Document {
   sizeBytes    Int
   mimeType      String
   extractedJson Json?
+  // Photo-only fields (populated by the v2 `describe-photos` step when the
+  // V2_REPORT_PHOTOS flag is on). Null on non-photo uploads and on photo
+  // uploads processed before the flag was enabled. See ADR 0008.
+  roomTag       String?
+  imageWidth    Int?
+  imageHeight   Int?
+  photoAnalysis Json?
   createdAt     DateTime     @default(now())
 
   @@index([studyId])

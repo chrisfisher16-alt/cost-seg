@@ -1,6 +1,11 @@
 import "server-only";
 
 import { sendReportDeliveredEmail } from "@/lib/email/send";
+import {
+  isV2PdfEnabled,
+  isV2ReviewEnabled,
+  isV2ReviewEnforceEnabled,
+} from "@/lib/features/v2-report";
 import { STUDIES_BUCKET, createSignedReadUrl } from "@/lib/storage/studies";
 import { DEFAULT_BRACKET } from "@/lib/estimator/compute";
 import { PROPERTY_TYPE_LABELS } from "@/lib/estimator/types";
@@ -9,7 +14,18 @@ import { getPrisma } from "@/lib/db/client";
 import { captureServer } from "@/lib/observability/posthog-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { renderAiReportPdf } from "@/lib/pdf/render";
+import type { AiReportProps } from "@/components/pdf/AiReportTemplate";
 import { computeYearOneProjection, groupByDepreciationClass } from "@/lib/pdf/year-one";
+import {
+  isV2Schedule,
+  loadPhotoDataUrisByDocumentId,
+  mapEnrichment,
+  mapV2LineItems,
+  type V2LineItem,
+} from "@/lib/studies/pdf-v2-mapping";
+import { reclassifyV2ForDeliver } from "@/lib/studies/reclassify-for-deliver";
+import { runReviewGate } from "@/lib/studies/review-gate";
+import { runRenderReviewLoop } from "@/lib/studies/review-retry-loop";
 import { transitionStudy } from "@/lib/studies/transitions";
 
 import { Prisma, type PropertyType } from "@prisma/client";
@@ -88,6 +104,9 @@ interface DeliverAiReportResult {
   signedUrl?: string;
   expiresAtIso?: string;
   skippedReason?: string;
+  /** v2 Phase 7b (ADR 0013). Populated when V2_REPORT_REVIEW_ENFORCE
+   *  blocked delivery — ops reads this to know why no email went out. */
+  reviewBlockerCount?: number;
 }
 
 /**
@@ -120,7 +139,12 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
           squareFeet: true,
           yearBuilt: true,
           acquiredAt: true,
+          enrichmentJson: true,
         },
+      },
+      documents: {
+        where: { kind: "PROPERTY_PHOTO" },
+        select: { id: true, storagePath: true, mimeType: true },
       },
     },
   });
@@ -135,44 +159,188 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
     return { ok: false, skippedReason: "study has no assetSchedule" };
   }
 
-  const stored = study.assetSchedule as unknown as StoredSchedule;
+  // Alias so TypeScript preserves the null-check narrowing inside the
+  // nested `buildProps` closure below.
+  const loadedStudy = study;
+  const stored = loadedStudy.assetSchedule as unknown as StoredSchedule;
   const now = new Date();
   const realPropertyYears = realPropertyYearsFor(study.property.propertyType);
   const bonusEligible = isBonusEligible(study.property.acquiredAt);
   const acquiredAtIso = study.property.acquiredAt.toISOString().slice(0, 10);
 
-  const buffer = await renderAiReportPdf({
-    studyId: study.id,
-    generatedAt: now,
-    tierLabel: CATALOG[study.tier].label,
-    ownerLabel: study.user.name ?? null,
-    taxYear: now.getFullYear() - 1,
-    property: {
-      address: study.property.address,
-      city: study.property.city,
-      state: study.property.state,
-      zip: study.property.zip,
-      propertyTypeLabel: PROPERTY_TYPE_LABELS[study.property.propertyType],
-      realPropertyYears,
-      squareFeet: study.property.squareFeet,
-      yearBuilt: study.property.yearBuilt,
-      acquiredAtIso,
-      placedInServiceIso: acquiredAtIso,
-    },
-    decomposition: stored.decomposition,
-    narrative: stored.narrative,
-    schedule: {
-      lineItems: stored.schedule.lineItems,
-      groups: groupByDepreciationClass(
-        stored.schedule.lineItems,
-        stored.decomposition.buildingValueCents,
+  // v2 Phase 5 (ADR 0012). When the persisted schedule is v2-shaped AND
+  // the flag is on, map the richer fields into the template props and
+  // inline property photos as data URIs. Off path: identical to v1.
+  const v2Pdf = isV2PdfEnabled() && isV2Schedule(study.assetSchedule);
+  const photoDataUris = v2Pdf
+    ? await loadPhotoDataUrisByDocumentId(
+        study.documents.map((d) => ({
+          documentId: d.id,
+          storagePath: d.storagePath,
+          mimeType: d.mimeType,
+        })),
+      )
+    : new Map<string, string>();
+
+  // Mutable schedule view — the review retry loop below may replace it
+  // when classify-assets-v2 is rerun on a content blocker.
+  let currentV2LineItems: V2LineItem[] | null = v2Pdf
+    ? (
+        study.assetSchedule as unknown as {
+          schema: "v2";
+          schedule: { lineItems: V2LineItem[] };
+        }
+      ).schedule.lineItems
+    : null;
+  let currentTotalCents = stored.totalCents;
+
+  const renderedEnrichment = v2Pdf ? mapEnrichment(study.property.enrichmentJson) : null;
+
+  function buildRenderedLineItems(): Array<Record<string, unknown>> {
+    if (v2Pdf && currentV2LineItems) {
+      return mapV2LineItems(currentV2LineItems, photoDataUris) as unknown as Array<
+        Record<string, unknown>
+      >;
+    }
+    return stored.schedule.lineItems as unknown as Array<Record<string, unknown>>;
+  }
+
+  function buildProps(): AiReportProps {
+    const renderedLineItems = buildRenderedLineItems();
+    return {
+      studyId: loadedStudy.id,
+      generatedAt: now,
+      tierLabel: CATALOG[loadedStudy.tier].label,
+      ownerLabel: loadedStudy.user.name ?? null,
+      taxYear: now.getFullYear() - 1,
+      property: {
+        address: loadedStudy.property.address,
+        city: loadedStudy.property.city,
+        state: loadedStudy.property.state,
+        zip: loadedStudy.property.zip,
+        propertyTypeLabel: PROPERTY_TYPE_LABELS[loadedStudy.property.propertyType],
+        realPropertyYears,
+        squareFeet: loadedStudy.property.squareFeet,
+        yearBuilt: loadedStudy.property.yearBuilt,
+        acquiredAtIso,
+        placedInServiceIso: acquiredAtIso,
+        enrichment: renderedEnrichment,
+      },
+      decomposition: stored.decomposition,
+      narrative: stored.narrative,
+      schedule: {
+        lineItems: renderedLineItems as unknown as AiReportProps["schedule"]["lineItems"],
+        groups: groupByDepreciationClass(
+          renderedLineItems as unknown as Array<{ category: string; amountCents: number }>,
+          stored.decomposition.buildingValueCents,
+        ),
+        totalCents: currentTotalCents,
+      },
+      projection: computeYearOneProjection(
+        renderedLineItems as unknown as Array<{ category: string; amountCents: number }>,
       ),
-      totalCents: stored.totalCents,
-    },
-    projection: computeYearOneProjection(stored.schedule.lineItems),
-    assumedBracket: DEFAULT_BRACKET,
-    bonusEligible,
-  });
+      assumedBracket: DEFAULT_BRACKET,
+      bonusEligible,
+    };
+  }
+
+  // v2 Phase 7b (ADR 0013): rasterize + vision-review the rendered PDF
+  // before uploading. Phase 7 slice 3 adds a retry loop on content
+  // blockers — the classifier is re-run with the findings formatted
+  // as a priorAttemptError, up to `REVIEW_RETRY_CAP` attempts. Layout
+  // blockers still short-circuit delivery (the template isn't
+  // runtime-parameterized for layout fixes — a dev must patch).
+  const reviewOn = isV2ReviewEnabled();
+  const enforce = isV2ReviewEnforceEnabled();
+  const address = `${study.property.address}, ${study.property.city}, ${study.property.state}`;
+  let buffer: Buffer;
+  if (reviewOn && v2Pdf) {
+    const loop = await runRenderReviewLoop({
+      renderPdf: () => renderAiReportPdf(buildProps()),
+      runReview: (pdf) =>
+        runReviewGate({ studyId: study.id, address, pdf, context: "v2 schedule", enforce }),
+      reclassifyAndPersist: async (priorAttemptError) => {
+        const reclassified = await reclassifyV2ForDeliver(study.id, priorAttemptError);
+        currentV2LineItems = reclassified.lineItems as unknown as V2LineItem[];
+        currentTotalCents = reclassified.totalCents;
+        return reclassified;
+      },
+    });
+
+    await prisma.studyEvent.create({
+      data: {
+        studyId: study.id,
+        kind:
+          loop.outcome.kind === "blocked" ? "pipeline.review_failed" : "pipeline.review_completed",
+        payload: {
+          findings: loop.allFindings,
+          summary: loop.outcome.output?.summary ?? null,
+          batchCount: loop.outcome.batchCount,
+          warning: loop.outcome.kind === "ok" ? (loop.outcome.warning ?? null) : null,
+          enforced: enforce,
+          attempts: loop.attempts,
+          reclassifications: loop.reclassifications,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    if (loop.outcome.kind === "blocked") {
+      const blockerCount = loop.outcome.output.findings.filter(
+        (f) => f.severity === "blocker",
+      ).length;
+      await captureServer(study.userId, "review_blocked_delivery", {
+        studyId,
+        blockerCount,
+        reclassifications: loop.reclassifications,
+      });
+      return {
+        ok: false,
+        skippedReason: "review blocked delivery — see pipeline.review_failed event",
+        reviewBlockerCount: blockerCount,
+      };
+    }
+    buffer = loop.pdf;
+  } else {
+    // v1 path, or v2-without-review: render once and (optionally)
+    // single-pass review. Retains slice-2 behavior for non-v2 schedules.
+    buffer = await renderAiReportPdf(buildProps());
+    if (reviewOn) {
+      const outcome = await runReviewGate({
+        studyId: study.id,
+        address,
+        pdf: buffer,
+        context: v2Pdf ? "v2 schedule" : "v1 schedule",
+        enforce,
+      });
+
+      await prisma.studyEvent.create({
+        data: {
+          studyId: study.id,
+          kind: outcome.kind === "blocked" ? "pipeline.review_failed" : "pipeline.review_completed",
+          payload: {
+            findings: outcome.output?.findings ?? [],
+            summary: outcome.output?.summary ?? null,
+            batchCount: outcome.batchCount,
+            warning: outcome.kind === "ok" ? (outcome.warning ?? null) : null,
+            enforced: enforce,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      if (outcome.kind === "blocked") {
+        const blockerCount = outcome.output.findings.filter((f) => f.severity === "blocker").length;
+        await captureServer(study.userId, "review_blocked_delivery", {
+          studyId,
+          blockerCount,
+        });
+        return {
+          ok: false,
+          skippedReason: "review blocked delivery — see pipeline.review_failed event",
+          reviewBlockerCount: blockerCount,
+        };
+      }
+    }
+  }
 
   const storagePath = `${studyId}/deliverables/ai-report.pdf`;
   const admin = getSupabaseAdmin();

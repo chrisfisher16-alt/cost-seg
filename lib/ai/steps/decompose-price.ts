@@ -8,6 +8,7 @@ import {
   DECOMPOSE_PRICE_TOOL,
   buildDecomposePriceUserPrompt,
   decomposePriceOutputSchema,
+  type DecomposePricePromptEnrichment,
   type DecomposePriceOutput,
 } from "@/lib/ai/prompts/decompose-price";
 import { scrubPiiJson } from "@/lib/ai/scrub";
@@ -17,6 +18,8 @@ export interface DecomposePriceInput {
   propertyType: string;
   address: string;
   closingDisclosureFields: Record<string, unknown>;
+  /** v2 Phase 4 — optional property enrichment. Drives rule 2 (assessor). */
+  enrichment?: DecomposePricePromptEnrichment;
 }
 
 export async function decomposePrice(input: DecomposePriceInput): Promise<DecomposePriceOutput> {
@@ -31,11 +34,19 @@ export async function decomposePrice(input: DecomposePriceInput): Promise<Decomp
       propertyType: input.propertyType,
       address: input.address,
       closingDisclosureFields: scrubbedFields,
+      enrichment: input.enrichment,
     }),
     tool: DECOMPOSE_PRICE_TOOL,
     outputSchema: decomposePriceOutputSchema,
     maxTokens: 1024,
     studyId: input.studyId,
+    inputDetails: {
+      hasAssessorRatio: Boolean(
+        input.enrichment?.assessorLandValueCents &&
+        input.enrichment?.assessorTotalValueCents &&
+        input.enrichment.assessorTotalValueCents > 0,
+      ),
+    },
   });
 
   return output;
