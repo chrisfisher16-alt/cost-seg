@@ -1,7 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
-export const CLASSIFY_DOCUMENT_PROMPT_VERSION = "classify-document@v1";
+// v2 (2026-04-20): user prompt now teaches the model about
+// spreadsheet-as-Markdown attachments (xlsx/xls routed via
+// lib/ocr/spreadsheet-to-text.ts). No schema change; just prose.
+export const CLASSIFY_DOCUMENT_PROMPT_VERSION = "classify-document@v2";
 
 export const CLASSIFY_DOCUMENT_SYSTEM = `You are a forensic tax-document classifier working inside a cost segregation pipeline.
 
@@ -27,6 +30,8 @@ export function buildClassifyDocumentUserPrompt(input: {
     `Buyer-declared kind: ${input.declaredKind}`,
     "",
     "Read the attached document. Pick the kind that best matches (the buyer's declaration is a hint, not authoritative — they sometimes miscategorize). Extract the standard fields for that kind.",
+    "",
+    "The attachment may arrive as a PDF, a photo (JPEG/PNG), or a Markdown-rendered spreadsheet when the customer uploaded an .xlsx/.xls file — in the spreadsheet case the page header will read `# Spreadsheet: <filename>` and each tab appears under a `## Sheet:` heading with a Markdown table. Spreadsheets are almost always IMPROVEMENT_RECEIPTS; classify by content, not just the attachment format.",
     "",
     "For CLOSING_DISCLOSURE or APPRAISAL, extract at minimum:",
     "  - purchasePriceCents",

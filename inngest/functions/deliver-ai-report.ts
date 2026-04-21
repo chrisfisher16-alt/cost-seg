@@ -5,6 +5,12 @@ export const deliverAiReport = inngest.createFunction(
     id: "deliver-ai-report",
     name: "Deliver AI Report",
     retries: 3,
+    // Serialize delivery per study so two concurrent runs can't both
+    // render + upload + race on the AI_COMPLETE → DELIVERED transition.
+    // The v2 review retry loop (Phase 7 slice 3) makes each run
+    // potentially 30–90s longer, widening the window where a retry
+    // event could arrive while the first run is still mid-loop.
+    concurrency: { key: "event.data.studyId", limit: 1 },
     triggers: [{ event: "study.ai.complete" }],
   },
   async ({ event, step, logger }) => {

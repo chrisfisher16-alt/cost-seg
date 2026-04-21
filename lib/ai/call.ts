@@ -10,12 +10,33 @@ import { getPrisma } from "@/lib/db/client";
 import { getAnthropic } from "./client";
 import { computeCostUsd } from "./cost";
 
-export interface AttachmentInput {
-  kind: "document" | "image";
-  mediaType: "application/pdf" | "image/jpeg" | "image/png";
-  base64: string;
-  title?: string;
-}
+/**
+ * One attachment passed alongside the user message. Three shapes:
+ *   • `document` — PDF bytes, forwarded as a Claude document content block.
+ *   • `image` — JPEG/PNG bytes, forwarded as an image content block.
+ *   • `text` — pre-extracted text (e.g. a spreadsheet rendered to Markdown
+ *     by `lib/ocr/spreadsheet-to-text.ts`). Inlined as a titled text
+ *     content block so the model sees it as a distinct artifact rather
+ *     than free-floating prose appended to the user message.
+ */
+export type AttachmentInput =
+  | {
+      kind: "document";
+      mediaType: "application/pdf";
+      base64: string;
+      title?: string;
+    }
+  | {
+      kind: "image";
+      mediaType: "image/jpeg" | "image/png";
+      base64: string;
+      title?: string;
+    }
+  | {
+      kind: "text";
+      text: string;
+      title?: string;
+    };
 
 export interface CallToolArgs<TOutput> {
   /** Stable operation name — keys the audit log + idempotency cache. */
@@ -62,13 +83,17 @@ export async function callTool<TOutput>(
     system: args.system,
     userMessage: args.userMessage,
     toolName: args.tool.name,
-    // Hashing the base64 content means the same PDF dedupes across retries.
-    attachments: (args.attachments ?? []).map((a) => ({
-      kind: a.kind,
-      mediaType: a.mediaType,
-      title: a.title,
-      sha256: createHash("sha256").update(a.base64).digest("hex"),
-    })),
+    // Hashing attachment content means the same bytes (PDF / image /
+    // extracted spreadsheet text) dedupes across retries.
+    attachments: (args.attachments ?? []).map((a) => {
+      const src = a.kind === "text" ? a.text : a.base64;
+      return {
+        kind: a.kind,
+        mediaType: a.kind === "text" ? "text/markdown" : a.mediaType,
+        title: a.title,
+        sha256: createHash("sha256").update(src).digest("hex"),
+      };
+    }),
   });
 
   const prisma = getPrisma();
@@ -123,14 +148,25 @@ export async function callTool<TOutput>(
   const tokensOut = response.usage.output_tokens;
   const costUsd = computeCostUsd(args.model, tokensIn, tokensOut);
 
-  // Don't persist base64 blobs into AiAuditLog — they're huge. Record
-  // metadata only; the step can re-fetch from storage if needed.
-  const attachmentMeta = (args.attachments ?? []).map((a) => ({
-    kind: a.kind,
-    mediaType: a.mediaType,
-    title: a.title,
-    bytes: Buffer.byteLength(a.base64, "base64"),
-  }));
+  // Don't persist base64 blobs / full spreadsheet text into
+  // AiAuditLog — they're huge. Record metadata only; the step can
+  // re-fetch from storage if needed.
+  const attachmentMeta = (args.attachments ?? []).map((a) => {
+    if (a.kind === "text") {
+      return {
+        kind: a.kind,
+        mediaType: "text/markdown" as const,
+        title: a.title,
+        bytes: Buffer.byteLength(a.text, "utf8"),
+      };
+    }
+    return {
+      kind: a.kind,
+      mediaType: a.mediaType,
+      title: a.title,
+      bytes: Buffer.byteLength(a.base64, "base64"),
+    };
+  });
 
   await prisma.aiAuditLog.upsert({
     where: { operation_inputHash: { operation: args.operation, inputHash } },
@@ -184,14 +220,24 @@ function buildUserContent<T>(args: CallToolArgs<T>): Anthropic.Messages.ContentB
         },
         ...(att.title ? { title: att.title } : {}),
       });
-    } else {
+    } else if (att.kind === "image") {
       blocks.push({
         type: "image",
         source: {
           type: "base64",
-          media_type: att.mediaType === "application/pdf" ? "image/jpeg" : att.mediaType,
+          media_type: att.mediaType,
           data: att.base64,
         },
+      });
+    } else {
+      // Text attachment — typically a spreadsheet rendered to Markdown
+      // upstream. We prepend a titled header so the model can see it
+      // as a distinct artifact rather than blurring into the user
+      // message.
+      const header = att.title ? `Attached document: ${att.title}` : "Attached document";
+      blocks.push({
+        type: "text",
+        text: `${header}\n\n${att.text}`,
       });
     }
   }

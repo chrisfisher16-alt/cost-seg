@@ -16,6 +16,14 @@ export interface ProcessingStateResult {
   failureReason?: string | null;
   steps: PipelineStep[];
   events: Array<{ id: string; kind: string; at: string }>;
+  /**
+   * ISO timestamp anchoring the elapsed-time display on the client.
+   * Computed server-side so navigating away and back doesn't restart
+   * the clock. Null when the pipeline hasn't started yet — the client
+   * falls back to "started now" in that case, which is honest for a
+   * still-queued study.
+   */
+  pipelineStartedAtIso: string | null;
   summary: {
     deliverableUrl: string | null;
     acceleratedCents?: number;
@@ -62,6 +70,17 @@ export async function pollProcessingStateAction(
     const eventKinds = new Set(events.map((e) => e.kind));
     const steps = buildSteps(study.status, eventKinds, study.failedReason ?? null);
 
+    // Elapsed-timer anchor. Prefer `pipeline.started` — the event the
+    // worker writes the moment Inngest picks up the job. Fall back to
+    // the earliest event in the window (handles long-running studies
+    // where pipeline.started has rolled out of the 20-event cap). Null
+    // when the study is still genuinely queued; the client treats null
+    // as "started now" so the elapsed label doesn't lie about the past.
+    const pipelineStarted = events.find((e) => e.kind === "pipeline.started");
+    const oldestEvent = events.length > 0 ? events[events.length - 1] : null;
+    const pipelineStartedAtIso =
+      pipelineStarted?.createdAt.toISOString() ?? oldestEvent?.createdAt.toISOString() ?? null;
+
     // Extract summary numbers from the asset schedule JSON when present. The schema
     // we persist is {decomposition, schedule: {lineItems, assumptions}, narrative,
     // totalCents} — mirrors StoredSchedule in lib/studies/deliver.ts.
@@ -94,6 +113,7 @@ export async function pollProcessingStateAction(
         kind: e.kind,
         at: e.createdAt.toISOString(),
       })),
+      pipelineStartedAtIso,
       summary: {
         deliverableUrl: study.deliverableUrl ?? null,
         acceleratedCents: acceleratedCents || undefined,

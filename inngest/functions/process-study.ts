@@ -34,7 +34,37 @@ export const processStudy = inngest.createFunction(
     id: "process-study",
     name: "Process study",
     retries: 2,
+    // Serialize runs per study — prevents the "two concurrent Inngest
+    // runs race on mark-processing, one crashes after flipping status,
+    // the other gets stuck" class of failures the transition SSOT
+    // can't detect from inside a single run.
+    concurrency: { key: "event.data.studyId", limit: 1 },
     triggers: [{ event: "study.documents.ready" }],
+    // When a run exhausts retries, flip the study to FAILED with the
+    // underlying error so the next customer-retry enters from a clean
+    // state. Without this, a crashed run leaves the study stuck in
+    // PROCESSING and the next mark-processing refuses the transition.
+    onFailure: async ({ event, error }) => {
+      const eventData = (event as { data?: { event?: { data?: { studyId?: unknown } } } }).data
+        ?.event?.data;
+      const studyId = typeof eventData?.studyId === "string" ? eventData.studyId : null;
+      if (!studyId) return;
+      const pipelineMod = await import("@/lib/studies/pipeline");
+      try {
+        await pipelineMod.markStudyFailed(
+          studyId,
+          `processStudy exhausted retries: ${error instanceof Error ? error.message : String(error)}`.slice(
+            0,
+            500,
+          ),
+        );
+      } catch (err) {
+        // markStudyFailed refuses to move a DELIVERED / REFUNDED / already-
+        // FAILED study. Those are terminal; swallowing here keeps onFailure
+        // from looping on its own Inngest retry.
+        console.warn(`[processStudy.onFailure] markStudyFailed swallowed for ${studyId}`, err);
+      }
+    },
   },
   async ({ event, step, logger }) => {
     const data = event.data as { studyId: string; tier: string };
@@ -50,20 +80,41 @@ export const processStudy = inngest.createFunction(
       const { transitionStudy } = await import("@/lib/studies/transitions");
       const prisma = getPrisma();
       await prisma.$transaction(async (tx) => {
-        await transitionStudy({
-          studyId,
-          // Rerun-from-FAILED is legitimate; allow AWAITING_DOCUMENTS
-          // (first-time run) and FAILED (admin rerun) as legal preconditions.
-          from: ["AWAITING_DOCUMENTS", "FAILED"],
-          to: "PROCESSING",
-          tier: study.tier,
-          tx,
+        const current = await tx.study.findUnique({
+          where: { id: studyId },
+          select: { status: true },
         });
+        if (!current) {
+          throw new NonRetriableError(`Study ${studyId} not found`);
+        }
+        if (current.status === "PROCESSING") {
+          // Recovery entry. A previous Inngest run crashed after the
+          // first transition and before onFailure could reset status
+          // (either pre-fix processStudy, or a race between retries).
+          // The transitionStudy SSOT rejects same-state moves on
+          // principle, so skip the transition and treat this as a
+          // legitimate restart — the pipeline.started event gets a
+          // `recovered: true` flag for audit trail.
+        } else {
+          await transitionStudy({
+            studyId,
+            // Rerun-from-FAILED is legitimate; allow AWAITING_DOCUMENTS
+            // (first-time run) and FAILED (admin rerun) as legal preconditions.
+            from: ["AWAITING_DOCUMENTS", "FAILED"],
+            to: "PROCESSING",
+            tier: study.tier,
+            tx,
+          });
+        }
         await tx.studyEvent.create({
           data: {
             studyId,
             kind: "pipeline.started",
-            payload: { tier: study.tier, docCount: study.documents.length },
+            payload: {
+              tier: study.tier,
+              docCount: study.documents.length,
+              ...(current.status === "PROCESSING" ? { recovered: true } : {}),
+            },
           },
         });
       });
