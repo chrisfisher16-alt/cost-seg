@@ -215,4 +215,17 @@ bucket.
 
 ## Bucket 8 — Vercel preview deploy + beta smoke
 
-_(not started)_
+| ID   | Severity | Surface                                     | Finding                                                                                                                                                                                                                                                                                                                                                        | Status          | Commit                                                    | Regression test                                                              |
+| ---- | -------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| B8-1 | P1       | `vitest.config.ts` × `lib/**` surface       | Master-prompt §8 acceptance criterion #3 requires `lib/**` coverage ≥ 80% enforced in `vitest.config.ts`. Threshold added (80% lines/statements/functions, 75% branches); actual coverage is 55% because `deliver.ts`, `pipeline.ts`, `share.ts`, `ready-check.ts`, `inngest-safe.ts`, and `supabase/*` are unit-untested — mocked-Prisma scaffolding missing. | open — deferred | (threshold landed in Bucket 8; coverage gap tracked here) | `pnpm test --coverage` fails the threshold until coverage rises (future PR). |
+| B8-2 | P3       | `docs/runbooks/deploy.md` Stripe section    | Runbook documented Tier 1 + Tier 2 Stripe Product/Price setup but not DIY ($149). Bucket 1 F5 made `STRIPE_PRICE_ID_DIY` required; Bucket 3 B3-1 made `isStripeConfigured()` depend on it. An operator following the runbook exactly would ship without DIY and the `/get-started` form would refuse to render.                                                | fixed           | Bucket 8 PR                                               | None — doc update.                                                           |
+| B8-3 | P3       | `docs/runbooks/deploy.md` post-deploy smoke | Runbook's "Check Sentry" step didn't mention the release tag added in Bucket 7 B7-2. Operator could miss the "filter to this deploy's commit SHA" affordance.                                                                                                                                                                                                  | fixed           | Bucket 8 PR                                               | None — doc update.                                                           |
+
+### Operator-only work (§8 #10)
+
+Vercel import, env-var population, and the 7-step post-deploy smoke from `docs/runbooks/deploy.md` §"Post-deploy smoke" are operator actions. See `docs/qa/v1.2-wrap.md` §"Operator-only work before beta ships" for the checklist.
+
+### Running totals after Bucket 8
+
+- **Unit tests:** 295 → **295** (threshold-config only; no new test code shipped this bucket).
+- **E2E tests (infra):** 16 → **20** (+4: portfolio.csv unauth gate + 3 × legal last-updated stanzas).

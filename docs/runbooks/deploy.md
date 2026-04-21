@@ -35,11 +35,15 @@ against the prod `DIRECT_URL` to apply migrations.
 
 ## One-time: Stripe
 
-1. Create two Stripe Products + Prices in the Stripe dashboard:
+1. Create **three** Stripe Products + Prices in the Stripe dashboard:
+   - `DIY Self-Serve` — $149, one-time, USD.
    - `AI Report` — $295, one-time, USD.
    - `Engineer-Reviewed Study` — $1,495, one-time, USD.
-2. Copy the Price IDs into `STRIPE_PRICE_ID_TIER_1` and
-   `STRIPE_PRICE_ID_TIER_2` for every environment.
+2. Copy the Price IDs into `STRIPE_PRICE_ID_DIY`,
+   `STRIPE_PRICE_ID_TIER_1`, and `STRIPE_PRICE_ID_TIER_2` for every
+   environment. All three are required — `isStripeConfigured()` derives
+   the check from the catalog so a missing DIY price prevents the
+   `/get-started` form from rendering at all.
 3. Register a webhook endpoint in Stripe:
    - URL: `https://<prod>/api/stripe/webhook`
    - Events: `checkout.session.completed`
@@ -73,6 +77,9 @@ After merging (Vercel auto-deploys):
 - [ ] Tail Vercel deploy logs until the build + post-deploy checks finish.
 - [ ] Smoke the prod deploy per the post-deploy checklist below.
 - [ ] Check Sentry for new issue clusters in the 10 minutes after deploy.
+      Sentry events are release-tagged with `VERCEL_GIT_COMMIT_SHA` since
+      Bucket 7 (B7-2), so filter the Sentry project to the deploy's SHA to
+      scope the "new issue" check to this release.
 
 ## Post-deploy smoke
 
