@@ -8,6 +8,7 @@ import { WelcomeEmail } from "./templates/WelcomeEmail";
 import { getFromAddress, getResend } from "./resend";
 
 import { BRAND } from "@/lib/brand";
+import { env } from "@/lib/env";
 
 import type { Tier } from "@/lib/stripe/catalog";
 
@@ -36,7 +37,7 @@ interface SendWelcomeArgs {
  */
 export async function sendWelcomeEmail(args: SendWelcomeArgs): Promise<void> {
   const client = getResend();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { NEXT_PUBLIC_APP_URL: appUrl } = env();
   const element = WelcomeEmail({
     firstName: args.firstName ?? null,
     tier: args.tier,
@@ -84,7 +85,7 @@ interface SendReportDeliveredArgs {
  */
 export async function sendReportDeliveredEmail(args: SendReportDeliveredArgs): Promise<void> {
   const client = getResend();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { NEXT_PUBLIC_APP_URL: appUrl } = env();
   const element = ReportDeliveredEmail({
     firstName: args.firstName ?? null,
     tier: args.tier,
@@ -134,7 +135,7 @@ interface SendCpaInviteArgs {
  */
 export async function sendCpaInviteEmail(args: SendCpaInviteArgs): Promise<void> {
   const client = getResend();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { NEXT_PUBLIC_APP_URL: appUrl } = env();
   const element = CpaInviteEmail({
     ownerName: args.ownerName ?? null,
     ownerEmail: args.ownerEmail,

@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 
 import { getPrisma } from "@/lib/db/client";
 import { sendWelcomeEmail } from "@/lib/email/send";
+import { env } from "@/lib/env";
 import { captureServer } from "@/lib/observability/posthog-server";
 import { decodeCheckoutMetadata } from "@/lib/stripe/checkout";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -185,7 +186,7 @@ async function resolveOrCreateUser(
 
 async function generateIntakeMagicLink(email: string, studyId: string): Promise<string> {
   const admin = getSupabaseAdmin();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { NEXT_PUBLIC_APP_URL: appUrl } = env();
   const next = `/studies/${studyId}/intake`;
   const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`;
 

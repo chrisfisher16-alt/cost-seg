@@ -14,32 +14,36 @@ const serverEnvSchema = z.object({
   APP_ENV: z.enum(["development", "preview", "production"]).default("development"),
   NEXT_PUBLIC_APP_URL: z.string().url(),
 
-  // Supabase
+  // Supabase — required for the app to boot at all.
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
 
-  // Database
+  // Database — required; Prisma adapter needs a connection string at boot.
   DATABASE_URL: z.string().url(),
   DIRECT_URL: z.string().url(),
 
-  // Anthropic
+  // Anthropic — required; the AI pipeline is the whole product.
   ANTHROPIC_API_KEY: z.string().min(20),
 
-  // Stripe
-  STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
-  STRIPE_PRICE_ID_DIY: z.string().startsWith("price_"),
-  STRIPE_PRICE_ID_TIER_1: z.string().startsWith("price_"),
-  STRIPE_PRICE_ID_TIER_2: z.string().startsWith("price_"),
+  // Stripe — OPTIONAL at the schema level so local dev without Stripe can
+  // still boot. Individual consumers check existence via
+  // `isStripeConfigured()` or handle `undefined` directly.
+  STRIPE_SECRET_KEY: z.string().startsWith("sk_").optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
+  STRIPE_PRICE_ID_DIY: z.string().startsWith("price_").optional(),
+  STRIPE_PRICE_ID_TIER_1: z.string().startsWith("price_").optional(),
+  STRIPE_PRICE_ID_TIER_2: z.string().startsWith("price_").optional(),
 
-  // Resend
-  RESEND_API_KEY: z.string().startsWith("re_"),
-  RESEND_FROM_EMAIL: z.string().min(5),
+  // Resend — optional. `getResend()` returns null when missing so dev
+  // callers degrade to console logging.
+  RESEND_API_KEY: z.string().startsWith("re_").optional(),
+  RESEND_FROM_EMAIL: z.string().min(5).optional(),
 
-  // Inngest
-  INNGEST_EVENT_KEY: z.string().min(10),
-  INNGEST_SIGNING_KEY: z.string().min(10),
+  // Inngest — optional. User-action entry points use `safeInngestSend`
+  // which degrades to a structured log line when Inngest is unreachable.
+  INNGEST_EVENT_KEY: z.string().min(10).optional(),
+  INNGEST_SIGNING_KEY: z.string().min(10).optional(),
 
   // Sentry
   SENTRY_DSN: z.string().url().optional(),
@@ -86,6 +90,16 @@ export function env(): ServerEnv {
   }
   cached = parsed.data;
   return cached;
+}
+
+/**
+ * Test-only: invalidates the `env()` cache so the next call re-parses
+ * `process.env`. Production code never calls this — the cache is the whole
+ * point of the module (parse once per process). Tests that mutate
+ * `process.env` between cases use this to see their changes reflected.
+ */
+export function __resetEnvCacheForTests(): void {
+  cached = undefined;
 }
 
 /**

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { classifyMagicLinkError } from "@/lib/auth/magic-link-error";
+import { env } from "@/lib/env";
 import { captureServer } from "@/lib/observability/posthog-server";
 import { magicLinkLimiter } from "@/lib/ratelimit";
 import { hashIp, resolveIp } from "@/lib/server/request-ip";
@@ -26,7 +27,7 @@ export type SignInResult =
 const emailSchema = z.string().trim().min(3).max(254).email("Enter a valid email address.");
 
 function callbackUrl(next: string | undefined): string {
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { NEXT_PUBLIC_APP_URL: origin } = env();
   const qs = next ? `?next=${encodeURIComponent(next)}` : "";
   return `${origin}/auth/callback${qs}`;
 }

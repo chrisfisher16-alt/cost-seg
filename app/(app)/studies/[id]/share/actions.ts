@@ -5,6 +5,7 @@ import { z } from "zod";
 import { assertOwnership, requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { sendCpaInviteEmail } from "@/lib/email/send";
+import { env } from "@/lib/env";
 import { captureServer } from "@/lib/observability/posthog-server";
 import { shareInviteLimiter } from "@/lib/ratelimit";
 import {
@@ -105,7 +106,7 @@ export async function shareStudyAction(
     return { ok: false, error: err instanceof Error ? err.message : "Could not create share." };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { NEXT_PUBLIC_APP_URL: appUrl } = env();
   const shareUrl = buildShareUrl(share.token, appUrl);
   const propertyAddress = `${study.property.address}, ${study.property.city}, ${study.property.state}`;
 
@@ -159,7 +160,7 @@ export async function listSharesAction(studyId: string): Promise<ListSharesResul
   assertOwnership(user, study);
 
   const shares = await listSharesForStudy(studyId);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { NEXT_PUBLIC_APP_URL: appUrl } = env();
   const shareUrls = Object.fromEntries(shares.map((s) => [s.id, buildShareUrl(s.token, appUrl)]));
   return { ok: true, shares: shares.map(toSerializable), shareUrls };
 }
