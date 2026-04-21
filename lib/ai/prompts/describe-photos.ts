@@ -161,9 +161,14 @@ export const DESCRIBE_PHOTOS_TOOL: Anthropic.Messages.Tool = {
       },
       notes: {
         type: "string",
-        maxLength: 400,
+        // Free-text. The model ignores the cap in the wild — a 400-char
+        // limit has tripped schema validation on real studies, nuking
+        // otherwise-good output. 2000 is well under any tool_use output
+        // ceiling and gives the model room to explain multiple visible
+        // conditions without hitting the wall.
+        maxLength: 2000,
         description:
-          "Optional free-text notes — e.g. 'photo is underexposed', 'appears to be a staging photo, not as-acquired'.",
+          "Optional free-text notes — e.g. 'photo is underexposed', 'appears to be a staging photo, not as-acquired'. Keep to ~2-3 sentences.",
       },
     },
     required: ["caption", "roomType", "roomConfidence", "detectedObjects"],
@@ -183,7 +188,7 @@ export const describePhotoOutputSchema = z.object({
   roomType: z.enum(ROOM_TYPES),
   roomConfidence: z.number().min(0).max(1),
   detectedObjects: z.array(detectedObjectSchema).max(40),
-  notes: z.string().max(400).optional(),
+  notes: z.string().max(2000).optional(),
 });
 
 export type DetectedObject = z.infer<typeof detectedObjectSchema>;
