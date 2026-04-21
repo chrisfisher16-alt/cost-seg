@@ -1,5 +1,6 @@
 import { InfoIcon } from "lucide-react";
 
+import { SCOPE_DISCLOSURE_SHORT } from "@/lib/pdf/disclosure-short";
 import { cn } from "@/lib/utils";
 
 export function ScopeDisclosure({
@@ -10,10 +11,12 @@ export function ScopeDisclosure({
   className?: string;
 }) {
   if (compact) {
+    // Same text as the full variant (single SSOT per B2-2). Compact differs
+    // only in typography — no border, smaller text — so a tight page
+    // footer doesn't fight for visual space with the primary CTA.
     return (
       <p className={cn("text-muted-foreground text-xs leading-relaxed", className)}>
-        This is a planning estimate — not a complete cost segregation study under IRS Pub 5653. Do
-        not rely on it for a tax filing without CPA review.
+        {SCOPE_DISCLOSURE_SHORT}
       </p>
     );
   }
@@ -30,12 +33,7 @@ export function ScopeDisclosure({
       />
       <div className="text-warning-foreground dark:text-warning">
         <p className="font-semibold">Important scope disclosure.</p>
-        <p className="mt-1 opacity-90">
-          This is a planning and modeling estimate produced by software. It is not a complete cost
-          segregation study under the IRS Cost Segregation Audit Techniques Guide (Publication
-          5653). Do not file a tax return relying on this number without your CPA&rsquo;s
-          independent review.
-        </p>
+        <p className="mt-1 opacity-90">{SCOPE_DISCLOSURE_SHORT}</p>
       </div>
     </div>
   );
