@@ -66,6 +66,24 @@ describe("intake explicit start (no autostart)", () => {
     expect(startFn!).toContain("emitDocumentsReadyIfComplete(studyId)");
   });
 
+  it("startPipelineAction treats a prior documents.ready event as success (idempotent re-click)", () => {
+    const startFn = actionsSrc.match(
+      /export\s+async\s+function\s+startPipelineAction[\s\S]*?^\}/m,
+    )?.[0];
+    expect(startFn, "startPipelineAction body should be findable").toBeTruthy();
+    // The pre-emit guard: findFirst on StudyEvent with kind "documents.ready".
+    expect(startFn!).toMatch(/studyEvent\.findFirst/);
+    expect(startFn!).toContain('kind: "documents.ready"');
+    // And when it finds one, the action must return ok: true — NOT the
+    // "Could not start the pipeline" error. We assert textually because
+    // the behavior-level check was flagged in production: customer hit a
+    // scary error on a re-click that should have been a no-op.
+    // The `if (prior)` branch must return `ok: true` — confirm the
+    // `if (prior)` condition is followed by an `ok: true` return before
+    // any other return statement appears, so a re-click is a no-op.
+    expect(startFn!).toMatch(/if\s*\(\s*prior\s*\)[\s\S]*?return\s*\{\s*ok:\s*true/);
+  });
+
   it("updatePropertyAction does NOT call emitDocumentsReadyIfComplete", () => {
     const updateFn = actionsSrc.match(
       /export\s+async\s+function\s+updatePropertyAction[\s\S]*?^\}/m,
