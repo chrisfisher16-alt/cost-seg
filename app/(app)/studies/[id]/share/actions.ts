@@ -5,6 +5,7 @@ import { z } from "zod";
 import { assertOwnership, requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { sendCpaInviteEmail } from "@/lib/email/send";
+import { captureServer } from "@/lib/observability/posthog-server";
 import { shareInviteLimiter } from "@/lib/ratelimit";
 import {
   buildShareUrl,
@@ -132,6 +133,12 @@ export async function shareStudyAction(
         invitedEmail: share.invitedEmail,
       } as never,
     },
+  });
+  await captureServer(user.id, "cpa_invited", {
+    studyId,
+    shareId: share.id,
+    // `invitedEmail` is already persisted on StudyShare; omitting from the
+    // event payload keeps PostHog's person profile PII-lean.
   });
 
   return { ok: true, share: toSerializable(share), shareUrl };

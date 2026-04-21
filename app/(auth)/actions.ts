@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { classifyMagicLinkError } from "@/lib/auth/magic-link-error";
+import { captureServer } from "@/lib/observability/posthog-server";
 import { magicLinkLimiter } from "@/lib/ratelimit";
 import { hashIp, resolveIp } from "@/lib/server/request-ip";
 import { createServerSupabase, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -89,6 +90,13 @@ export async function sendMagicLinkAction(
       ...(classified.retryAfterSec !== null ? { retryAfterSec: classified.retryAfterSec } : {}),
     };
   }
+
+  // Distinct-id is the email at this point (pre-sign-in, no user.id). PostHog
+  // unifies the profile once the user signs in and the client-side capture
+  // fires with the resolved Supabase user id.
+  await captureServer(`email:${parsed.data}`, "sign_in_link_sent", {
+    nextPath: next ?? null,
+  });
   return { ok: true };
 }
 

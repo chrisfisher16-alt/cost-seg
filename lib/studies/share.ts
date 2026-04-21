@@ -3,6 +3,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 
 import { getPrisma } from "@/lib/db/client";
+import { captureServer } from "@/lib/observability/posthog-server";
 import { isAcceptedEmailMatch, normalizeEmail } from "@/lib/studies/share-format";
 import type { StudyShareStatus, User } from "@prisma/client";
 
@@ -210,6 +211,13 @@ export async function acceptShareByToken(
       },
     });
     return share;
+  });
+
+  await captureServer(accepter.id, "cpa_accepted", {
+    studyId: updated.studyId,
+    shareId: updated.id,
+    emailMatched,
+    rolePromoted: accepter.role === "CUSTOMER",
   });
 
   return { share: toShareRow(updated), studyId: updated.studyId };

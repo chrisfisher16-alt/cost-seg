@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { assertOwnership, requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
+import { captureServer } from "@/lib/observability/posthog-server";
 import { createSignedReadUrl } from "@/lib/storage/studies";
 
 /**
@@ -36,10 +37,16 @@ async function mintDeliverableUrl(studyId: string): Promise<string | null> {
   const prisma = getPrisma();
   const study = await prisma.study.findUnique({
     where: { id: studyId },
-    select: { id: true, userId: true, status: true, deliverableUrl: true },
+    select: { id: true, userId: true, status: true, deliverableUrl: true, tier: true },
   });
   if (!study || !study.deliverableUrl) return null;
   assertOwnership(user, study);
   if (study.status !== "DELIVERED") return null;
-  return await createSignedReadUrl(study.deliverableUrl, 7 * 24 * 60 * 60);
+  const url = await createSignedReadUrl(study.deliverableUrl, 7 * 24 * 60 * 60);
+  await captureServer(user.id, "deliverable_downloaded", {
+    studyId,
+    tier: study.tier,
+    actorIsOwner: user.id === study.userId,
+  });
+  return url;
 }

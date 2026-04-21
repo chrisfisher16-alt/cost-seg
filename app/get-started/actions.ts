@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getOptionalAuth } from "@/lib/auth/require";
 import { PROPERTY_TYPES } from "@/lib/estimator/types";
 import { parseUsdInputToCents } from "@/lib/estimator/format";
+import { captureServer } from "@/lib/observability/posthog-server";
 import { startCheckoutLimiter } from "@/lib/ratelimit";
 import { hashIp, resolveIp } from "@/lib/server/request-ip";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
@@ -142,6 +143,13 @@ export async function startCheckoutAction(input: unknown): Promise<StartCheckout
     if (!session.url) {
       return { ok: false, error: "Stripe did not return a checkout URL." };
     }
+    await captureServer(ctx?.user.id ?? `email:${buyerEmail}`, "checkout_started", {
+      tier,
+      propertyType,
+      purchasePriceCents: purchasePriceCents ?? null,
+      sessionId: session.id,
+      signedIn: Boolean(ctx),
+    });
     return { ok: true, url: session.url };
   } catch (error) {
     console.error("checkout: failed to create session", error);

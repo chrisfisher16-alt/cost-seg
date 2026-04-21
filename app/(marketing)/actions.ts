@@ -114,7 +114,7 @@ export async function attachLeadEmailAction(
     return { ok: false, error: "Something went wrong. Please try again." };
   }
 
-  await captureServer(leadId ?? `email:${trimmed}`, "lead_captured", {
+  await captureServer(leadId ?? `email:${trimmed}`, "lead_email_attached", {
     hasPriorEstimate: Boolean(leadId),
   });
 

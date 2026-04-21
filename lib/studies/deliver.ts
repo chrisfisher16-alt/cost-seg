@@ -6,6 +6,7 @@ import { DEFAULT_BRACKET } from "@/lib/estimator/compute";
 import { PROPERTY_TYPE_LABELS } from "@/lib/estimator/types";
 import { CATALOG } from "@/lib/stripe/catalog";
 import { getPrisma } from "@/lib/db/client";
+import { captureServer } from "@/lib/observability/posthog-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { renderAiReportPdf } from "@/lib/pdf/render";
 import { computeYearOneProjection, groupByDepreciationClass } from "@/lib/pdf/year-one";
@@ -188,6 +189,7 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
   const signedUrl = await createSignedReadUrl(storagePath, DELIVERABLE_EXPIRY_SECONDS);
   const expiresAtIso = new Date(Date.now() + DELIVERABLE_EXPIRY_SECONDS * 1000).toISOString();
 
+  let emailSent = false;
   try {
     await sendReportDeliveredEmail({
       to: study.user.email,
@@ -197,9 +199,16 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
       propertyAddress: `${study.property.address}, ${study.property.city}, ${study.property.state}`,
       expiresAtIso,
     });
+    emailSent = true;
   } catch (err) {
     // Email failure doesn't reverse delivery — admin can resend.
     console.error("[deliver] email send failed", err);
+  }
+  if (emailSent) {
+    await captureServer(study.userId, "delivery_email_sent", {
+      studyId,
+      tier: study.tier,
+    });
   }
 
   await prisma.$transaction(async (tx) => {
@@ -259,6 +268,7 @@ export async function deliverEngineeredStudy(
       id: true,
       tier: true,
       status: true,
+      userId: true,
       deliverableUrl: true,
       user: { select: { email: true, name: true } },
       property: { select: { address: true, city: true, state: true } },
@@ -282,6 +292,7 @@ export async function deliverEngineeredStudy(
   const signedUrl = await createSignedReadUrl(args.storagePath, DELIVERABLE_EXPIRY_SECONDS);
   const expiresAtIso = new Date(Date.now() + DELIVERABLE_EXPIRY_SECONDS * 1000).toISOString();
 
+  let emailSent = false;
   try {
     await sendReportDeliveredEmail({
       to: study.user.email,
@@ -291,8 +302,15 @@ export async function deliverEngineeredStudy(
       propertyAddress: `${study.property.address}, ${study.property.city}, ${study.property.state}`,
       expiresAtIso,
     });
+    emailSent = true;
   } catch (err) {
     console.error("[deliver] engineer email send failed", err);
+  }
+  if (emailSent) {
+    await captureServer(study.userId, "delivery_email_sent", {
+      studyId: args.studyId,
+      tier: study.tier,
+    });
   }
 
   await prisma.$transaction(async (tx) => {
