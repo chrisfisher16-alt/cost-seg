@@ -1290,7 +1290,13 @@ function AssetDetailCard({
         padding: 12,
         marginBottom: 10,
       }}
-      wrap={false}
+      // NOTE: intentionally wrappable. v2 cards with photo + 4 v2-body
+      // subsections + chips often exceed a single page on dense properties.
+      // With `wrap={false}`, @react-pdf's layout emits astronomical negative
+      // offsets that crash pdfkit in `clipBorderTop`
+      // ("unsupported number: -1.9e+21"). Letting the card split across a
+      // page break yields slightly less polished pagination but deterministic
+      // output. See Inngest run 01KPS3N956NDFCX5F65065SP3T for the trace.
     >
       <View
         style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}
