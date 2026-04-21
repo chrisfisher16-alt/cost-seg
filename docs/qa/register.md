@@ -188,7 +188,30 @@ bucket.
 
 ## Bucket 7 — Output + cross-cutting
 
-_(not started)_
+| ID   | Severity | Surface                                                                         | Finding                                                                                                                                                                                                                                                                                                              | Status          | Commit                                                                  | Regression test                                                                              |
+| ---- | -------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| B7-1 | P1       | `lib/email/send.ts:39,87,137`                                                   | Email-URL construction falls back to `http://localhost:3000` when `NEXT_PUBLIC_APP_URL` is unset. If a prod deploy ever ships without the env var, welcome / delivery / CPA emails go out with localhost links. Same class as Bucket 1 F3 (env-validator bypass); fix lands when F3 is addressed.                    | open — deferred | (subsumed by F3)                                                        | —                                                                                            |
+| B7-2 | P1       | `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation-client.ts` | `Sentry.init` was never configured with a `release`. Errors surfacing in Sentry collapsed to "unknown release" — any "what commit shipped this bug?" investigation became a timestamp-vs-git-log cross-reference. Wired to `VERCEL_GIT_COMMIT_SHA` on all three runtimes; client also accepts `NEXT_PUBLIC_` mirror. | fixed           | [12a3404](https://github.com/chrisfisher16-alt/cost-seg/commit/12a3404) | None — Sentry-dashboard signal. Future: add the env var to `lib/env.ts` when F3 is resolved. |
+| B7-3 | P1       | 12 server-action + lib sites                                                    | Only 2 of the 14 PostHog events enumerated in §5.3 were captured. Missing 12 events across the sign-in → checkout → study lifecycle → delivery → admin → share funnel. Every question about user progress had to be answered with a per-study SQL dig. Fixed; see commit for event ↔ file map.                       | fixed           | [28b966c](https://github.com/chrisfisher16-alt/cost-seg/commit/28b966c) | None — PostHog captures are fire-and-forget side effects. Observability-side.                |
+| B7-4 | P2       | `lib/email/templates/CpaInviteEmail.tsx:54,87`                                  | Uses generic "cost segregation" phrasing in places where "Segra" brand would strengthen the invite. Polish — no functional defect; legal-text vocabulary is neutral either way.                                                                                                                                      | open — deferred | —                                                                       | —                                                                                            |
+
+### Audits that surfaced no findings (Bucket 7)
+
+| Audit                                          | Result                                                                                                                                                                |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Email plain-text fallback                      | All three `lib/email/send.ts` helpers render `plainText` alongside HTML via react-email.                                                                              |
+| 7-day signed URL on every deliverable path     | `DELIVERABLE_EXPIRY_SECONDS = 7 * 24 * 60 * 60` shared across `deliverAiReport`, `deliverEngineeredStudy`, and `resendDeliveryEmail` (Bucket 5 already spot-checked). |
+| PDF cover uses Segra glyph (Day 51)            | `components/pdf/shared.tsx`'s `BrandMarkPdf` renders the correct `BRAND.assets.iconPng*`; audit confirmed no legacy cost-seg icon reference.                          |
+| PDF scope-disclosure footer on every page      | `TIER_1_SCOPE_DISCLOSURE` rendered by `PageFooter` + MethodologyPage. Known SSOT divergence vs marketing + email paraphrases is tracked as B2-2 (no new drift).       |
+| PDF fonts                                      | Helvetica / Courier (stdlib for `@react-pdf/renderer`) — no custom fonts to register, no missing-glyph risk.                                                          |
+| MACRS math parity                              | `lib/pdf/macrs.ts` encodes IRS tables; `lib/estimator/compute.ts` is a range-band heuristic (no per-asset breakdown) — no line-by-line match expected.                |
+| PostHog `capture_pageview` / PII               | `posthog-client.ts` sets `capture_pageview: "history_change"` + `person_profiles: "identified_only"` — URL-path PII (studyId) is NOT inlined into the person profile. |
+| `console.log` sweep (Bucket 1 re-verification) | Zero new regressions; codebase still uses `console.info/warn/error` exclusively.                                                                                      |
+
+### Running totals after Bucket 7
+
+- **Unit tests:** 295 → **295** (no new tests — side-effect observability wiring, `@posthog/posthog-js` noops in the test env).
+- **E2E tests:** 112 → **112**.
 
 ## Bucket 8 — Vercel preview deploy + beta smoke
 
