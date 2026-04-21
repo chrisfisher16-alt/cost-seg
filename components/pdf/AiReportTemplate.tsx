@@ -1,4 +1,4 @@
-import { Document, Page, Text, View } from "@react-pdf/renderer";
+import { Document, Image, Page, Text, View } from "@react-pdf/renderer";
 
 import { BRAND } from "@/lib/brand";
 import { TIER_1_SCOPE_DISCLOSURE } from "@/lib/pdf/disclosure";
@@ -57,6 +57,23 @@ export interface AiReportProps {
     acquiredAtIso: string;
     /** YYYY-MM-DD — the placed-in-service date. Defaults to acquiredAtIso if missing. */
     placedInServiceIso?: string;
+    /**
+     * v2 Phase 5 (ADR 0012). Public-records enrichment sourced from
+     * `Property.enrichmentJson`. When present, the Property Info page
+     * renders concrete facts from here instead of "Not provided".
+     * Always optional — v1 delivery continues to ignore this field.
+     */
+    enrichment?: {
+      squareFeet?: number | null;
+      yearBuilt?: number | null;
+      bedrooms?: number | null;
+      bathrooms?: number | null;
+      constructionType?: string | null;
+      roofType?: string | null;
+      lotSizeSqft?: number | null;
+      assessorUrl?: string | null;
+      listingUrl?: string | null;
+    } | null;
   };
 
   decomposition: {
@@ -85,12 +102,29 @@ export interface AiReportProps {
       rationale: string;
       /** Optional per-asset enrichment from richer classifier outputs. */
       quantity?: number;
+      unit?: string;
       unitCostCents?: number;
       costSource?: string;
       physicalMultiplier?: number;
       functionalMultiplier?: number;
       timeMultiplier?: number;
       locationMultiplier?: number;
+      /**
+       * v2 Phase 5 (ADR 0012) additions. All optional — when absent
+       * AssetDetailCard renders the v1 chip layout unchanged.
+       *
+       * `photoDataUri` is a base64 `data:image/jpeg;base64,...` string
+       * resolved by deliver.ts from the Document storage path. Inline
+       * embedding keeps the PDF self-contained (no signed-URL expiry).
+       */
+      photoDataUri?: string;
+      comparableDescription?: string;
+      comparableSourceUrl?: string;
+      physicalJustification?: string;
+      functionalJustification?: string;
+      timeBasis?: string;
+      locationBasis?: string;
+      isResidual?: boolean;
     }>;
     groups: AssetGroup[];
     totalCents: number;
@@ -277,6 +311,10 @@ function CoverPage(props: AiReportProps & { taxYear: number }) {
         <Text style={baseStyles.coverSubtitle}>
           Prepared for {ownerLabel} on {fmtDateLong(props.generatedAt)}
         </Text>
+        {/* v2 Phase 6 polish: surface enriched property facts on the
+            cover when we have them. Intake-null + no enrichment → fact
+            line is suppressed. */}
+        <CoverPropertyFacts property={props.property} />
       </View>
 
       <View style={{ flex: 1 }} />
@@ -355,8 +393,33 @@ function CoverPage(props: AiReportProps & { taxYear: number }) {
           </Text>
         </View>
       </View>
+
+      {/* Phase 7 layout discipline (ADR 0013): disclosure footer on
+          every page, cover included. Acceptance criterion #8. */}
+      <PageFooter studyId={props.studyId} />
     </Page>
   );
+}
+
+/**
+ * v2 Phase 6 polish — single-line property-facts block on the cover
+ * page. Prefers enrichment values (from Phase 4) over intake nulls.
+ * Renders nothing when no fact is available so the cover layout stays
+ * clean for intake-only studies.
+ */
+function CoverPropertyFacts({ property }: { property: AiReportProps["property"] }) {
+  const enrichment = property.enrichment ?? null;
+  const sqft = enrichment?.squareFeet ?? property.squareFeet ?? null;
+  const yearBuilt = enrichment?.yearBuilt ?? property.yearBuilt ?? null;
+  const constructionType = enrichment?.constructionType ?? null;
+
+  const parts: string[] = [];
+  if (sqft) parts.push(`${sqft.toLocaleString()} sq ft`);
+  if (yearBuilt) parts.push(`Built ${yearBuilt}`);
+  if (constructionType) parts.push(constructionType.replace(/_/g, " "));
+  if (parts.length === 0) return null;
+
+  return <Text style={baseStyles.coverSubtitle}>{parts.join(" · ")}</Text>;
 }
 
 // -----------------------------------------------------------------------------
@@ -394,7 +457,9 @@ function TableOfContents(props: AiReportProps) {
   return (
     <Page size="LETTER" style={baseStyles.page}>
       <Text style={baseStyles.eyebrow}>Contents</Text>
-      <Text style={baseStyles.h2}>Cost Segregation Study · {props.property.address}</Text>
+      <Text style={baseStyles.h2} minPresenceAhead={72}>
+        Cost Segregation Study · {props.property.address}
+      </Text>
       <Text style={baseStyles.muted}>
         {props.tierLabel} · Generated {fmtDateLong(props.generatedAt)}
       </Text>
@@ -464,7 +529,9 @@ function ExecutiveSummaryPage(
         subtitle={`This study identifies and reclassifies property components for ${props.property.address}. Key results are summarized below.`}
       />
 
-      <View style={baseStyles.kpiBox}>
+      {/* Phase 7 layout discipline (ADR 0013): the KPI block is atomic —
+          never split the two headline numbers across pages. */}
+      <View style={baseStyles.kpiBox} wrap={false}>
         <View style={{ flexDirection: "row", gap: 20 }}>
           <SoftKpi
             label="Year-1 deduction"
@@ -513,37 +580,76 @@ function ExecutiveSummaryPage(
 function PropertyInformationPage(
   props: AiReportProps & { placedInServiceIso: string; realPropertyYears: 27.5 | 39 },
 ) {
+  // v2 Phase 5 (ADR 0012): enrichment fields override intake nulls,
+  // and surface construction / roof / lot size when the public record
+  // returned them. When enrichment isn't provided the grid renders
+  // identically to v1.
+  const enrichment = props.property.enrichment ?? null;
+  const sqft = enrichment?.squareFeet ?? props.property.squareFeet ?? null;
+  const yearBuilt = enrichment?.yearBuilt ?? props.property.yearBuilt ?? null;
+  const constructionType = enrichment?.constructionType ?? null;
+  const roofType = enrichment?.roofType ?? null;
+  const lotSizeSqft = enrichment?.lotSizeSqft ?? null;
+
+  const entries: Array<{ k: string; v: string }> = [
+    {
+      k: "Property address",
+      v: `${props.property.address}, ${props.property.city}, ${props.property.state} ${props.property.zip}`,
+    },
+    { k: "Property owner", v: props.ownerLabel ?? "—" },
+    { k: "Date placed in service", v: fmtDate(props.placedInServiceIso) },
+    { k: "Acquisition date", v: fmtDate(props.property.acquiredAtIso) },
+    { k: "Property type", v: props.property.propertyTypeLabel },
+    {
+      k: "Real-property life",
+      v: `${props.realPropertyYears}-year ${props.realPropertyYears === 27.5 ? "(Section 168(e)(2)(A) residential rental)" : "(Section 168(e)(2)(B) nonresidential real property)"}`,
+    },
+    {
+      k: "Square footage",
+      v: sqft ? `${sqft.toLocaleString()} sq ft` : "Not specified",
+    },
+    {
+      k: "Year built",
+      v: yearBuilt ? yearBuilt.toString() : "Not specified",
+    },
+    { k: "Acquisition price", v: fmtCents(props.decomposition.purchasePriceCents) },
+  ];
+  if (constructionType) {
+    entries.push({ k: "Construction", v: constructionType.replace(/_/g, " ") });
+  }
+  if (roofType) {
+    entries.push({ k: "Roof", v: roofType.replace(/_/g, " ") });
+  }
+  if (lotSizeSqft) {
+    entries.push({ k: "Lot size", v: `${lotSizeSqft.toLocaleString()} sq ft` });
+  }
+
   return (
     <Page size="LETTER" style={baseStyles.page} wrap>
       <SectionHeader title="Property Information" />
-      <KeyValueGrid
-        columns={2}
-        entries={[
-          {
-            k: "Property address",
-            v: `${props.property.address}, ${props.property.city}, ${props.property.state} ${props.property.zip}`,
-          },
-          { k: "Property owner", v: props.ownerLabel ?? "—" },
-          { k: "Date placed in service", v: fmtDate(props.placedInServiceIso) },
-          { k: "Acquisition date", v: fmtDate(props.property.acquiredAtIso) },
-          { k: "Property type", v: props.property.propertyTypeLabel },
-          {
-            k: "Real-property life",
-            v: `${props.realPropertyYears}-year ${props.realPropertyYears === 27.5 ? "(Section 168(e)(2)(A) residential rental)" : "(Section 168(e)(2)(B) nonresidential real property)"}`,
-          },
-          {
-            k: "Square footage",
-            v: props.property.squareFeet
-              ? `${props.property.squareFeet.toLocaleString()} sq ft`
-              : "Not specified",
-          },
-          {
-            k: "Year built",
-            v: props.property.yearBuilt ? props.property.yearBuilt.toString() : "Not specified",
-          },
-          { k: "Acquisition price", v: fmtCents(props.decomposition.purchasePriceCents) },
-        ]}
-      />
+      <KeyValueGrid columns={2} entries={entries} />
+
+      {enrichment && (enrichment.assessorUrl || enrichment.listingUrl) ? (
+        <View style={{ marginTop: 8 }}>
+          <Text style={baseStyles.muted}>
+            Source references:
+            {enrichment.assessorUrl ? (
+              <>
+                {" "}
+                assessor record{" "}
+                <Text style={{ fontFamily: "Courier", fontSize: 8 }}>{enrichment.assessorUrl}</Text>
+              </>
+            ) : null}
+            {enrichment.assessorUrl && enrichment.listingUrl ? " · " : null}
+            {enrichment.listingUrl ? (
+              <>
+                listing{" "}
+                <Text style={{ fontFamily: "Courier", fontSize: 8 }}>{enrichment.listingUrl}</Text>
+              </>
+            ) : null}
+          </Text>
+        </View>
+      ) : null}
 
       <SectionHeader title="Property Description" />
       <Markdownish text={props.narrative.propertyDescription} />
@@ -790,7 +896,9 @@ function DepreciationSchedulePage(
       <DataTable columns={columns} rows={rows} footer={footer} />
 
       <View style={baseStyles.hr} />
-      <Text style={baseStyles.h3}>Notes on calculations and IRS compliance</Text>
+      <Text style={baseStyles.h3} minPresenceAhead={60}>
+        Notes on calculations and IRS compliance
+      </Text>
       <View style={{ gap: 6 }}>
         <MacrsNote
           label="Bonus eligibility"
@@ -820,8 +928,11 @@ function DepreciationSchedulePage(
 }
 
 function MacrsNote({ label, body }: { label: string; body: string }) {
+  // Phase 7 layout discipline (ADR 0013): keep each MACRS note as an
+  // atomic row — a bold label stranded from its body is a classic
+  // react-pdf pagination bug.
   return (
-    <View style={{ flexDirection: "row", gap: 6 }}>
+    <View style={{ flexDirection: "row", gap: 6 }} wrap={false}>
       <Text style={{ fontFamily: "Helvetica-Bold", width: 140 }}>{label}</Text>
       <Text style={{ flex: 1, color: pdfColors.subtle }}>{body}</Text>
     </View>
@@ -871,7 +982,11 @@ function AppendixCover({
   studyId: string;
 }) {
   return (
-    <Page size="LETTER" style={baseStyles.appendixCoverPage}>
+    // Phase 7 layout discipline (ADR 0013). Every appendix begins on a
+    // fresh page — `break` is belt-and-suspenders over the implicit page
+    // boundary a new <Page> already creates, so if a future refactor
+    // restructures the document tree, the invariant still holds.
+    <Page size="LETTER" style={baseStyles.appendixCoverPage} break>
       <Text
         style={{
           fontSize: 10,
@@ -922,7 +1037,9 @@ function AppendixAContent(props: AiReportProps) {
   return (
     <Page size="LETTER" style={baseStyles.page} wrap>
       <Text style={baseStyles.eyebrow}>Appendix A</Text>
-      <Text style={baseStyles.h2}>Cost Segregation Study Methodology</Text>
+      <Text style={baseStyles.h2} minPresenceAhead={72}>
+        Cost Segregation Study Methodology
+      </Text>
       <Text style={baseStyles.lead}>
         This methodology provides a robust, IRS-compliant framework for conducting cost segregation
         studies on residential rental and short-term rental properties. It integrates the Residual
@@ -932,7 +1049,9 @@ function AppendixAContent(props: AiReportProps) {
         (Publication 5653, 2-2025).
       </Text>
 
-      <Text style={baseStyles.h3}>Regulatory framework and compliance</Text>
+      <Text style={baseStyles.h3} minPresenceAhead={60}>
+        Regulatory framework and compliance
+      </Text>
       <Text style={baseStyles.p}>
         The methodology complies with IRS standards outlined in the Cost Segregation Audit
         Techniques Guide, ensuring accurate depreciation under the Modified Accelerated Cost
@@ -957,7 +1076,9 @@ function AppendixAContent(props: AiReportProps) {
         </Text>
       </View>
 
-      <Text style={baseStyles.h3}>Valuation methodology — Residual + RCNLD</Text>
+      <Text style={baseStyles.h3} minPresenceAhead={60}>
+        Valuation methodology — Residual + RCNLD
+      </Text>
       <Text style={baseStyles.p}>
         The Residual Estimation Method, endorsed in Chapter 3, Section C.4 of the Audit Techniques
         Guide, serves as the primary valuation approach. It allocates the total property basis
@@ -974,7 +1095,9 @@ function AppendixAContent(props: AiReportProps) {
         </Text>
       </View>
 
-      <Text style={baseStyles.h3}>Cost estimation sources</Text>
+      <Text style={baseStyles.h3} minPresenceAhead={60}>
+        Cost estimation sources
+      </Text>
       <DataTable
         columns={[
           {
@@ -1009,7 +1132,9 @@ function AppendixAContent(props: AiReportProps) {
         to PriceSearch.
       </Text>
 
-      <Text style={baseStyles.h3}>Adjustment methodologies</Text>
+      <Text style={baseStyles.h3} minPresenceAhead={60}>
+        Adjustment methodologies
+      </Text>
       <Text style={baseStyles.p}>
         Each component&apos;s Replacement Cost New is adjusted by four multipliers, each grounded in
         IRS-accepted sources:
@@ -1037,7 +1162,9 @@ function AppendixAContent(props: AiReportProps) {
         </Text>
       </View>
 
-      <Text style={baseStyles.h3}>Asset classification standards</Text>
+      <Text style={baseStyles.h3} minPresenceAhead={60}>
+        Asset classification standards
+      </Text>
       <Text style={baseStyles.p}>
         Components are classified per Chapter 6, Section C of the Audit Techniques Guide. The
         distinction between residual Section 1250 real property and 5-year personal property under
@@ -1062,7 +1189,9 @@ function AppendixAContent(props: AiReportProps) {
         </Text>
       </View>
 
-      <Text style={baseStyles.h3}>Quality assurance and audit defense</Text>
+      <Text style={baseStyles.h3} minPresenceAhead={60}>
+        Quality assurance and audit defense
+      </Text>
       <Text style={baseStyles.p}>
         Comprehensive documentation ensures audit defensibility per Chapter 4, Section D of the ATG:
         cost support (detailed estimates, comparable justifications, adjustment worksheets),
@@ -1070,7 +1199,9 @@ function AppendixAContent(props: AiReportProps) {
         audit files (verified calculations, expert qualifications, regulatory compliance).
       </Text>
 
-      <Text style={baseStyles.h3}>Limitations and assumptions</Text>
+      <Text style={baseStyles.h3} minPresenceAhead={60}>
+        Limitations and assumptions
+      </Text>
       <Text style={baseStyles.p}>
         Methodological limitations include dependence on current cost data, inherent subjectivity in
         condition and obsolescence evaluations, market variability, and evolving IRS
@@ -1097,7 +1228,9 @@ function AppendixBContent(props: AiReportProps) {
   return (
     <Page size="LETTER" style={baseStyles.page} wrap>
       <Text style={baseStyles.eyebrow}>Appendix B</Text>
-      <Text style={baseStyles.h2}>Detailed Asset Schedule</Text>
+      <Text style={baseStyles.h2} minPresenceAhead={72}>
+        Detailed Asset Schedule
+      </Text>
       <Text style={baseStyles.lead}>
         Complete listing of all classified assets with quantity, unit cost, rationale, and
         adjustments. Sorted by depreciation class.
@@ -1137,6 +1270,16 @@ function AssetDetailCard({
     item.functionalMultiplier !== undefined ||
     item.timeMultiplier !== undefined ||
     item.locationMultiplier !== undefined;
+  // v2 Phase 5: the richer layout switches on when paragraph-level v2
+  // justification data is present. Chip-only v1 outputs still render
+  // the original compact card.
+  const hasV2Detail =
+    Boolean(item.photoDataUri) ||
+    Boolean(item.physicalJustification) ||
+    Boolean(item.functionalJustification) ||
+    Boolean(item.timeBasis) ||
+    Boolean(item.locationBasis) ||
+    Boolean(item.comparableDescription);
 
   return (
     <View
@@ -1183,6 +1326,30 @@ function AssetDetailCard({
                 {classLabel}
               </Text>
             </View>
+            {item.isResidual ? (
+              <View
+                style={{
+                  backgroundColor: pdfColors.accentBg,
+                  borderColor: pdfColors.softBorder,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  paddingHorizontal: 6,
+                  paddingVertical: 1,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 7.5,
+                    fontFamily: "Helvetica-Bold",
+                    letterSpacing: 0.8,
+                    color: pdfColors.subtle,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Residual
+                </Text>
+              </View>
+            ) : null}
           </View>
           <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold" }}>{item.name}</Text>
         </View>
@@ -1195,6 +1362,22 @@ function AssetDetailCard({
           </Text>
         </View>
       </View>
+
+      {item.photoDataUri ? (
+        <View style={{ marginTop: 10, alignItems: "flex-start" }}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf <Image> has no alt prop; PDF is not an a11y tree. */}
+          <Image
+            src={item.photoDataUri}
+            style={{
+              width: 180,
+              height: 135,
+              borderRadius: 3,
+              borderWidth: 0.5,
+              borderColor: pdfColors.hairline,
+            }}
+          />
+        </View>
+      ) : null}
 
       <View
         style={{
@@ -1216,6 +1399,8 @@ function AssetDetailCard({
         </Text>
         <Text style={{ marginTop: 3, color: pdfColors.foreground }}>{item.rationale}</Text>
       </View>
+
+      {hasV2Detail ? <AssetDetailV2Body item={item} /> : null}
 
       {hasAdjustments ? (
         <View
@@ -1239,7 +1424,10 @@ function AssetDetailCard({
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
             {item.quantity !== undefined ? (
-              <AdjustmentChip label="Quantity" value={String(item.quantity)} />
+              <AdjustmentChip
+                label="Quantity"
+                value={item.unit ? `${item.quantity} ${item.unit}` : String(item.quantity)}
+              />
             ) : null}
             {item.unitCostCents !== undefined ? (
               <AdjustmentChip label="Unit cost" value={fmtCentsPrecise(item.unitCostCents)} />
@@ -1258,6 +1446,169 @@ function AssetDetailCard({
               <AdjustmentChip label="Location" value={item.locationMultiplier.toFixed(4)} />
             ) : null}
           </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * v2 per-item detail body — cost estimate block + paragraph
+ * justifications + cost summary. Rendered only when the item carries
+ * at least one v2-only field (justifications, comparable, time basis,
+ * …). Sits between the rationale and the chip build-up so the existing
+ * layout stays stable for v1 items.
+ */
+function AssetDetailV2Body({ item }: { item: AiReportProps["schedule"]["lineItems"][number] }) {
+  const qty = item.quantity ?? 1;
+  const unitCost = item.unitCostCents ?? 0;
+  const baseCostCents = qty * unitCost;
+
+  return (
+    <View>
+      {item.comparableDescription ? (
+        <View
+          style={{
+            marginTop: 8,
+            borderTopWidth: 0.5,
+            borderTopColor: pdfColors.hairline,
+            paddingTop: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 8,
+              color: pdfColors.subtle,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+            }}
+          >
+            Cost estimate
+          </Text>
+          <Text style={{ marginTop: 3, color: pdfColors.foreground }}>
+            {item.comparableDescription}
+          </Text>
+          {item.comparableSourceUrl ? (
+            <Text
+              style={{
+                fontSize: 8,
+                fontFamily: "Courier",
+                color: pdfColors.primary,
+                marginTop: 2,
+              }}
+            >
+              {item.comparableSourceUrl}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {item.physicalJustification || item.functionalJustification ? (
+        <View
+          style={{
+            marginTop: 8,
+            borderTopWidth: 0.5,
+            borderTopColor: pdfColors.hairline,
+            paddingTop: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 8,
+              color: pdfColors.subtle,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+              marginBottom: 4,
+            }}
+          >
+            Per-item adjustments
+          </Text>
+          {item.physicalJustification ? (
+            <Text style={{ marginBottom: 4 }}>
+              <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                Physical ({(item.physicalMultiplier ?? 1).toFixed(4)}):{" "}
+              </Text>
+              {item.physicalJustification}
+            </Text>
+          ) : null}
+          {item.functionalJustification ? (
+            <Text>
+              <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                Functional ({(item.functionalMultiplier ?? 1).toFixed(4)}):{" "}
+              </Text>
+              {item.functionalJustification}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {item.timeBasis || item.locationBasis ? (
+        <View
+          style={{
+            marginTop: 8,
+            borderTopWidth: 0.5,
+            borderTopColor: pdfColors.hairline,
+            paddingTop: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 8,
+              color: pdfColors.subtle,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+              marginBottom: 4,
+            }}
+          >
+            Global adjustments
+          </Text>
+          {item.timeBasis ? (
+            <Text style={{ marginBottom: 3 }}>
+              <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                Time ({(item.timeMultiplier ?? 1).toFixed(4)}):{" "}
+              </Text>
+              {item.timeBasis}
+            </Text>
+          ) : null}
+          {item.locationBasis ? (
+            <Text>
+              <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                Location ({(item.locationMultiplier ?? 1).toFixed(4)}):{" "}
+              </Text>
+              {item.locationBasis}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {item.unitCostCents !== undefined && item.quantity !== undefined ? (
+        <View
+          style={{
+            marginTop: 8,
+            borderTopWidth: 0.5,
+            borderTopColor: pdfColors.hairline,
+            paddingTop: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 8,
+              color: pdfColors.subtle,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+              marginBottom: 4,
+            }}
+          >
+            Cost summary
+          </Text>
+          <Text>
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>Base cost: </Text>
+            {fmtCentsPrecise(unitCost)} × {qty}
+            {item.unit ? ` ${item.unit}` : ""} = {fmtCentsPrecise(baseCostCents)}
+          </Text>
+          <Text style={{ fontFamily: "Helvetica-Bold", marginTop: 3 }}>
+            Fully adjusted cost: {fmtCentsPrecise(item.amountCents)}
+          </Text>
         </View>
       ) : null}
     </View>
@@ -1290,7 +1641,9 @@ function AppendixCContent(props: AiReportProps) {
   return (
     <Page size="LETTER" style={baseStyles.page} wrap>
       <Text style={baseStyles.eyebrow}>Appendix C</Text>
-      <Text style={baseStyles.h2}>Reference Documentation</Text>
+      <Text style={baseStyles.h2} minPresenceAhead={72}>
+        Reference Documentation
+      </Text>
       <Text style={baseStyles.lead}>
         Supporting source materials used to produce this study. Encrypted originals are accessible
         from your {BRAND.name} dashboard at{" "}
@@ -1362,7 +1715,9 @@ function AppendixDContent(props: AiReportProps) {
   return (
     <Page size="LETTER" style={baseStyles.page} wrap>
       <Text style={baseStyles.eyebrow}>Appendix D</Text>
-      <Text style={baseStyles.h2}>Expenditure Classification Schedule</Text>
+      <Text style={baseStyles.h2} minPresenceAhead={72}>
+        Expenditure Classification Schedule
+      </Text>
       <Text style={baseStyles.lead}>
         Every classified expenditure sorted by cost, with its MACRS class assignment. This is the
         spreadsheet your CPA will likely want for direct import into depreciation software.
@@ -1427,7 +1782,9 @@ function AppendixEContent(
   return (
     <Page size="LETTER" style={baseStyles.page} wrap>
       <Text style={baseStyles.eyebrow}>Appendix E</Text>
-      <Text style={baseStyles.h2}>CPA Filing Worksheet</Text>
+      <Text style={baseStyles.h2} minPresenceAhead={72}>
+        CPA Filing Worksheet
+      </Text>
       <Text style={baseStyles.lead}>
         Decision support for the tax filing that applies this cost segregation study. This is{" "}
         <Text style={{ fontFamily: "Helvetica-Bold" }}>not</Text> a substitute for Form 3115 or Form
@@ -1599,7 +1956,9 @@ function AppendixEContent(
 
       <View style={[baseStyles.hr, { marginTop: 20 }]} />
 
-      <Text style={baseStyles.h3}>Procedural checklist for the filing CPA</Text>
+      <Text style={baseStyles.h3} minPresenceAhead={60}>
+        Procedural checklist for the filing CPA
+      </Text>
       <View style={{ gap: 5 }}>
         <Form3115Checkbox
           label={`Confirm the year of change (${taxYear}) matches the taxpayer's tax year on the return.`}

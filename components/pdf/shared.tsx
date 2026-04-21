@@ -390,6 +390,16 @@ export function BrandMarkPdf({
   );
 }
 
+/**
+ * Default `minPresenceAhead` (in points) on section titles. Ensures
+ * react-pdf moves the heading to the next page unless at least this
+ * much vertical room remains — prevents a heading from orphaning at
+ * the bottom of a page separate from its body. 72pt ≈ 1 inch, which
+ * is roughly 3–4 body lines of 10pt text at lineHeight 1.55. Phase 7
+ * layout discipline (ADR 0013).
+ */
+export const HEADING_MIN_PRESENCE_AHEAD = 72;
+
 export function SectionHeader({
   eyebrow,
   title,
@@ -402,7 +412,9 @@ export function SectionHeader({
   return (
     <View style={{ marginTop: 16, marginBottom: 10 }}>
       {eyebrow ? <Text style={baseStyles.eyebrow}>{eyebrow}</Text> : null}
-      <Text style={baseStyles.h2}>{title}</Text>
+      <Text style={baseStyles.h2} minPresenceAhead={HEADING_MIN_PRESENCE_AHEAD}>
+        {title}
+      </Text>
       {subtitle ? <Text style={baseStyles.lead}>{subtitle}</Text> : null}
     </View>
   );

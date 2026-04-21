@@ -72,7 +72,7 @@ export const processStudy = inngest.createFunction(
 
     const pipeline = await import("@/lib/studies/pipeline");
 
-    const study = await step.run("load-study", () => pipeline.loadStudyForPipeline(studyId));
+    let study = await step.run("load-study", () => pipeline.loadStudyForPipeline(studyId));
 
     await step.run("mark-processing", async () => {
       const { getPrisma } = await import("@/lib/db/client");
@@ -132,6 +132,31 @@ export const processStudy = inngest.createFunction(
       });
     });
 
+    // v2 Phase 4 (flag-gated): look up assessor + listing data via
+    // web_search before any AI calls that depend on property facts. The
+    // result is persisted on Property.enrichmentJson and threaded
+    // through the in-memory `study` so Step B + the narrative can read
+    // it without another DB round-trip. Off path: no-op.
+    const { isV2PropertyEnrichEnabled } = await import("@/lib/features/v2-report");
+    if (isV2PropertyEnrichEnabled()) {
+      const enrichment = await step.run("step-enrich-property", () =>
+        pipeline.runEnrichProperty(study),
+      );
+      await step.run("persist-enrichment", () =>
+        pipeline.persistEnrichment(study.propertyId, enrichment),
+      );
+      await step.run("emit-enrichment-event", () =>
+        emitProgressEvent(studyId, "property.enriched", {
+          hasAssessorRatio: pipeline.hasAssessorRatio(enrichment),
+          hasListing: Boolean(enrichment.listingUrl),
+          overallConfidence: enrichment.confidence.overall,
+        }),
+      );
+      // Re-thread enrichment into the in-memory study so downstream
+      // steps (Step B in particular) don't read stale nulls.
+      study = { ...study, enrichment };
+    }
+
     const classified = await step.run("step-a-classify-documents", () =>
       pipeline.runClassifyDocumentsBatch(study),
     );
@@ -146,6 +171,29 @@ export const processStudy = inngest.createFunction(
         docCount: classified.length,
       }),
     );
+
+    // v2 Phase 1 (flag-gated): run the vision describer on every uploaded
+    // photo and persist the structured detected-object list. Output is
+    // stored on Document.photoAnalysis for Phase 2's classifier rewrite
+    // to consume. Off path: no-op, pipeline continues identically to v1.
+    const { isV2PhotosEnabled } = await import("@/lib/features/v2-report");
+    if (isV2PhotosEnabled()) {
+      const photoBatch = await step.run("step-a2-describe-photos", () =>
+        pipeline.runDescribePhotosBatch(study),
+      );
+      if (photoBatch.length > 0) {
+        await step.run("persist-photo-analysis", () => pipeline.persistPhotoAnalysis(photoBatch));
+        await step.run("emit-photos-event", () =>
+          emitProgressEvent(studyId, "photos.described", {
+            photoCount: photoBatch.length,
+            totalDetectedObjects: photoBatch.reduce(
+              (acc, row) => acc + row.output.detectedObjects.length,
+              0,
+            ),
+          }),
+        );
+      }
+    }
 
     const cdFields = pipeline.findClosingDisclosureFields(classified);
     if (!cdFields) {
@@ -171,9 +219,20 @@ export const processStudy = inngest.createFunction(
       }),
     );
 
-    const assetsResult = await step.run("step-c-classify-assets", () =>
-      pipeline.runClassifyAssets(study, decomposition.buildingValueCents, improvements),
-    );
+    // v2 Phase 2 (flag-gated): Step C runs the per-object v2 classifier
+    // when V2_REPORT_CLASSIFIER is on. The v2 schedule shape is not
+    // compatible with the v1 PDF renderer yet (Phase 5 work) — but the
+    // shape is persisted so admin surfaces + follow-on work can see it.
+    const { isV2ClassifierEnabled } = await import("@/lib/features/v2-report");
+    const useV2Classifier = isV2ClassifierEnabled();
+
+    const assetsResult = useV2Classifier
+      ? await step.run("step-c-classify-assets-v2", () =>
+          pipeline.runClassifyAssetsV2(study, decomposition.buildingValueCents, improvements),
+        )
+      : await step.run("step-c-classify-assets", () =>
+          pipeline.runClassifyAssets(study, decomposition.buildingValueCents, improvements),
+        );
 
     if (!assetsResult.balanced) {
       await step.run("fail-unbalanced", () =>
@@ -190,6 +249,7 @@ export const processStudy = inngest.createFunction(
       emitProgressEvent(studyId, "assets.classified", {
         lineItemCount: assetsResult.schedule.lineItems.length,
         attempts: assetsResult.attempts,
+        schema: useV2Classifier ? "v2" : "v1",
       }),
     );
 
@@ -207,14 +267,23 @@ export const processStudy = inngest.createFunction(
     // signal the UI uses to light up the render + deliver steps together.
     await step.run("emit-narrative-event", () => emitProgressEvent(studyId, "narrative.drafted"));
 
-    const totalCents = assetsResult.schedule.lineItems.reduce((acc, li) => acc + li.amountCents, 0);
+    // v1 line items use `amountCents`; v2 uses `adjustedCostCents`. Sum
+    // whichever is present. The total is the depreciable basis either way.
+    const totalCents = assetsResult.schedule.lineItems.reduce((acc, li) => {
+      const v1Amount = (li as { amountCents?: number }).amountCents;
+      const v2Amount = (li as { adjustedCostCents?: number }).adjustedCostCents;
+      return acc + (v1Amount ?? v2Amount ?? 0);
+    }, 0);
 
     await step.run("finalize", () =>
       pipeline.finalizeStudy({
         studyId,
         tier: study.tier,
         decomposition: decomposition as unknown as Record<string, unknown>,
-        schedule: assetsResult.schedule as unknown as Record<string, unknown>,
+        schedule: {
+          schema: useV2Classifier ? "v2" : "v1",
+          ...(assetsResult.schedule as unknown as Record<string, unknown>),
+        },
         narrative: narrative as unknown as Record<string, unknown>,
         assetScheduleTotalCents: totalCents,
       }),

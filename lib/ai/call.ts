@@ -15,9 +15,9 @@ import { computeCostUsd } from "./cost";
  *   • `document` — PDF bytes, forwarded as a Claude document content block.
  *   • `image` — JPEG/PNG bytes, forwarded as an image content block.
  *   • `text` — pre-extracted text (e.g. a spreadsheet rendered to Markdown
- *     by `lib/ocr/spreadsheet-to-text.ts`). Inlined as a titled text
- *     content block so the model sees it as a distinct artifact rather
- *     than free-floating prose appended to the user message.
+ *     by `lib/ocr/spreadsheet-to-text.ts`). Inlined as a bold-titled
+ *     text content block so the model sees it as a distinct artifact
+ *     rather than free-floating prose appended to the user message.
  */
 export type AttachmentInput =
   | {
@@ -38,6 +38,17 @@ export type AttachmentInput =
       title?: string;
     };
 
+/**
+ * Anthropic-hosted server tools (web_search, web_fetch, code_execution, …).
+ * When present these run inside the same `messages.create` call — the
+ * model invokes them, Anthropic executes them, results come back to the
+ * model, and the final response still contains the forced submit tool_use
+ * block we care about. Caller side just has to be ready for extra
+ * content blocks in the response (`server_tool_use`,
+ * `web_search_tool_result`, …) and for a slightly higher latency.
+ */
+export type ServerTool = Anthropic.Messages.ToolUnion;
+
 export interface CallToolArgs<TOutput> {
   /** Stable operation name — keys the audit log + idempotency cache. */
   operation: string;
@@ -54,6 +65,13 @@ export interface CallToolArgs<TOutput> {
   studyId?: string;
   /** Optional supplementary input bits stored in the audit row for debugging. */
   inputDetails?: Record<string, unknown>;
+  /**
+   * Optional Anthropic-hosted server tools (e.g. web_search_20250305) to
+   * include alongside the submit tool. When supplied, `tool_choice`
+   * stays as the forced submit tool — server tools fire opportunistically
+   * before the final submit per the Anthropic tool-use protocol.
+   */
+  serverTools?: ServerTool[];
 }
 
 export interface CallToolResult<TOutput> {
@@ -62,6 +80,8 @@ export interface CallToolResult<TOutput> {
   tokensOut: number;
   costUsd: number;
   cached: boolean;
+  /** Number of web_search tool calls the model made during this invocation. */
+  webSearchRequests: number;
 }
 
 /**
@@ -83,6 +103,12 @@ export async function callTool<TOutput>(
     system: args.system,
     userMessage: args.userMessage,
     toolName: args.tool.name,
+    // Server-tool set is part of the cache key — a web-search-enabled
+    // output is a different artifact than a search-free one.
+    serverTools: (args.serverTools ?? []).map((t) => ({
+      type: (t as { type?: string }).type ?? null,
+      name: (t as { name?: string }).name ?? null,
+    })),
     // Hashing attachment content means the same bytes (PDF / image /
     // extracted spreadsheet text) dedupes across retries.
     attachments: (args.attachments ?? []).map((a) => {
@@ -109,6 +135,7 @@ export async function callTool<TOutput>(
         tokensOut: existing.tokensOut,
         costUsd: Number(existing.costUsd),
         cached: true,
+        webSearchRequests: 0,
       };
     }
     console.warn(
@@ -118,13 +145,19 @@ export async function callTool<TOutput>(
 
   const content = buildUserContent(args);
 
+  // Server tools (web_search, etc.) are concatenated with the user's
+  // forced-output tool. tool_choice still points at the submit tool so
+  // the model is guaranteed to emit structured output; server tools run
+  // opportunistically before the final submit.
+  const tools: Anthropic.Messages.ToolUnion[] = [args.tool, ...(args.serverTools ?? [])];
+
   const client = getAnthropic();
   const response = await client.messages.create({
     model: args.model,
     max_tokens: args.maxTokens ?? 4096,
     system: args.system,
     messages: [{ role: "user", content }],
-    tools: [args.tool],
+    tools,
     tool_choice: { type: "tool", name: args.tool.name },
   });
 
@@ -146,7 +179,13 @@ export async function callTool<TOutput>(
 
   const tokensIn = response.usage.input_tokens;
   const tokensOut = response.usage.output_tokens;
-  const costUsd = computeCostUsd(args.model, tokensIn, tokensOut);
+  // Anthropic reports server-tool usage when web_search / web_fetch etc
+  // were invoked. Count is zero when the model didn't use them, or when
+  // serverTools wasn't passed at all.
+  const webSearchRequests =
+    (response.usage as { server_tool_use?: { web_search_requests?: number } | null })
+      .server_tool_use?.web_search_requests ?? 0;
+  const costUsd = computeCostUsd(args.model, tokensIn, tokensOut, { webSearchRequests });
 
   // Don't persist base64 blobs / full spreadsheet text into
   // AiAuditLog — they're huge. Record metadata only; the step can
@@ -177,6 +216,8 @@ export async function callTool<TOutput>(
         system: args.system,
         userMessage: args.userMessage,
         attachments: attachmentMeta,
+        serverTools: (args.serverTools ?? []).map((t) => (t as { type?: string }).type ?? "?"),
+        webSearchRequests,
         ...(args.inputDetails ?? {}),
       },
       output: parsed.data as unknown as object,
@@ -194,6 +235,8 @@ export async function callTool<TOutput>(
         system: args.system,
         userMessage: args.userMessage,
         attachments: attachmentMeta,
+        serverTools: (args.serverTools ?? []).map((t) => (t as { type?: string }).type ?? "?"),
+        webSearchRequests,
         ...(args.inputDetails ?? {}),
       },
       output: parsed.data as unknown as object,
@@ -204,7 +247,14 @@ export async function callTool<TOutput>(
     },
   });
 
-  return { output: parsed.data, tokensIn, tokensOut, costUsd, cached: false };
+  return {
+    output: parsed.data,
+    tokensIn,
+    tokensOut,
+    costUsd,
+    cached: false,
+    webSearchRequests,
+  };
 }
 
 function buildUserContent<T>(args: CallToolArgs<T>): Anthropic.Messages.ContentBlockParam[] {
