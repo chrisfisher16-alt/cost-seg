@@ -165,15 +165,17 @@ async function resolveOrCreateUser(
 
   if (error || !supabaseUserId) {
     // Race: another webhook created the user first, or Supabase reported
-    // "email already exists". Fall back to listUsers lookup.
-    const listed = await admin.auth.admin.listUsers({ perPage: 200 });
-    const match = listed.data?.users.find((u) => u.email === email);
-    if (!match) {
+    // "email already exists". Fall back to a paginated listUsers lookup
+    // — a single 200-row page used to be enough for V1's solo-operator
+    // scale, but as the project grows past that a needle-in-page-2 race
+    // would silently throw "Could not create or find." Iterate pages
+    // until we find the match or exhaust results.
+    supabaseUserId = await findSupabaseUserByEmail(admin, email);
+    if (!supabaseUserId) {
       throw new Error(
         `Could not create or find Supabase user for ${email}: ${error?.message ?? "unknown"}`,
       );
     }
-    supabaseUserId = match.id;
   }
 
   await prisma.user.upsert({
@@ -182,6 +184,39 @@ async function resolveOrCreateUser(
     create: { id: supabaseUserId, email, name },
   });
   return supabaseUserId;
+}
+
+/** Cap on pages we'll walk during a listUsers lookup. 50 pages × 200
+ * users = 10k, an order of magnitude past the operator's current total
+ * and plenty of headroom before the cap becomes the failure mode.
+ * If the real answer is "user exists past the cap," we'd rather throw
+ * a clear error than silently fall through. */
+const LIST_USERS_MAX_PAGES = 50;
+
+/**
+ * Walk Supabase's paginated listUsers until we find a match or exhaust
+ * results. Returns null when no user with `email` exists. Closes B3-2
+ * (Bucket 3): before this, we did a single `listUsers({ perPage: 200 })`
+ * call and assumed the target was on page 1. A concurrent-webhook race
+ * where the racing user isn't in the first 200 would silently fail.
+ */
+async function findSupabaseUserByEmail(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  email: string,
+): Promise<string | null> {
+  const target = email.toLowerCase();
+  for (let page = 1; page <= LIST_USERS_MAX_PAGES; page++) {
+    const { data } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    const users = data?.users ?? [];
+    const match = users.find((u) => (u.email ?? "").toLowerCase() === target);
+    if (match) return match.id;
+    // Supabase returns `nextPage: 0` (falsy) when there's no next page.
+    // We treat both "< perPage results" and "nextPage missing" as terminal.
+    if (users.length < 200) return null;
+  }
+  // Exhausted the safety cap — surface it to the caller as "not found"
+  // rather than silently spinning forever.
+  return null;
 }
 
 async function generateIntakeMagicLink(email: string, studyId: string): Promise<string> {

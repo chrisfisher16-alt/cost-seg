@@ -19,6 +19,7 @@ import {
   adminResendDeliveryEmailAction,
   adminUploadSignedStudyAction,
 } from "@/app/(admin)/admin/studies/[id]/actions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -235,9 +236,9 @@ function MarkFailedDialog({ studyId, status }: { studyId: string; status: StudyS
             />
           </Field>
           {error ? (
-            <p role="alert" className="text-destructive text-xs font-medium">
-              {error}
-            </p>
+            <Alert variant="destructive" role="alert">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           ) : null}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
