@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { downloadMyDeliverableAction } from "./actions";
+import { DeleteStudyButton } from "@/components/app/DeleteStudyButton";
 import { Container } from "@/components/shared/Container";
 import { Kpi } from "@/components/shared/Kpi";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -125,8 +126,42 @@ async function listStudies(userId: string): Promise<{
   }
 }
 
-export default async function DashboardPage() {
+type FilterKey = "all" | "in-progress" | "delivered";
+
+const FILTER_TABS: ReadonlyArray<{ key: FilterKey; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "in-progress", label: "In progress" },
+  { key: "delivered", label: "Delivered" },
+];
+
+/**
+ * Which statuses count as "in progress" for the filter. Anything active in
+ * the pipeline or waiting on the customer/engineer. DELIVERED + FAILED +
+ * REFUNDED are terminal; PENDING_PAYMENT shouldn't appear on the dashboard
+ * at all (studies with that status aren't persisted until checkout completes).
+ */
+const IN_PROGRESS_STATUSES = new Set<StudyStatus>([
+  "AWAITING_DOCUMENTS",
+  "PROCESSING",
+  "AI_COMPLETE",
+  "AWAITING_ENGINEER",
+  "ENGINEER_REVIEWED",
+]);
+
+function parseFilter(raw: string | string[] | undefined): FilterKey {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === "in-progress" || value === "delivered") return value;
+  return "all";
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { user } = await requireAuth();
+  const params = (await searchParams) ?? {};
+  const filter = parseFilter(params.filter);
   const [{ listItems: rawStudies, aggregateInput }, sharedResult] = await Promise.all([
     listStudies(user.id),
     safeListShared(user.id),
@@ -135,7 +170,8 @@ export default async function DashboardPage() {
   // studies and 1 awaiting-docs study sees the one they need to act on
   // first. Prisma returns `createdAt desc` as the stable base order; this
   // re-ranks by work priority while preserving newest-within-bucket.
-  const studies = sortStudiesByWorkPriority(rawStudies);
+  const allStudies = sortStudiesByWorkPriority(rawStudies);
+  const studies = filterStudies(allStudies, filter);
   const sharedStudies = sharedResult.ok ? sharedResult.shares : [];
   const sharedError = sharedResult.ok ? null : sharedResult.error;
   // Pinned to the request timestamp in the server component; pass to cards
@@ -143,11 +179,13 @@ export default async function DashboardPage() {
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
 
-  const delivered = studies.filter((s) => s.status === "DELIVERED").length;
-  const processing = studies.filter((s) =>
+  // Stat counts always reflect the FULL list, not the filtered one, so the
+  // cards don't shift when the user narrows the view.
+  const delivered = allStudies.filter((s) => s.status === "DELIVERED").length;
+  const processing = allStudies.filter((s) =>
     ["PROCESSING", "AI_COMPLETE", "AWAITING_ENGINEER"].includes(s.status),
   ).length;
-  const awaiting = studies.filter((s) => s.status === "AWAITING_DOCUMENTS").length;
+  const awaiting = allStudies.filter((s) => s.status === "AWAITING_DOCUMENTS").length;
 
   const firstName = user.name?.split(" ")[0] ?? null;
   const isCpa = user.role === "CPA";
@@ -188,9 +226,9 @@ export default async function DashboardPage() {
 
       {showPortfolio ? <PortfolioStrip portfolio={portfolio} /> : null}
 
-      {studies.length > 0 ? (
+      {allStudies.length > 0 ? (
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
-          <StatCard label="Studies" value={studies.length.toString()} />
+          <StatCard label="Studies" value={allStudies.length.toString()} />
           <StatCard label="Delivered" value={delivered.toString()} tone="success" />
           <StatCard
             label="In progress"
@@ -201,22 +239,47 @@ export default async function DashboardPage() {
       ) : null}
 
       <section className="mt-10">
-        {studies.length === 0 && sharedStudies.length === 0 && !sharedError ? (
+        {allStudies.length === 0 && sharedStudies.length === 0 && !sharedError ? (
           isCpa ? (
             <CpaEmptyState />
           ) : (
             <CustomerEmptyState />
           )
-        ) : studies.length > 0 ? (
+        ) : allStudies.length > 0 ? (
           <>
-            <h2 className="text-muted-foreground mb-4 font-mono text-sm tracking-[0.18em] uppercase">
-              Your studies
-            </h2>
-            <ul className="space-y-3">
-              {studies.map((study) => (
-                <StudyCard key={study.id} study={study} nowMs={nowMs} />
-              ))}
-            </ul>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-muted-foreground font-mono text-sm tracking-[0.18em] uppercase">
+                Your studies
+              </h2>
+              <FilterTabs
+                active={filter}
+                counts={{
+                  all: allStudies.length,
+                  "in-progress": processing + awaiting,
+                  delivered,
+                }}
+              />
+            </div>
+            {studies.length > 0 ? (
+              <ul className="space-y-3">
+                {studies.map((study) => (
+                  <StudyCard key={study.id} study={study} nowMs={nowMs} />
+                ))}
+              </ul>
+            ) : (
+              <Card className="border-dashed">
+                <CardContent className="space-y-1 p-8 text-center">
+                  <p className="text-foreground text-sm font-medium">No studies in this view.</p>
+                  <p className="text-muted-foreground text-sm">
+                    Switch tabs or{" "}
+                    <Link href="/dashboard" className="underline">
+                      clear the filter
+                    </Link>
+                    .
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </>
         ) : null}
       </section>
@@ -443,6 +506,49 @@ function CpaEmptyState() {
   );
 }
 
+function filterStudies(studies: StudyListItem[], filter: FilterKey): StudyListItem[] {
+  if (filter === "all") return studies;
+  if (filter === "delivered") return studies.filter((s) => s.status === "DELIVERED");
+  // "in-progress" excludes delivered/failed/refunded — anything terminal.
+  return studies.filter((s) => IN_PROGRESS_STATUSES.has(s.status));
+}
+
+function FilterTabs({ active, counts }: { active: FilterKey; counts: Record<FilterKey, number> }) {
+  return (
+    <nav aria-label="Filter studies" className="flex flex-wrap gap-1">
+      {FILTER_TABS.map((tab) => {
+        const isActive = tab.key === active;
+        const href =
+          tab.key === "all" ? ("/dashboard" as Route) : (`/dashboard?filter=${tab.key}` as Route);
+        return (
+          <Link
+            key={tab.key}
+            href={href}
+            scroll={false}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition",
+              isActive
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+            )}
+            aria-current={isActive ? "page" : undefined}
+          >
+            {tab.label}
+            <span
+              className={cn(
+                "inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 font-mono text-[10px]",
+                isActive ? "bg-background/20" : "bg-secondary/80",
+              )}
+            >
+              {counts[tab.key]}
+            </span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 function StudyCard({ study, nowMs }: { study: StudyListItem; nowMs: number }) {
   const entry = CATALOG[study.tier];
   const action = computeNextAction({
@@ -534,6 +640,10 @@ function StudyCard({ study, nowMs }: { study: StudyListItem; nowMs: number }) {
                 </Button>
               </form>
             ) : null}
+            <DeleteStudyButton
+              studyId={study.id}
+              propertyLabel={`${study.property.address}, ${study.property.city}, ${study.property.state}`}
+            />
           </div>
         </CardContent>
       </Card>

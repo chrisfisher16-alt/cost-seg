@@ -307,6 +307,79 @@ export async function startPipelineAction(studyId: string): Promise<ActionOk<obj
   return { ok: true };
 }
 
+// -----------------------------------------------------------------------------
+// Cancel / delete study
+// -----------------------------------------------------------------------------
+
+/**
+ * Cancel or delete a study the user owns. Hard-deletes the Study row,
+ * which cascades to Document / StudyEvent / StudyShare rows via the
+ * Prisma schema's `onDelete: Cascade` relations. Property stays (it's
+ * owned by the user, not the study).
+ *
+ * Blocked while `PROCESSING` — Inngest is actively working the pipeline
+ * and deleting out from under it would leave orphaned steps. The
+ * customer can cancel before starting (AWAITING_DOCUMENTS) or after
+ * anything terminal (DELIVERED, FAILED, REFUNDED, AI_COMPLETE).
+ *
+ * Storage files (uploaded docs, deliverable PDFs) are best-effort —
+ * removal errors are logged but don't fail the whole action. Orphaned
+ * files cost pennies and an admin job can sweep them.
+ */
+export async function deleteStudyAction(studyId: string): Promise<ActionOk<object> | ActionErr> {
+  const { user } = await requireAuth();
+  const prisma = getPrisma();
+  const study = await prisma.study.findUnique({
+    where: { id: studyId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      documents: { select: { storagePath: true } },
+      deliverableUrl: true,
+    },
+  });
+  if (!study) return { ok: false, error: "Study not found." };
+  assertOwnership(user, study);
+  if (study.status === "PROCESSING") {
+    return {
+      ok: false,
+      error: "This study is processing right now. Wait for it to finish, then delete.",
+    };
+  }
+
+  // Storage cleanup is best-effort — a failure here doesn't reverse the
+  // DB delete. Deliverable PDFs live under `{studyId}/deliverables/...`;
+  // uploaded documents are `{studyId}/{kind}/{docId}/...`. Supabase's
+  // storage API doesn't expose a recursive prefix delete from the
+  // client, so we delete the known file paths individually.
+  for (const doc of study.documents) {
+    await removeStudyFile(doc.storagePath).catch((err) => {
+      console.warn("[study-delete] doc storage remove failed", { studyId, err });
+    });
+  }
+  if (study.deliverableUrl) {
+    await removeStudyFile(study.deliverableUrl).catch((err) => {
+      console.warn("[study-delete] deliverable remove failed", { studyId, err });
+    });
+  }
+
+  try {
+    await prisma.study.delete({ where: { id: studyId } });
+  } catch (err) {
+    console.error("[study-delete] DB delete failed", { studyId, err });
+    return { ok: false, error: "Could not delete the study. Try again." };
+  }
+
+  await captureServer(user.id, "study_deleted", {
+    studyId,
+    status: study.status,
+  });
+
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function removeDocumentAction(
   studyId: string,
   documentId: string,
