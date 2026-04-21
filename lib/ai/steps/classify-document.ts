@@ -38,7 +38,12 @@ export async function classifyDocument(
     attachments: [attachment],
     tool: CLASSIFY_DOCUMENT_TOOL,
     outputSchema: classifyDocumentOutputSchema,
-    maxTokens: 2048,
+    // 2048 was fine for single-page CD extractions; a spreadsheet of
+    // 100+ improvement line items (now a real input via the xlsx
+    // route added in lib/ocr/spreadsheet-to-text.ts) needs more room.
+    // Sonnet output tokens are cheap — 8192 is well under the model
+    // limit and absorbs even pathological ledgers.
+    maxTokens: 8192,
     studyId: input.studyId,
     inputDetails: { documentId: input.documentId, declaredKind: input.declaredKind },
   });

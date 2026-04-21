@@ -46,10 +46,23 @@ const TERMINAL = new Set(["DELIVERED", "FAILED"]);
 
 export function PipelineLive({ studyId, initial, propertyLabel, tierLabel }: Props) {
   const [state, setState] = React.useState<ProcessingStateResult>(initial);
-  const startedAtRef = React.useRef<number | null>(null);
-  const [elapsedSec, setElapsedSec] = React.useState(0);
 
-  // Record start-time after mount (not during render) so it's pure + SSR-safe.
+  // Elapsed-timer anchor. Prefer the server-provided pipeline start
+  // timestamp so navigating back to an in-flight study doesn't reset
+  // the counter. When the server hasn't seen pipeline activity yet
+  // (still-queued study), fall back to mount time — better than "0s
+  // for eternity" while still not lying about a past that didn't
+  // happen on this client.
+  const serverAnchorMs = React.useMemo(() => {
+    if (!initial.pipelineStartedAtIso) return null;
+    const t = Date.parse(initial.pipelineStartedAtIso);
+    return Number.isFinite(t) ? t : null;
+  }, [initial.pipelineStartedAtIso]);
+  const [elapsedSec, setElapsedSec] = React.useState(() =>
+    serverAnchorMs ? Math.max(0, Math.floor((Date.now() - serverAnchorMs) / 1000)) : 0,
+  );
+  const startedAtRef = React.useRef<number | null>(serverAnchorMs);
+
   React.useEffect(() => {
     if (startedAtRef.current === null) startedAtRef.current = Date.now();
     const tick = () => {
@@ -60,6 +73,20 @@ export function PipelineLive({ studyId, initial, propertyLabel, tierLabel }: Pro
     const timer = window.setInterval(tick, 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  // If a poll later in the session discovers pipeline.started for the
+  // first time (or a more-authoritative earlier event), rebase the
+  // anchor. Only move BACKWARDS in time — never forward, so a cache
+  // hiccup can't shrink the elapsed display.
+  React.useEffect(() => {
+    if (!state.pipelineStartedAtIso) return;
+    const t = Date.parse(state.pipelineStartedAtIso);
+    if (!Number.isFinite(t)) return;
+    if (startedAtRef.current === null || t < startedAtRef.current) {
+      startedAtRef.current = t;
+      setElapsedSec(Math.max(0, Math.floor((Date.now() - t) / 1000)));
+    }
+  }, [state.pipelineStartedAtIso]);
 
   React.useEffect(() => {
     if (TERMINAL.has(state.status)) return;
