@@ -1,6 +1,27 @@
 import { NonRetriableError } from "inngest";
 
+import type { Prisma } from "@prisma/client";
+
 import { inngest } from "../client";
+
+/**
+ * Write a progression StudyEvent. Kept lazily-imported in each caller so
+ * the top of this Inngest function file stays tree-shakable for the
+ * Inngest introspector — but extracted here so the per-step event emits
+ * read the same everywhere. Each event kind fires at most once per study
+ * (Inngest step.run memoizes the call by id), so a retry of a later
+ * pipeline step won't duplicate an earlier event row.
+ */
+async function emitProgressEvent(
+  studyId: string,
+  kind: string,
+  payload: Record<string, unknown> = {},
+): Promise<void> {
+  const { getPrisma } = await import("@/lib/db/client");
+  await getPrisma().studyEvent.create({
+    data: { studyId, kind, payload: payload as Prisma.InputJsonValue },
+  });
+}
 
 /**
  * Phase 5 pipeline. Each AI step is wrapped in `step.run()` so Inngest
@@ -66,6 +87,15 @@ export const processStudy = inngest.createFunction(
 
     await step.run("persist-classifier-fields", () => pipeline.persistClassifierFields(classified));
 
+    // Progress event #1: classification done. Drives the "Parsing your
+    // documents" step → done on the live pipeline view and lets
+    // estimatePipelineEta advance the active step.
+    await step.run("emit-classify-event", () =>
+      emitProgressEvent(studyId, "documents.classified", {
+        docCount: classified.length,
+      }),
+    );
+
     const cdFields = pipeline.findClosingDisclosureFields(classified);
     if (!cdFields) {
       await step.run("fail-no-cd", () =>
@@ -83,6 +113,13 @@ export const processStudy = inngest.createFunction(
       pipeline.runDecompose(study, cdFields),
     );
 
+    // Progress event #2: land-vs-building split computed.
+    await step.run("emit-decompose-event", () =>
+      emitProgressEvent(studyId, "decomposition.complete", {
+        buildingValueCents: decomposition.buildingValueCents,
+      }),
+    );
+
     const assetsResult = await step.run("step-c-classify-assets", () =>
       pipeline.runClassifyAssets(study, decomposition.buildingValueCents, improvements),
     );
@@ -97,6 +134,14 @@ export const processStudy = inngest.createFunction(
       throw new NonRetriableError("Asset schedule did not balance after retry");
     }
 
+    // Progress event #3: every asset classified into MACRS buckets.
+    await step.run("emit-assets-event", () =>
+      emitProgressEvent(studyId, "assets.classified", {
+        lineItemCount: assetsResult.schedule.lineItems.length,
+        attempts: assetsResult.attempts,
+      }),
+    );
+
     const narrative = await step.run("step-d-narrative", () =>
       pipeline.runNarrative(
         study,
@@ -104,6 +149,12 @@ export const processStudy = inngest.createFunction(
         assetsResult.schedule as unknown as Record<string, unknown>,
       ),
     );
+
+    // Progress event #4: methodology narrative written. Render + deliver
+    // happen in `deliver-ai-report` (AI_REPORT/DIY) or via admin upload
+    // (ENGINEER_REVIEWED); those fire `study.delivered` which is the
+    // signal the UI uses to light up the render + deliver steps together.
+    await step.run("emit-narrative-event", () => emitProgressEvent(studyId, "narrative.drafted"));
 
     const totalCents = assetsResult.schedule.lineItems.reduce((acc, li) => acc + li.amountCents, 0);
 

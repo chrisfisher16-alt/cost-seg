@@ -73,6 +73,40 @@ describe("buildSteps — honest `active` state", () => {
     expect(pick(steps, "decompose").state).toBe("active");
   });
 
+  it("PROCESSING + full progression chain: narrative is the next 'active'", () => {
+    const steps = buildSteps(
+      "PROCESSING",
+      new Set([
+        "pipeline.started",
+        "documents.classified",
+        "decomposition.complete",
+        "assets.classified",
+      ]),
+      null,
+    );
+    expect(pick(steps, "classify").state).toBe("done");
+    expect(pick(steps, "decompose").state).toBe("done");
+    expect(pick(steps, "assets").state).toBe("done");
+    expect(pick(steps, "narrative").state).toBe("active");
+  });
+
+  it("study.delivered event collapses render + deliver to 'done' (covers the gap between narrative and status=DELIVERED)", () => {
+    // During delivery there's a brief window where narrative.drafted has
+    // fired but the status transition to DELIVERED hasn't committed yet.
+    // The `deliver.ts` code writes `study.delivered` inside that same
+    // transaction. Treat it as authoritative so the UI doesn't
+    // regress back to "waiting for render" for the few seconds between
+    // narrative → DELIVERED.
+    const steps = buildSteps(
+      "AI_COMPLETE", // transient status while deliver-ai-report runs
+      new Set(["narrative.drafted", "study.delivered"]),
+      null,
+    );
+    for (const id of STEP_IDS) {
+      expect(pick(steps, id).state).toBe("done");
+    }
+  });
+
   it("DELIVERED: every step is 'done'", () => {
     const steps = buildSteps("DELIVERED", new Set(), null);
     for (const id of STEP_IDS) {
