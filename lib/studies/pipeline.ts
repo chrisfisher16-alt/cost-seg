@@ -2,8 +2,20 @@ import "server-only";
 
 import { classifyDocument } from "@/lib/ai/steps/classify-document";
 import { classifyAssets } from "@/lib/ai/steps/classify-assets";
+import { classifyAssetsV2 } from "@/lib/ai/steps/classify-assets-v2";
 import { decomposePrice } from "@/lib/ai/steps/decompose-price";
+import { describePhoto } from "@/lib/ai/steps/describe-photos";
+import { enrichProperty } from "@/lib/ai/steps/enrich-property";
 import { draftNarrative } from "@/lib/ai/steps/narrative";
+import {
+  describePhotoOutputSchema,
+  type DescribePhotoOutput,
+} from "@/lib/ai/prompts/describe-photos";
+import {
+  enrichPropertyOutputSchema,
+  hasAssessorRatio,
+  type EnrichPropertyOutput,
+} from "@/lib/ai/prompts/enrich-property";
 import { getPrisma } from "@/lib/db/client";
 import { captureServer } from "@/lib/observability/posthog-server";
 import { transitionStudy } from "@/lib/studies/transitions";
@@ -19,7 +31,11 @@ export interface LoadedStudy {
   id: string;
   tier: Tier;
   propertyType: PropertyType;
+  propertyId: string;
   address: string;
+  city: string;
+  state: string;
+  zip: string;
   squareFeet: number | null;
   yearBuilt: number | null;
   acquiredAtIso: string;
@@ -29,7 +45,10 @@ export interface LoadedStudy {
     filename: string;
     mimeType: string;
     storagePath: string;
+    roomTag: string | null;
   }>;
+  /** Pre-existing enrichment JSON, if any (e.g. from a previous flag-on run). */
+  enrichment: EnrichPropertyOutput | null;
 }
 
 export async function loadStudyForPipeline(studyId: string): Promise<LoadedStudy> {
@@ -39,13 +58,18 @@ export async function loadStudyForPipeline(studyId: string): Promise<LoadedStudy
     select: {
       id: true,
       tier: true,
+      propertyId: true,
       property: {
         select: {
           propertyType: true,
           address: true,
+          city: true,
+          state: true,
+          zip: true,
           squareFeet: true,
           yearBuilt: true,
           acquiredAt: true,
+          enrichmentJson: true,
         },
       },
       documents: {
@@ -55,20 +79,36 @@ export async function loadStudyForPipeline(studyId: string): Promise<LoadedStudy
           filename: true,
           mimeType: true,
           storagePath: true,
+          roomTag: true,
         },
       },
     },
   });
   if (!row) throw new Error(`Study ${studyId} not found`);
+  const parsedEnrichment = row.property.enrichmentJson
+    ? enrichPropertyOutputSchema.safeParse(row.property.enrichmentJson)
+    : null;
   return {
     id: row.id,
     tier: row.tier,
+    propertyId: row.propertyId,
     propertyType: row.property.propertyType,
     address: row.property.address,
+    city: row.property.city,
+    state: row.property.state,
+    zip: row.property.zip,
     squareFeet: row.property.squareFeet,
     yearBuilt: row.property.yearBuilt,
     acquiredAtIso: row.property.acquiredAt.toISOString().slice(0, 10),
-    documents: row.documents,
+    documents: row.documents.map((d) => ({
+      id: d.id,
+      kind: d.kind,
+      filename: d.filename,
+      mimeType: d.mimeType,
+      storagePath: d.storagePath,
+      roomTag: d.roomTag,
+    })),
+    enrichment: parsedEnrichment?.success ? parsedEnrichment.data : null,
   };
 }
 
@@ -122,6 +162,62 @@ export async function persistClassifierFields(batch: ClassifyDocumentBatch): Pro
   }
 }
 
+/**
+ * v2 Phase 1 — Step A2. Run the vision describer on every PROPERTY_PHOTO
+ * upload in parallel. Non-photo uploads are silently skipped.
+ *
+ * This step is ADDITIVE to Step A: the existing classifier still runs
+ * on every photo and populates `extractedJson` with a short description;
+ * this step populates the richer `photoAnalysis` column on photo docs
+ * only. Phase 2's classify-assets rewrite consumes `photoAnalysis` to
+ * build per-detected-object line items.
+ */
+export type DescribePhotoBatch = Array<{
+  documentId: string;
+  output: DescribePhotoOutput;
+}>;
+
+export async function runDescribePhotosBatch(study: LoadedStudy): Promise<DescribePhotoBatch> {
+  const photoDocs = study.documents.filter((d) => d.kind === "PROPERTY_PHOTO");
+  if (photoDocs.length === 0) return [];
+
+  const totalPhotos = photoDocs.length;
+  const results = await Promise.all(
+    photoDocs.map(async (doc, idx) => {
+      const output = await describePhoto({
+        studyId: study.id,
+        documentId: doc.id,
+        filename: doc.filename,
+        storagePath: doc.storagePath,
+        mimeType: doc.mimeType,
+        roomTagHint: doc.roomTag,
+        photoIndex: idx + 1,
+        totalPhotos,
+      });
+      return { documentId: doc.id, output };
+    }),
+  );
+  return results;
+}
+
+/**
+ * Persist the describer's structured output onto each photo Document.
+ * `photoAnalysis` becomes the source of truth for Phase 2 + the PDF
+ * template; the describer runs once per photo (AiAuditLog caching) so
+ * writing this column is idempotent on pipeline retry.
+ */
+export async function persistPhotoAnalysis(batch: DescribePhotoBatch): Promise<void> {
+  const prisma = getPrisma();
+  for (const row of batch) {
+    await prisma.document.update({
+      where: { id: row.documentId },
+      data: {
+        photoAnalysis: row.output as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+}
+
 export function findClosingDisclosureFields(
   batch: ClassifyDocumentBatch,
 ): Record<string, unknown> | null {
@@ -166,13 +262,54 @@ export async function runDecompose(
   study: LoadedStudy,
   closingDisclosureFields: Record<string, unknown>,
 ) {
+  const enrichment = study.enrichment;
   return decomposePrice({
     studyId: study.id,
     propertyType: study.propertyType,
     address: study.address,
     closingDisclosureFields,
+    enrichment: enrichment
+      ? {
+          assessorLandValueCents: enrichment.assessorLandValueCents ?? null,
+          assessorTotalValueCents: enrichment.assessorTotalValueCents ?? null,
+          assessorTaxYear: enrichment.assessorTaxYear ?? null,
+          assessorUrl: enrichment.assessorUrl ?? null,
+        }
+      : undefined,
   });
 }
+
+/**
+ * v2 Phase 4 (ADR 0011) — look up assessor + listing data for the
+ * property and persist the result on Property.enrichmentJson. Returns
+ * the fresh enrichment so the caller can reuse it inside the same
+ * pipeline run without a re-read.
+ */
+export async function runEnrichProperty(study: LoadedStudy): Promise<EnrichPropertyOutput> {
+  return enrichProperty({
+    propertyId: study.propertyId,
+    address: study.address,
+    city: study.city,
+    state: study.state,
+    zip: study.zip,
+    propertyType: study.propertyType,
+    intakeSquareFeet: study.squareFeet,
+    intakeYearBuilt: study.yearBuilt,
+  });
+}
+
+export async function persistEnrichment(
+  propertyId: string,
+  enrichment: EnrichPropertyOutput,
+): Promise<void> {
+  const prisma = getPrisma();
+  await prisma.property.update({
+    where: { id: propertyId },
+    data: { enrichmentJson: enrichment as unknown as Prisma.InputJsonValue },
+  });
+}
+
+export { hasAssessorRatio };
 
 export async function runClassifyAssets(
   study: LoadedStudy,
@@ -191,6 +328,56 @@ export async function runClassifyAssets(
     squareFeet: study.squareFeet,
     yearBuilt: study.yearBuilt,
     buildingValueCents,
+    improvementLineItems: improvements,
+  });
+}
+
+/**
+ * v2 classifier entry point. Fetches persisted photoAnalysis rows from
+ * the DB (populated by Phase 1) and hands them to `classifyAssetsV2`
+ * alongside receipts + property facts. Photo documents with missing or
+ * malformed analysis are skipped — the prompt tolerates photo-less runs.
+ */
+export async function runClassifyAssetsV2(
+  study: LoadedStudy,
+  buildingValueCents: number,
+  improvements: Array<{
+    description: string;
+    amountCents: number;
+    dateIso?: string;
+    category?: string;
+  }>,
+) {
+  const prisma = getPrisma();
+  const photoDocs = study.documents.filter((d) => d.kind === "PROPERTY_PHOTO");
+  const photos: Array<{
+    documentId: string;
+    filename: string;
+    analysis: DescribePhotoOutput;
+  }> = [];
+
+  if (photoDocs.length > 0) {
+    const rows = await prisma.document.findMany({
+      where: { id: { in: photoDocs.map((d) => d.id) } },
+      select: { id: true, filename: true, photoAnalysis: true },
+    });
+    for (const row of rows) {
+      if (!row.photoAnalysis) continue;
+      const parsed = describePhotoOutputSchema.safeParse(row.photoAnalysis);
+      if (!parsed.success) continue;
+      photos.push({ documentId: row.id, filename: row.filename, analysis: parsed.data });
+    }
+  }
+
+  return classifyAssetsV2({
+    studyId: study.id,
+    propertyType: study.propertyType,
+    address: study.address,
+    squareFeet: study.squareFeet,
+    yearBuilt: study.yearBuilt,
+    acquiredAtIso: study.acquiredAtIso,
+    buildingValueCents,
+    photos,
     improvementLineItems: improvements,
   });
 }

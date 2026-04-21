@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeCostUsd, MODEL_RATES } from "@/lib/ai/cost";
+import { WEB_SEARCH_USD_PER_REQUEST, computeCostUsd, MODEL_RATES } from "@/lib/ai/cost";
 
 describe("computeCostUsd", () => {
   it("prices an Opus 4.7 call correctly", () => {
@@ -25,5 +25,28 @@ describe("computeCostUsd", () => {
       expect(MODEL_RATES[m].inputUsdPerMillion).toBeGreaterThan(0);
       expect(MODEL_RATES[m].outputUsdPerMillion).toBeGreaterThan(0);
     }
+  });
+
+  it("adds web_search billing when server-tool usage is reported", () => {
+    // Opus 4.7 × 10k in / 2k out = $0.30 token cost; 50 searches × $0.01 = $0.50.
+    expect(computeCostUsd("claude-opus-4-7", 10_000, 2_000, { webSearchRequests: 50 })).toBeCloseTo(
+      0.3 + 0.5,
+      6,
+    );
+  });
+
+  it("falls back to zero extra cost when server-tool usage is absent", () => {
+    expect(computeCostUsd("claude-opus-4-7", 10_000, 2_000)).toBeCloseTo(
+      computeCostUsd("claude-opus-4-7", 10_000, 2_000, {}),
+      6,
+    );
+  });
+
+  it("bills web_search even when the model is unknown", () => {
+    // Token cost = 0 (unknown model), but search cost still applies.
+    expect(computeCostUsd("unknown", 99, 99, { webSearchRequests: 3 })).toBeCloseTo(
+      3 * WEB_SEARCH_USD_PER_REQUEST,
+      6,
+    );
   });
 });
