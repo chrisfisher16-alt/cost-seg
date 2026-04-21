@@ -18,6 +18,7 @@ import {
 } from "@/lib/ai/prompts/enrich-property";
 import { getPrisma } from "@/lib/db/client";
 import { captureServer } from "@/lib/observability/posthog-server";
+import { aiDocumentConcurrency, mapWithConcurrency } from "@/lib/studies/map-with-concurrency";
 import { transitionStudy } from "@/lib/studies/transitions";
 import { Prisma, type DocumentKind, type PropertyType, type Tier } from "@prisma/client";
 
@@ -122,25 +123,24 @@ export type ClassifyDocumentBatch = Array<{
 export async function runClassifyDocumentsBatch(
   study: LoadedStudy,
 ): Promise<ClassifyDocumentBatch> {
-  const results = await Promise.all(
-    study.documents.map(async (doc) => {
-      const result = await classifyDocument({
-        studyId: study.id,
-        documentId: doc.id,
-        filename: doc.filename,
-        declaredKind: doc.kind,
-        storagePath: doc.storagePath,
-        mimeType: doc.mimeType,
-      });
-      return {
-        documentId: doc.id,
-        kind: result.kind,
-        confidence: result.confidence,
-        extractedFields: result.extractedFields,
-      };
-    }),
-  );
-  return results;
+  // Throttled via mapWithConcurrency so a 14-document study does not fire
+  // 14 sonnet-4-6 calls at once and blow the 30k input-TPM rate limit.
+  return mapWithConcurrency(study.documents, aiDocumentConcurrency(), async (doc) => {
+    const result = await classifyDocument({
+      studyId: study.id,
+      documentId: doc.id,
+      filename: doc.filename,
+      declaredKind: doc.kind,
+      storagePath: doc.storagePath,
+      mimeType: doc.mimeType,
+    });
+    return {
+      documentId: doc.id,
+      kind: result.kind,
+      confidence: result.confidence,
+      extractedFields: result.extractedFields,
+    };
+  });
 }
 
 /**
@@ -182,22 +182,22 @@ export async function runDescribePhotosBatch(study: LoadedStudy): Promise<Descri
   if (photoDocs.length === 0) return [];
 
   const totalPhotos = photoDocs.length;
-  const results = await Promise.all(
-    photoDocs.map(async (doc, idx) => {
-      const output = await describePhoto({
-        studyId: study.id,
-        documentId: doc.id,
-        filename: doc.filename,
-        storagePath: doc.storagePath,
-        mimeType: doc.mimeType,
-        roomTagHint: doc.roomTag,
-        photoIndex: idx + 1,
-        totalPhotos,
-      });
-      return { documentId: doc.id, output };
-    }),
-  );
-  return results;
+  // Same throttle as classify-document: describe-photos also hits sonnet-4-6
+  // with base64-encoded JPEGs, so a 20-photo study in parallel would
+  // instantly exceed the 30k input-TPM budget.
+  return mapWithConcurrency(photoDocs, aiDocumentConcurrency(), async (doc, idx) => {
+    const output = await describePhoto({
+      studyId: study.id,
+      documentId: doc.id,
+      filename: doc.filename,
+      storagePath: doc.storagePath,
+      mimeType: doc.mimeType,
+      roomTagHint: doc.roomTag,
+      photoIndex: idx + 1,
+      totalPhotos,
+    });
+    return { documentId: doc.id, output };
+  });
 }
 
 /**
