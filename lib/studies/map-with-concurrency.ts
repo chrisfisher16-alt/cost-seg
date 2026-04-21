@@ -30,19 +30,34 @@ export async function mapWithConcurrency<TIn, TOut>(
   return results;
 }
 
+function readPositiveIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return fallback;
+  return n;
+}
+
 /**
- * Concurrency cap for per-document AI calls (classify-document,
- * describe-photos). Override via `AI_DOC_CONCURRENCY` for canary testing
- * or investigating rate-limit headroom. Defaults to 3.
+ * Concurrency cap for classify-document (sonnet-4-6, short outputs).
+ * Override via `AI_DOC_CONCURRENCY`. Defaults to 3 — classify-document
+ * outputs are typically <500 tokens so 3 parallel calls stay well under
+ * the sonnet 8k output-TPM ceiling.
  *
- * Bracket access is deliberate: this is a runtime tuning knob, not a
- * boot-required secret, so it intentionally lives outside the `env()`
+ * Bracket env access is deliberate: these are runtime tuning knobs, not
+ * boot-required secrets, so they intentionally live outside the `env()`
  * schema (same pattern as `lib/features/v2-report.ts`).
  */
 export function aiDocumentConcurrency(): number {
-  const raw = process.env["AI_DOC_CONCURRENCY"];
-  if (!raw) return 3;
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 1) return 3;
-  return n;
+  return readPositiveIntEnv("AI_DOC_CONCURRENCY", 3);
+}
+
+/**
+ * Concurrency cap for describe-photos (sonnet-4-6, structured vision
+ * output of ~1.5–2.5k tokens per photo). Override via
+ * `AI_PHOTO_CONCURRENCY`. Defaults to 2 — three parallel photo descriptions
+ * empirically burst past the 8k output-TPM ceiling and trip rate_limit_error.
+ */
+export function aiPhotoConcurrency(): number {
+  return readPositiveIntEnv("AI_PHOTO_CONCURRENCY", 2);
 }
