@@ -251,7 +251,7 @@ export function DiyForm({ studyId, initial }: { studyId: string; initial: Initia
         <Field
           label="Land value"
           required
-          hint="From your county assessor record (the separately-stated land portion). If you're not sure, use the suggestion below."
+          hint={`From your county assessor record (the separately-stated land portion). Typical allocation for ${PROPERTY_TYPE_LABELS[propertyType].toLowerCase()} is about ${(DEFAULT_LAND_PCT[propertyType] * 100).toFixed(0)}% of purchase price — your assessor record is the authoritative source.`}
         >
           <Input
             type="text"

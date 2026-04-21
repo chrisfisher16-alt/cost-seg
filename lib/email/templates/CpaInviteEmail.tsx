@@ -51,8 +51,8 @@ export function CpaInviteEmail({
 
           <Text style={greeting}>Hi there,</Text>
           <Text style={heroHeading}>
-            {ownerName ?? `A ${BRAND.name} customer`} invited you to review a cost segregation
-            study.
+            {ownerName ?? `A ${BRAND.name} customer`} invited you to review their {BRAND.name} cost
+            segregation study.
           </Text>
           <Text style={subhead}>For {propertyAddress}.</Text>
 
@@ -84,8 +84,8 @@ export function CpaInviteEmail({
 
           <Text style={sectionHeading}>About {BRAND.name}</Text>
           <Text style={paragraph}>
-            {BRAND.name} is an AI-powered cost segregation platform. Customers run a study in
-            minutes, share it with their CPA for review, and (when filing) upgrade to an
+            {BRAND.name} runs a full cost segregation study in minutes with AI. Customers share the
+            result with their CPA for review, and when they&rsquo;re ready to file, upgrade to an
             engineer-reviewed, audit-defensible study under IRS Publication 5653. Learn more at{" "}
             <Link href={appUrl} style={link}>
               {new URL(appUrl).host}
