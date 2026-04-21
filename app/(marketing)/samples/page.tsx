@@ -87,7 +87,7 @@ export default function SamplesPage() {
           <SectionHeader
             eyebrow="Download"
             title="Want the full PDF?"
-            description="Drop your email and we&rsquo;ll send you our latest anonymized AI Report template within one business day."
+            description="Drop your email and we’ll send you our latest anonymized AI Report template within one business day."
           />
           <div className="mt-8">
             <SampleDownloadForm />
