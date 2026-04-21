@@ -5,6 +5,7 @@ import { classifyAssets } from "@/lib/ai/steps/classify-assets";
 import { decomposePrice } from "@/lib/ai/steps/decompose-price";
 import { draftNarrative } from "@/lib/ai/steps/narrative";
 import { getPrisma } from "@/lib/db/client";
+import { captureServer } from "@/lib/observability/posthog-server";
 import { transitionStudy } from "@/lib/studies/transitions";
 import { Prisma, type DocumentKind, type PropertyType, type Tier } from "@prisma/client";
 
@@ -252,6 +253,19 @@ export async function finalizeStudy(input: PipelineFinalize): Promise<void> {
         },
       },
     });
+  });
+
+  // Resolve userId for the analytics event. The StudyEvent above is keyed
+  // on studyId; PostHog wants a user distinctId so the funnel joins cleanly.
+  const row = await prisma.study.findUnique({
+    where: { id: input.studyId },
+    select: { userId: true },
+  });
+  await captureServer(row?.userId ?? `study:${input.studyId}`, "study_ai_complete", {
+    studyId: input.studyId,
+    tier: input.tier,
+    nextStatus,
+    totalCents: input.assetScheduleTotalCents,
   });
 
   // Tier 1 auto-delivers via the `study.ai.complete` Inngest chain. Tier 2

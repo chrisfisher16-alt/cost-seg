@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 
 import { requireRole } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
+import { captureServer } from "@/lib/observability/posthog-server";
 import { STUDIES_BUCKET } from "@/lib/storage/studies";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { BULK_MARK_FAILED_CAP } from "@/lib/studies/admin-limits";
@@ -48,6 +49,11 @@ export async function adminRerunPipelineAction(studyId: string): Promise<ActionR
       actorId: user.id,
       payload: { priorStatus: study.status } as Prisma.InputJsonValue,
     },
+  });
+  await captureServer(user.id, "admin_rerun", {
+    studyId,
+    priorStatus: study.status,
+    tier: study.tier,
   });
 
   revalidatePath(`/admin/studies/${studyId}`);
@@ -202,6 +208,10 @@ export async function adminUploadSignedStudyAction(
         } as Prisma.InputJsonValue,
       },
     });
+  });
+  await captureServer(user.id, "admin_engineer_upload", {
+    studyId,
+    sizeBytes: file.size,
   });
 
   const deliverResult = await deliverEngineeredStudy({

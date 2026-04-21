@@ -8,6 +8,7 @@ import { assertOwnership, requireAuth } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { parseUsdInputToCents } from "@/lib/estimator/format";
 import { PROPERTY_TYPES } from "@/lib/estimator/types";
+import { captureServer } from "@/lib/observability/posthog-server";
 import {
   createSignedUploadUrl,
   downloadStudyFile,
@@ -234,6 +235,13 @@ export async function finalizeUploadAction(
   }
 
   await emitDocumentsReadyIfComplete(studyId);
+  await captureServer(user.id, "documents_uploaded", {
+    studyId,
+    documentId: parsed.data.documentId,
+    kind: parsed.data.kind,
+    sizeBytes: blob.size,
+    mimeType: validation.detectedMime,
+  });
   revalidatePath(`/studies/${studyId}/intake`);
   return { ok: true, documentId: parsed.data.documentId };
 }

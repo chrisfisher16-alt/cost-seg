@@ -25,6 +25,7 @@ export const processStudy = inngest.createFunction(
 
     await step.run("mark-processing", async () => {
       const { getPrisma } = await import("@/lib/db/client");
+      const { captureServer } = await import("@/lib/observability/posthog-server");
       const { transitionStudy } = await import("@/lib/studies/transitions");
       const prisma = getPrisma();
       await prisma.$transaction(async (tx) => {
@@ -44,6 +45,18 @@ export const processStudy = inngest.createFunction(
             payload: { tier: study.tier, docCount: study.documents.length },
           },
         });
+      });
+      // Resolve the userId post-commit for the distinctId; study.userId is
+      // on the loaded Study but we haven't threaded it here. A cheap read
+      // keeps the event accurate.
+      const row = await prisma.study.findUnique({
+        where: { id: studyId },
+        select: { userId: true },
+      });
+      await captureServer(row?.userId ?? `study:${studyId}`, "study_processing_started", {
+        studyId,
+        tier: study.tier,
+        docCount: study.documents.length,
       });
     });
 

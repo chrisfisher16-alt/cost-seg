@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 
 import { getPrisma } from "@/lib/db/client";
 import { sendWelcomeEmail } from "@/lib/email/send";
+import { captureServer } from "@/lib/observability/posthog-server";
 import { decodeCheckoutMetadata } from "@/lib/stripe/checkout";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -113,6 +114,14 @@ export async function handleCheckoutSessionCompleted(
     // Email failure shouldn't reverse the Study — admin can resend manually.
     console.error("[webhook] welcome email failed", err);
   }
+
+  await captureServer(userId, "study_created", {
+    studyId: study.id,
+    tier: meta.tier,
+    propertyType: meta.propertyType,
+    pricePaidCents: session.amount_total ?? 0,
+    promoBypass: session.metadata?.promoBypass === "1",
+  });
 
   return study.id;
 }
