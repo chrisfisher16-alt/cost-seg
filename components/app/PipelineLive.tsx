@@ -15,9 +15,9 @@ import * as React from "react";
 import { getDeliverableUrlAction } from "@/app/(app)/dashboard/actions";
 import {
   pollProcessingStateAction,
-  type PipelineStep,
   type ProcessingStateResult,
 } from "@/app/(app)/studies/[id]/processing/actions";
+import type { PipelineStep } from "@/app/(app)/studies/[id]/processing/pipeline-steps";
 import { CelebrationTrigger } from "@/components/shared/Celebration";
 import { ShareStudyDialog } from "@/components/app/ShareStudyDialog";
 import { Kpi } from "@/components/shared/Kpi";
