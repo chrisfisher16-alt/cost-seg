@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { aiDocumentConcurrency, mapWithConcurrency } from "@/lib/studies/map-with-concurrency";
+import {
+  aiDocumentConcurrency,
+  aiPhotoConcurrency,
+  mapWithConcurrency,
+} from "@/lib/studies/map-with-concurrency";
 
 /**
  * The concurrency cap exists to prevent the Anthropic 30k input-TPM rate
@@ -117,5 +121,41 @@ describe("aiDocumentConcurrency", () => {
     expect(aiDocumentConcurrency()).toBe(3);
     process.env.AI_DOC_CONCURRENCY = "-4";
     expect(aiDocumentConcurrency()).toBe(3);
+  });
+});
+
+describe("aiPhotoConcurrency", () => {
+  const original = process.env.AI_PHOTO_CONCURRENCY;
+
+  beforeEach(() => {
+    delete process.env.AI_PHOTO_CONCURRENCY;
+  });
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.AI_PHOTO_CONCURRENCY;
+    else process.env.AI_PHOTO_CONCURRENCY = original;
+  });
+
+  it("defaults to 2 when unset — lower than docs because photo outputs are heavier", () => {
+    expect(aiPhotoConcurrency()).toBe(2);
+  });
+
+  it("honors integer overrides", () => {
+    process.env.AI_PHOTO_CONCURRENCY = "1";
+    expect(aiPhotoConcurrency()).toBe(1);
+    process.env.AI_PHOTO_CONCURRENCY = "4";
+    expect(aiPhotoConcurrency()).toBe(4);
+  });
+
+  it("falls back to 2 on garbage / non-positive values", () => {
+    process.env.AI_PHOTO_CONCURRENCY = "abc";
+    expect(aiPhotoConcurrency()).toBe(2);
+    process.env.AI_PHOTO_CONCURRENCY = "0";
+    expect(aiPhotoConcurrency()).toBe(2);
+  });
+
+  it("is independent of AI_DOC_CONCURRENCY", () => {
+    process.env.AI_DOC_CONCURRENCY = "6";
+    expect(aiPhotoConcurrency()).toBe(2);
   });
 });

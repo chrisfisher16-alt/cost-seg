@@ -152,14 +152,22 @@ export async function callTool<TOutput>(
   const tools: Anthropic.Messages.ToolUnion[] = [args.tool, ...(args.serverTools ?? [])];
 
   const client = getAnthropic();
-  const response = await client.messages.create({
-    model: args.model,
-    max_tokens: args.maxTokens ?? 4096,
-    system: args.system,
-    messages: [{ role: "user", content }],
-    tools,
-    tool_choice: { type: "tool", name: args.tool.name },
-  });
+  // Use the streaming endpoint so the SDK doesn't pre-flight-reject long
+  // requests. The non-streaming path throws "Streaming is required for
+  // operations that may take longer than 10 minutes" based on max_tokens
+  // alone — even when the actual response comes back in under a minute.
+  // `finalMessage()` waits for the stream to complete and returns the
+  // fully-assembled Message, so from here on the code is identical.
+  const response = await client.messages
+    .stream({
+      model: args.model,
+      max_tokens: args.maxTokens ?? 4096,
+      system: args.system,
+      messages: [{ role: "user", content }],
+      tools,
+      tool_choice: { type: "tool", name: args.tool.name },
+    })
+    .finalMessage();
 
   const toolUseBlock = response.content.find(
     (block) => block.type === "tool_use" && block.name === args.tool.name,

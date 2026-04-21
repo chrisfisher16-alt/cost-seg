@@ -18,7 +18,11 @@ import {
 } from "@/lib/ai/prompts/enrich-property";
 import { getPrisma } from "@/lib/db/client";
 import { captureServer } from "@/lib/observability/posthog-server";
-import { aiDocumentConcurrency, mapWithConcurrency } from "@/lib/studies/map-with-concurrency";
+import {
+  aiDocumentConcurrency,
+  aiPhotoConcurrency,
+  mapWithConcurrency,
+} from "@/lib/studies/map-with-concurrency";
 import { transitionStudy } from "@/lib/studies/transitions";
 import { Prisma, type DocumentKind, type PropertyType, type Tier } from "@prisma/client";
 
@@ -182,10 +186,11 @@ export async function runDescribePhotosBatch(study: LoadedStudy): Promise<Descri
   if (photoDocs.length === 0) return [];
 
   const totalPhotos = photoDocs.length;
-  // Same throttle as classify-document: describe-photos also hits sonnet-4-6
-  // with base64-encoded JPEGs, so a 20-photo study in parallel would
-  // instantly exceed the 30k input-TPM budget.
-  return mapWithConcurrency(photoDocs, aiDocumentConcurrency(), async (doc, idx) => {
+  // Describe-photos emits heavy structured outputs (~1.5–2.5k tokens per
+  // photo). Three parallel calls burst past the sonnet-4-6 8k output-TPM
+  // ceiling and trip rate_limit_error, so this gets its own lower cap
+  // independent of classify-document.
+  return mapWithConcurrency(photoDocs, aiPhotoConcurrency(), async (doc, idx) => {
     const output = await describePhoto({
       studyId: study.id,
       documentId: doc.id,
