@@ -32,11 +32,15 @@ export async function mapWithConcurrency<TIn, TOut>(
 
 /**
  * Concurrency cap for per-document AI calls (classify-document,
- * describe-photos). Override via env for canary testing or
- * investigating rate-limit headroom.
+ * describe-photos). Override via `AI_DOC_CONCURRENCY` for canary testing
+ * or investigating rate-limit headroom. Defaults to 3.
+ *
+ * Bracket access is deliberate: this is a runtime tuning knob, not a
+ * boot-required secret, so it intentionally lives outside the `env()`
+ * schema (same pattern as `lib/features/v2-report.ts`).
  */
 export function aiDocumentConcurrency(): number {
-  const raw = process.env.AI_DOC_CONCURRENCY;
+  const raw = process.env["AI_DOC_CONCURRENCY"];
   if (!raw) return 3;
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return 3;
