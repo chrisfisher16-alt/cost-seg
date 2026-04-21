@@ -19,7 +19,7 @@ export default function ScopeDisclosurePage() {
     <Container size="md" className="py-16 sm:py-24">
       <PageHeader
         title="Scope disclosure"
-        description="What this software produces, what it doesn&rsquo;t, and how to file responsibly."
+        description="What this software produces, what it doesn’t, and how to file responsibly."
       />
       <div className="prose prose-neutral dark:prose-invert mt-10 max-w-none">
         <h2>The three tiers, in plain terms</h2>

@@ -70,7 +70,7 @@ export default function PartnersPage() {
           <SectionHeader
             eyebrow="Early-access program"
             title="Join our CPA beta."
-            description="We&rsquo;re onboarding 25 firms in 2026 Q2 to shape the partner surface. Get early access and a lifetime 20% revenue-share."
+            description="We’re onboarding 25 firms in 2026 Q2 to shape the partner surface. Get early access and a lifetime 20% revenue-share."
           />
           <div className="mt-10">
             <DiyWaitlistForm />

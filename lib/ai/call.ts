@@ -166,14 +166,18 @@ export async function callTool<TOutput>(
   );
   if (!toolUseBlock || toolUseBlock.type !== "tool_use") {
     throw new Error(
-      `${args.operation}: Claude did not return a tool_use block for ${args.tool.name}`,
+      `${args.operation}: Claude did not return a tool_use block for ${args.tool.name} (stop_reason=${response.stop_reason})`,
     );
   }
 
   const parsed = args.outputSchema.safeParse(toolUseBlock.input);
   if (!parsed.success) {
+    // stop_reason="max_tokens" here almost always means the model was mid-
+    // JSON when truncated and the tool_use input is missing required keys.
+    // Surfacing it in the error keeps us from chasing "model produced bad
+    // output" when the real fix is bumping maxTokens.
     throw new Error(
-      `${args.operation}: tool output failed schema validation: ${parsed.error.message}`,
+      `${args.operation}: tool output failed schema validation (stop_reason=${response.stop_reason}, output_tokens=${response.usage.output_tokens}): ${parsed.error.message}`,
     );
   }
 

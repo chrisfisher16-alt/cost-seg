@@ -179,9 +179,11 @@ async function invoke(
     outputSchema: classifyAssetsV2OutputSchema,
     serverTools,
     // Per-item output is meaty (6 multipliers + justifications × up to
-    // 300 items). Opus 4.7's default 4k isn't enough. Bump further when
-    // web_search is on to absorb the search tool_use + result blocks.
-    maxTokens: webSearchEnabled ? 24576 : 16384,
+    // 300 items). Worst observed: 5+ min Opus run truncated mid-JSON at
+    // 16k, returning tool_use input without the `lineItems` field. Bump
+    // to Opus 4.7's extended-output ceiling so real properties fit. Higher
+    // when web_search is on to absorb search tool_use + result blocks.
+    maxTokens: webSearchEnabled ? 48000 : 32768,
     studyId,
     inputDetails: {
       attempt,

@@ -69,16 +69,16 @@ export default async function StudyProcessingPage({ params }: Props) {
             "Pipeline paused"
           ) : (
             <>
-              Building your <span className="brand-gradient-text">{entry.label.toLowerCase()}</span>
+              Building your <span className="brand-gradient-text">{entry.label}</span>
             </>
           )
         }
         description={
           initial.isDelivered
-            ? "Download your PDF, share it with your CPA, and (if you&rsquo;re filing) upgrade to an Engineer-Reviewed study without re-uploading anything."
+            ? "Download your PDF, share it with your CPA, and (if you’re filing) upgrade to an Engineer-Reviewed study without re-uploading anything."
             : initial.isFailed
-              ? "Something went wrong. Here's what, and what happens next."
-              : "Every step is streaming live. You can close this tab — we&rsquo;ll email you the moment it&rsquo;s done."
+              ? "Something went wrong. Here’s what, and what happens next."
+              : "Every step is streaming live. You can close this tab — we’ll email you the moment it’s done."
         }
       />
       <div className="mt-10">
