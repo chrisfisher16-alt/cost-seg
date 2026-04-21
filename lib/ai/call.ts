@@ -152,16 +152,18 @@ export async function callTool<TOutput>(
   const tools: Anthropic.Messages.ToolUnion[] = [args.tool, ...(args.serverTools ?? [])];
 
   const client = getAnthropic();
+  const maxTokens = args.maxTokens ?? 4096;
+
   // Use the streaming endpoint so the SDK doesn't pre-flight-reject long
   // requests. The non-streaming path throws "Streaming is required for
   // operations that may take longer than 10 minutes" based on max_tokens
   // alone — even when the actual response comes back in under a minute.
   // `finalMessage()` waits for the stream to complete and returns the
   // fully-assembled Message, so from here on the code is identical.
-  const response = await client.messages
+  let response = await client.messages
     .stream({
       model: args.model,
-      max_tokens: args.maxTokens ?? 4096,
+      max_tokens: maxTokens,
       system: args.system,
       messages: [{ role: "user", content }],
       tools,
@@ -169,7 +171,7 @@ export async function callTool<TOutput>(
     })
     .finalMessage();
 
-  const toolUseBlock = response.content.find(
+  let toolUseBlock = response.content.find(
     (block) => block.type === "tool_use" && block.name === args.tool.name,
   );
   if (!toolUseBlock || toolUseBlock.type !== "tool_use") {
@@ -178,15 +180,63 @@ export async function callTool<TOutput>(
     );
   }
 
-  const parsed = args.outputSchema.safeParse(toolUseBlock.input);
+  let parsed = args.outputSchema.safeParse(toolUseBlock.input);
   if (!parsed.success) {
-    // stop_reason="max_tokens" here almost always means the model was mid-
-    // JSON when truncated and the tool_use input is missing required keys.
-    // Surfacing it in the error keeps us from chasing "model produced bad
-    // output" when the real fix is bumping maxTokens.
-    throw new Error(
-      `${args.operation}: tool output failed schema validation (stop_reason=${response.stop_reason}, output_tokens=${response.usage.output_tokens}): ${parsed.error.message}`,
+    // One-shot repair retry. Anthropic tool_use outputs occasionally
+    // violate the tool's JSON Schema (over-length strings, missing
+    // optionals, etc.) even with stop_reason=tool_use. Feeding the
+    // violation back as a tool_result with is_error=true triggers the
+    // standard tool-error repair path — the model re-emits the tool
+    // call with the issue fixed, typically on the first retry.
+    //
+    // We only do this once; if the repair still fails we throw with
+    // both error messages so the caller can distinguish "model is
+    // consistently wrong" from "model had a bad first draft".
+    //
+    // Cache implications: the failed first attempt never reaches the
+    // AiAuditLog upsert below, so nothing poisons the cache. The
+    // successful retry's response (`response`) is what gets logged and
+    // billed — the first attempt is sunk cost.
+    const firstErrorMessage = parsed.error.message;
+    const firstToolUseId = toolUseBlock.id;
+    response = await client.messages
+      .stream({
+        model: args.model,
+        max_tokens: maxTokens,
+        system: args.system,
+        messages: [
+          { role: "user", content },
+          { role: "assistant", content: response.content },
+          {
+            role: "user",
+            content: [
+              {
+                type: "tool_result",
+                tool_use_id: firstToolUseId,
+                is_error: true,
+                content: `Your tool_use output failed schema validation:\n${firstErrorMessage}\n\nRe-emit the tool call with every violation corrected. Do not change anything else about the output.`,
+              },
+            ],
+          },
+        ],
+        tools,
+        tool_choice: { type: "tool", name: args.tool.name },
+      })
+      .finalMessage();
+    toolUseBlock = response.content.find(
+      (block) => block.type === "tool_use" && block.name === args.tool.name,
     );
+    if (!toolUseBlock || toolUseBlock.type !== "tool_use") {
+      throw new Error(
+        `${args.operation}: repair retry did not return a tool_use block (original error: ${firstErrorMessage}, retry stop_reason=${response.stop_reason})`,
+      );
+    }
+    parsed = args.outputSchema.safeParse(toolUseBlock.input);
+    if (!parsed.success) {
+      throw new Error(
+        `${args.operation}: tool output failed schema validation after one repair retry. First error: ${firstErrorMessage}. Retry error (stop_reason=${response.stop_reason}, output_tokens=${response.usage.output_tokens}): ${parsed.error.message}`,
+      );
+    }
   }
 
   const tokensIn = response.usage.input_tokens;
