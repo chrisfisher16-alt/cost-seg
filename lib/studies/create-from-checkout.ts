@@ -103,8 +103,17 @@ export async function handleCheckoutSessionCompleted(
     return s;
   });
 
-  const intakeUrl = await generateIntakeMagicLink(email, study.id);
+  // Magic-link + welcome email are best-effort. A Supabase redirect-URL
+  // rejection (the project's "Redirect URLs" allowlist doesn't cover the
+  // current app origin) or a Resend outage used to fail the whole
+  // checkout — including the DIY promo bypass path, where the customer
+  // had already "paid" (promo) and the Study row was committed, yet the
+  // action returned a generic "Supabase service role key and DB
+  // both need to be reachable" error. Study still exists; the customer
+  // can always sign in via /sign-in and reach /dashboard even if the
+  // welcome email never sends. Admin can also resend manually.
   try {
+    const intakeUrl = await generateIntakeMagicLink(email, study.id);
     await sendWelcomeEmail({
       to: email,
       firstName: fullName ? fullName.split(" ")[0] : null,
@@ -112,8 +121,7 @@ export async function handleCheckoutSessionCompleted(
       intakeUrl,
     });
   } catch (err) {
-    // Email failure shouldn't reverse the Study — admin can resend manually.
-    console.error("[webhook] welcome email failed", err);
+    console.error("[webhook] welcome email path failed", err);
   }
 
   await captureServer(userId, "study_created", {
