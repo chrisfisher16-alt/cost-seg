@@ -190,6 +190,44 @@ test.describe("legal pages — sub-processor accuracy (ADR 0006)", () => {
   });
 });
 
+test.describe("authenticated API gating", () => {
+  // Smoke that the protected route handlers reject unauthenticated requests
+  // at the HTTP layer. Complements the unit-tested `requireAuth` /
+  // `requireRole` helpers with a "did the real request actually bounce?"
+  // check — catches a surface that ships a missing `requireAuth()` call
+  // ahead of an unrelated admin finding the gap.
+
+  test("/api/dashboard/portfolio.csv redirects unauthenticated requests", async ({ request }) => {
+    const res = await request.get("/api/dashboard/portfolio.csv", {
+      maxRedirects: 0,
+    });
+    // Next.js `redirect()` from a Server Action returns 307; unauthenticated
+    // fetch must NOT get the CSV payload. Any 2xx here is a P0.
+    expect(res.status(), `unauth portfolio.csv returned ${res.status()}`).not.toBe(200);
+    expect(res.headers()["content-type"] ?? "").not.toMatch(/text\/csv/i);
+  });
+});
+
+test.describe("legal pages — last-updated stanza present", () => {
+  // Every legal page must carry a visible "Effective" or "Last updated" date
+  // so a visitor can tell how current the policy is. Complements B2-1's
+  // guard (scope-disclosure date is static across reloads) with a
+  // presence check across the other three legal routes.
+  const PAGES = [
+    { path: "/legal/terms", pattern: /Effective/i },
+    { path: "/legal/privacy", pattern: /Effective/i },
+    { path: "/legal/scope-disclosure", pattern: /Last updated/i },
+  ] as const;
+
+  for (const { path, pattern } of PAGES) {
+    test(`${path} renders a dated stanza`, async ({ page }) => {
+      await page.goto(path);
+      const body = (await page.locator("body").textContent()) ?? "";
+      expect(body, `${path} missing date stanza matching ${pattern}`).toMatch(pattern);
+    });
+  }
+});
+
 test.describe("SEO endpoints (Day 5)", () => {
   test("/robots.txt is served and disallows authenticated paths", async ({ request }) => {
     const res = await request.get("/robots.txt");
