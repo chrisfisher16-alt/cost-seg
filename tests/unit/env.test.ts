@@ -53,13 +53,17 @@ describe("env()", () => {
     expect(parsed.STRIPE_PRICE_ID_TIER_2).toBe("price_t2");
   });
 
-  it("throws a helpful error when STRIPE_PRICE_ID_DIY is missing", async () => {
+  it("tolerates a missing STRIPE_PRICE_ID_DIY (feature-gated, checked by isStripeConfigured)", async () => {
+    // Since F3, Stripe vars are `.optional()` in the schema so env() can
+    // boot in local dev without a Stripe configuration. The actual gate
+    // lives in `isStripeConfigured()` — tested in stripe-client.test.ts.
     for (const k of Object.keys(process.env)) delete process.env[k];
     Object.assign(process.env, baseValidEnv);
     delete process.env.STRIPE_PRICE_ID_DIY;
 
     const { env } = await import("@/lib/env");
-    expect(() => env()).toThrow(/STRIPE_PRICE_ID_DIY/);
+    expect(() => env()).not.toThrow();
+    expect(env().STRIPE_PRICE_ID_DIY).toBeUndefined();
   });
 
   it("throws when STRIPE_PRICE_ID_DIY has the wrong prefix (not price_…)", async () => {

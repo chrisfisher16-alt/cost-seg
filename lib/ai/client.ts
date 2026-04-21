@@ -2,14 +2,13 @@ import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
 
+import { env } from "@/lib/env";
+
 let instance: Anthropic | null = null;
 
 export function getAnthropic(): Anthropic {
   if (instance) return instance;
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    throw new Error("ANTHROPIC_API_KEY is required to call Claude.");
-  }
-  instance = new Anthropic({ apiKey: key });
+  const { ANTHROPIC_API_KEY } = env();
+  instance = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
   return instance;
 }

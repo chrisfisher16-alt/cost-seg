@@ -3,6 +3,8 @@ import "server-only";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
+import { env } from "@/lib/env";
+
 export interface RateLimitResult {
   ok: boolean;
   remaining: number;
@@ -39,8 +41,7 @@ class MemoryLimiter implements Limiter {
 }
 
 function buildLimiter(name: string, limit: number, window: `${number} s`): Limiter {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const { UPSTASH_REDIS_REST_URL: url, UPSTASH_REDIS_REST_TOKEN: token } = env();
   if (!url || !token) {
     const seconds = Number.parseInt(window, 10);
     return new MemoryLimiter(limit, seconds * 1000);

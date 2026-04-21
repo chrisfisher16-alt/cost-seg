@@ -3,6 +3,8 @@ import "server-only";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
+import { env } from "@/lib/env";
+
 /**
  * Lazy Prisma singleton. We avoid constructing at module load so that
  * routes which never touch the DB don't require DATABASE_URL to be set
@@ -11,14 +13,11 @@ import { PrismaClient } from "@prisma/client";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function buildClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is required to construct the Prisma client");
-  }
-  const adapter = new PrismaPg({ connectionString });
+  const { DATABASE_URL, NODE_ENV } = env();
+  const adapter = new PrismaPg({ connectionString: DATABASE_URL });
   return new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+    log: NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 }
 

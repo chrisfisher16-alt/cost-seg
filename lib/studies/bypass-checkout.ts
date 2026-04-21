@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 
 import type { PropertyType } from "@prisma/client";
 
+import { env } from "@/lib/env";
 import { encodeCheckoutMetadata } from "@/lib/stripe/checkout";
 import { CATALOG, type Tier } from "@/lib/stripe/catalog";
 import { handleCheckoutSessionCompleted } from "@/lib/studies/create-from-checkout";
@@ -128,8 +129,8 @@ async function signInViaAdminMagicLink(email: string): Promise<void> {
 
 /** True iff a promo bypass is possible on this deployment (env var set). */
 export function promoBypassEnabled(): boolean {
-  const code = process.env.FISHER_PROMO_CODE;
-  return Boolean(code && code.trim().length > 0);
+  const { FISHER_PROMO_CODE } = env();
+  return Boolean(FISHER_PROMO_CODE && FISHER_PROMO_CODE.trim().length > 0);
 }
 
 /**
@@ -141,7 +142,7 @@ export function promoBypassEnabled(): boolean {
  * value is — and `timingSafeEqual` requires equal-length buffers.
  */
 export function promoCodeMatches(userInput: string): boolean {
-  const raw = process.env.FISHER_PROMO_CODE;
+  const raw = env().FISHER_PROMO_CODE;
   if (!raw) return false;
   const expected = raw.trim().toLowerCase();
   if (!expected) return false;

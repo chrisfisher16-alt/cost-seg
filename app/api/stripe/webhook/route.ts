@@ -10,6 +10,12 @@ import { getStripe } from "@/lib/stripe/client";
  * stops retrying.
  */
 export async function POST(request: NextRequest) {
+  // NOTE: direct `process.env` read instead of `env()` — this is a
+  // feature-flag probe that returns 503 when Stripe isn't configured for
+  // this environment (local dev, preview without Stripe keys). Going
+  // through `env()` would still work because STRIPE_WEBHOOK_SECRET is
+  // optional in the schema, but the explicit read keeps the intent clear:
+  // "if this env var is unset, behave differently" is not an env() job.
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "webhook not configured" }, { status: 503 });

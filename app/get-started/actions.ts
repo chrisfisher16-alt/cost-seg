@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { getOptionalAuth } from "@/lib/auth/require";
+import { env } from "@/lib/env";
 import { PROPERTY_TYPES } from "@/lib/estimator/types";
 import { parseUsdInputToCents } from "@/lib/estimator/format";
 import { captureServer } from "@/lib/observability/posthog-server";
@@ -68,7 +69,7 @@ export async function startCheckoutAction(input: unknown): Promise<StartCheckout
     promoCode,
   } = parsed.data;
   const ctx = await getOptionalAuth();
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { NEXT_PUBLIC_APP_URL: origin } = env();
 
   // If the visitor is signed in with a different email, prefer their session
   // email so receipts / magic link match the account on file.

@@ -21,6 +21,10 @@ export type AppEvents = {
   };
 };
 
+// NOTE: direct `process.env` read at module load — `env()` would force the
+// whole schema to parse every time this module is imported (which includes
+// `next build`, where service envs aren't populated). Inngest tolerates an
+// undefined eventKey and degrades to no-auth local-dev mode.
 export const inngest = new Inngest({
   id: "cost-seg",
   eventKey: process.env.INNGEST_EVENT_KEY,

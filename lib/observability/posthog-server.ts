@@ -2,6 +2,8 @@ import "server-only";
 
 import { PostHog } from "posthog-node";
 
+import { env } from "@/lib/env";
+
 let instance: PostHog | null = null;
 
 /**
@@ -10,10 +12,11 @@ let instance: PostHog | null = null;
  */
 export function posthog(): PostHog | null {
   if (instance !== null) return instance;
-  const key = process.env.POSTHOG_API_KEY ?? process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  const { POSTHOG_API_KEY, NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST } = env();
+  const key = POSTHOG_API_KEY ?? NEXT_PUBLIC_POSTHOG_KEY;
   if (!key) return null;
   instance = new PostHog(key, {
-    host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
+    host: NEXT_PUBLIC_POSTHOG_HOST,
     flushAt: 1,
     flushInterval: 0,
   });
