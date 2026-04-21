@@ -82,7 +82,16 @@ export function buildSteps(
   if (eventKinds.has("assets.classified")) completed.assets = true;
   if (eventKinds.has("narrative.drafted")) completed.narrative = true;
   if (eventKinds.has("pdf.rendered")) completed.render = true;
-  if (eventKinds.has("ai.delivered") || status === "DELIVERED") {
+  // `deliver.ts` writes `study.delivered` — treat that as the authoritative
+  // "render + deliver both done" signal. The PDF renders synchronously
+  // right before the DB write, so by the time this event appears the
+  // render step is definitively complete too. (`ai.delivered` is legacy
+  // — kept for backward compat with any historical events.)
+  if (
+    eventKinds.has("ai.delivered") ||
+    eventKinds.has("study.delivered") ||
+    status === "DELIVERED"
+  ) {
     completed.deliver = true;
     completed.render = true;
     completed.narrative = true;
