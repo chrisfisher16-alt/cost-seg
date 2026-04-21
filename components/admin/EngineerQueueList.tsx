@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
+import { BULK_MARK_FAILED_CAP } from "@/lib/studies/admin-limits";
 
 /**
  * Client-side selection wrapper around the engineer-queue row cards. The list
@@ -46,7 +47,12 @@ export function EngineerQueueList({
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const selectedCount = selected.size;
-  const allSelected = items.length > 0 && selectedCount === items.length;
+  // Max rows the select-all button will pick up — the SERVER caps bulk
+  // mark-failed at `BULK_MARK_FAILED_CAP`, so selecting more on the client
+  // just wastes the admin's time filling out a reason that will bounce.
+  const selectableCount = Math.min(items.length, BULK_MARK_FAILED_CAP);
+  const allSelected = selectableCount > 0 && selectedCount === selectableCount;
+  const cappedBySelectAll = items.length > BULK_MARK_FAILED_CAP;
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -58,8 +64,15 @@ export function EngineerQueueList({
   }
 
   function toggleAll() {
-    if (allSelected) setSelected(new Set());
-    else setSelected(new Set(items.map((i) => i.id)));
+    if (allSelected) {
+      setSelected(new Set());
+      return;
+    }
+    // Select the first `BULK_MARK_FAILED_CAP` items (the queue is ordered
+    // oldest-first, so this is "the N most overdue"). Beyond the cap, admin
+    // must do the remainder in a follow-up batch — a banner in the
+    // select-all header signals the cap is active.
+    setSelected(new Set(items.slice(0, BULK_MARK_FAILED_CAP).map((i) => i.id)));
   }
 
   // Stable label list for the dialog — we don't want to re-pull names while
@@ -81,6 +94,11 @@ export function EngineerQueueList({
               {selectedCount > 0
                 ? `${selectedCount} selected`
                 : `Select rows to act on ${items.length} in queue`}
+              {cappedBySelectAll ? (
+                <span className="text-muted-foreground/70 ml-1.5">
+                  (select-all caps at {BULK_MARK_FAILED_CAP} per batch)
+                </span>
+              ) : null}
             </span>
           </label>
           {selectedCount > 0 ? (

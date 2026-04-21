@@ -36,11 +36,22 @@ type QueueRow = {
   };
 };
 
+/**
+ * Upper bound on rows the queue will render. Keeps the page from pulling
+ * the whole table if the backlog ever grows past this — also keeps the
+ * paired client select-all from tempting an admin with a checkbox tree
+ * they can't actually submit (the server bulk cap is 50). A future
+ * paginated view can relax this, but until then, 200 covers ~4 batches of
+ * the current bulk-cap and still renders in a reasonable payload.
+ */
+const QUEUE_FETCH_CAP = 200;
+
 async function loadQueue(): Promise<QueueRow[]> {
   try {
     return await getPrisma().study.findMany({
       where: { status: "AWAITING_ENGINEER" },
       orderBy: { updatedAt: "asc" },
+      take: QUEUE_FETCH_CAP,
       select: {
         id: true,
         pricePaidCents: true,
