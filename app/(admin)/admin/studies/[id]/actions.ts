@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth/require";
 import { getPrisma } from "@/lib/db/client";
 import { STUDIES_BUCKET } from "@/lib/storage/studies";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { BULK_MARK_FAILED_CAP } from "@/lib/studies/admin-limits";
 import { deliverEngineeredStudy, resendDeliveryEmail } from "@/lib/studies/deliver";
 import { safeInngestSend } from "@/lib/studies/inngest-safe";
 import { transitionStudy } from "@/lib/studies/transitions";
@@ -267,8 +268,11 @@ export async function adminBulkMarkFailedAction(
   if (unique.length === 0) {
     return { ok: false, error: "No studies selected." };
   }
-  if (unique.length > 50) {
-    return { ok: false, error: "Bulk mark is capped at 50 studies — do it in batches." };
+  if (unique.length > BULK_MARK_FAILED_CAP) {
+    return {
+      ok: false,
+      error: `Bulk mark is capped at ${BULK_MARK_FAILED_CAP} studies — do it in batches.`,
+    };
   }
 
   const prisma = getPrisma();

@@ -567,6 +567,12 @@ function toneBorder(tone: EventTone): string {
       return "border-warning/30";
     case "destructive":
       return "border-destructive/30";
+    case "muted":
+      // `muted` events (e.g. signed-URL regeneration notices) need to read as
+      // faded but still have a distinguishing edge — matches toneDot's
+      // `bg-muted-foreground/40`, which would otherwise be the only visual
+      // cue that the row is a muted event.
+      return "border-muted/40";
     default:
       return "";
   }

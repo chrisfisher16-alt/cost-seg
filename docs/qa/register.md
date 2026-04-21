@@ -162,7 +162,29 @@ bucket.
 
 ## Bucket 6 — Admin + bulk actions
 
-_(not started)_
+| ID   | Severity | Surface                                     | Finding                                                                                                                                                                                                                                                                                           | Status          | Commit                                                                  | Regression test                                                                                  |
+| ---- | -------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| B6-1 | P1       | `app/(admin)/admin/studies/[id]/page.tsx`   | `toneBorder()` switch handled success / primary / warning / destructive but fell through to `""` on `muted`. Muted events rendered with a faded dot but no border while sibling tones had matching edges — inconsistent.                                                                          | fixed           | [210ca68](https://github.com/chrisfisher16-alt/cost-seg/commit/210ca68) | None — 4-line switch-case; visual-only. `toneBorder`/`toneDot` live inside the page module.      |
+| B6-2 | P1       | `components/admin/EngineerQueueList.tsx`    | `toggleAll()` selected every row in the queue irrespective of the server's `adminBulkMarkFailedAction` cap (50). Admin could pick 75, fill the reason form, submit, then discover the action was rejected — hand-deselect recovery required. Now caps at `BULK_MARK_FAILED_CAP` and shows a hint. | fixed           | [210ca68](https://github.com/chrisfisher16-alt/cost-seg/commit/210ca68) | `tests/unit/engineer-queue-list.test.tsx` — 4 RTL cases (under / at / over cap + capped-toggle). |
+| B6-3 | P2       | `app/(admin)/admin/engineer-queue/page.tsx` | `loadQueue()` had no `take` — page would pull the whole AWAITING_ENGINEER table if the backlog grew. Added `take: 200` (4× the bulk cap).                                                                                                                                                         | fixed           | [210ca68](https://github.com/chrisfisher16-alt/cost-seg/commit/210ca68) | None — defensive cap; no code path exercises it without a 200+ row fixture.                      |
+| B6-4 | P3       | `components/admin/AdminActionsPanel.tsx`    | Single-study mark-failed dialog renders its error as `<p role="alert">`; bulk mark-failed uses `<Alert role="alert">`. Inconsistent a11y container across two related dialogs. Polish — no functional defect.                                                                                     | open — deferred | —                                                                       | —                                                                                                |
+
+### Audits that surfaced no findings (Bucket 6)
+
+| Audit                                                                      | Result                                                                                                                                                   |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin role gate                                                            | `app/(admin)/layout.tsx` calls `requireRole(["ADMIN"])`; all nested pages inherit.                                                                       |
+| `/admin` status + tier + search filters, tone-aware `StatusBadge` (Day 58) | Failed → destructive, Delivered → success, in-flight tones render correctly across the pipeline list.                                                    |
+| `/admin/studies/[id]` truncation + expand (Day 45)                         | `?expand=1` correctly widens the StudyEvent fetch from 50 to 500; "showing 50 of N" ExpandHint renders only when truncated.                              |
+| `adminBulkMarkFailedAction` partial-failure                                | Per-row outcomes surfaced in `results` array; transaction boundary is per-row so one malformed row doesn't roll back siblings. Cap enforced server-side. |
+| Admin status-write sites                                                   | All now routed through `lib/studies/transitions.ts` (Bucket 5). No new direct `prisma.study.update({ data: { status } })` in admin code.                 |
+| `DocsBulkDownload` (Day 64)                                                | Synthetic anchor-click loop with a 200ms delay between items (not after the last), cross-origin fallback present.                                        |
+| `console.log` / dev-only code in admin surfaces                            | Zero.                                                                                                                                                    |
+
+### Running totals after Bucket 6
+
+- **Unit tests:** 291 → **295** (+4: new `engineer-queue-list.test.tsx`).
+- **E2E tests:** 112 → **112**.
 
 ## Bucket 7 — Output + cross-cutting
 
