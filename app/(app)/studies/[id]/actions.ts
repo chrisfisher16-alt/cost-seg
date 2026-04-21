@@ -280,6 +280,21 @@ export async function startPipelineAction(studyId: string): Promise<ActionOk<obj
     return { ok: false, error: reason };
   }
 
+  // A prior documents.ready event means the pipeline has already been
+  // triggered — treat this as success so a re-click (customer navigates
+  // back and hits the button again before Inngest has flipped status to
+  // PROCESSING) sends them to the live processing view instead of
+  // surfacing a scary error. The `emitDocumentsReadyIfComplete` guard
+  // itself still prevents a duplicate Inngest send.
+  const prior = await prisma.studyEvent.findFirst({
+    where: { studyId, kind: "documents.ready" },
+    select: { id: true },
+  });
+  if (prior) {
+    revalidatePath(`/studies/${studyId}/intake`);
+    return { ok: true };
+  }
+
   const emitted = await emitDocumentsReadyIfComplete(studyId);
   if (!emitted) {
     return {
