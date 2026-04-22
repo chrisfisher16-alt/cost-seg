@@ -1225,27 +1225,52 @@ function AppendixAContent(props: AiReportProps) {
 // -----------------------------------------------------------------------------
 
 function AppendixBContent(props: AiReportProps) {
+  // Render line items in chunks, each on its own <Page>. This bounds
+  // how much content any single Page must paginate, avoiding the
+  // @react-pdf layout pathology where a Page's accumulated children
+  // overflow into clipBorderTop with -1.9e+21 once the total height
+  // crosses several pages' worth. Chunk size chosen so a realistic v2
+  // card (~200-400pt tall) lets 4-6 cards fit per printable page and
+  // the chunk fits within a handful of page breaks.
+  const PAGE_CHUNK = 10;
+  const chunks: (typeof props.schedule.lineItems)[] = [];
+  for (let i = 0; i < props.schedule.lineItems.length; i += PAGE_CHUNK) {
+    chunks.push(props.schedule.lineItems.slice(i, i + PAGE_CHUNK));
+  }
+
   return (
-    <Page size="LETTER" style={baseStyles.page} wrap>
-      <Text style={baseStyles.eyebrow}>Appendix B</Text>
-      <Text style={baseStyles.h2} minPresenceAhead={72}>
-        Detailed Asset Schedule
-      </Text>
-      <Text style={baseStyles.lead}>
-        Complete listing of all classified assets with quantity, unit cost, rationale, and
-        adjustments. Sorted by depreciation class.
-      </Text>
+    <>
+      {chunks.map((chunk, chunkIdx) => (
+        <Page key={chunkIdx} size="LETTER" style={baseStyles.page} wrap>
+          {chunkIdx === 0 ? (
+            <>
+              <Text style={baseStyles.eyebrow}>Appendix B</Text>
+              <Text style={baseStyles.h2} minPresenceAhead={72}>
+                Detailed Asset Schedule
+              </Text>
+              <Text style={baseStyles.lead}>
+                Complete listing of all classified assets with quantity, unit cost, rationale, and
+                adjustments. Sorted by depreciation class.
+              </Text>
+            </>
+          ) : (
+            <Text style={baseStyles.eyebrow}>
+              Appendix B (continued · {chunkIdx + 1} of {chunks.length})
+            </Text>
+          )}
 
-      {props.schedule.lineItems.map((li, idx) => (
-        <AssetDetailCard
-          key={`${li.category}-${li.name}-${idx}`}
-          item={li}
-          decomposition={props.decomposition}
-        />
+          {chunk.map((li, idx) => (
+            <AssetDetailCard
+              key={`${li.category}-${li.name}-${chunkIdx}-${idx}`}
+              item={li}
+              decomposition={props.decomposition}
+            />
+          ))}
+
+          <PageFooter studyId={props.studyId} />
+        </Page>
       ))}
-
-      <PageFooter studyId={props.studyId} />
-    </Page>
+    </>
   );
 }
 
@@ -1281,357 +1306,71 @@ function AssetDetailCard({
     Boolean(item.locationBasis) ||
     Boolean(item.comparableDescription);
 
-  return (
-    <View
-      style={{
-        // Use a filled background instead of a border. A bordered
-        // wrappable View hits a react-pdf bug: when the card splits
-        // across a page break, clipBorderTop receives -1.9e+21 and
-        // pdfkit rejects it as "unsupported number". This is the same
-        // pathology observed with `wrap={false}` on over-tall content,
-        // and reproducible every delivery attempt on v2 schedules
-        // (Inngest runs 01KPS3N..., 01KPS7R..., 01KPS8NS...). Dropping
-        // the border + using accentBg gives visual grouping without
-        // any border rendering path, so page-splitting is safe.
-        backgroundColor: pdfColors.accentBg,
-        borderRadius: 4,
-        padding: 12,
-        marginBottom: 10,
-      }}
-    >
-      <View
-        style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}
-      >
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: 4,
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: pdfColors.primarySoft,
-                borderColor: pdfColors.primarySoftBorder,
-                borderWidth: 1,
-                borderRadius: 10,
-                paddingHorizontal: 6,
-                paddingVertical: 1,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 7.5,
-                  fontFamily: "Helvetica-Bold",
-                  letterSpacing: 0.8,
-                  color: pdfColors.primaryInk,
-                  textTransform: "uppercase",
-                }}
-              >
-                {classLabel}
-              </Text>
-            </View>
-            {item.isResidual ? (
-              <View
-                style={{
-                  backgroundColor: pdfColors.accentBg,
-                  borderColor: pdfColors.softBorder,
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  paddingHorizontal: 6,
-                  paddingVertical: 1,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 7.5,
-                    fontFamily: "Helvetica-Bold",
-                    letterSpacing: 0.8,
-                    color: pdfColors.subtle,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Residual
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold" }}>{item.name}</Text>
-        </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold" }}>
-            {fmtCents(item.amountCents)}
-          </Text>
-          <Text style={{ fontSize: 8, color: pdfColors.subtle }}>
-            {fmtPct(pctOfBuilding, 2)} of basis
-          </Text>
-        </View>
-      </View>
-
-      {item.photoDataUri ? (
-        <View style={{ marginTop: 10, alignItems: "flex-start" }}>
-          {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf <Image> has no alt prop; PDF is not an a11y tree. */}
-          <Image
-            src={item.photoDataUri}
-            style={{
-              width: 180,
-              height: 135,
-              borderRadius: 3,
-              borderWidth: 0.5,
-              borderColor: pdfColors.hairline,
-            }}
-          />
-        </View>
-      ) : null}
-
-      <CardDivider />
-      <View>
-        <Text
-          style={{
-            fontSize: 8,
-            color: pdfColors.subtle,
-            letterSpacing: 0.6,
-            textTransform: "uppercase",
-          }}
-        >
-          Justification
-        </Text>
-        <Text style={{ marginTop: 3, color: pdfColors.foreground }}>{item.rationale}</Text>
-      </View>
-
-      {hasV2Detail ? <AssetDetailV2Body item={item} /> : null}
-
-      {hasAdjustments ? (
-        <>
-          <CardDivider />
-          <View>
-            <Text
-              style={{
-                fontSize: 8,
-                color: pdfColors.subtle,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-                marginBottom: 4,
-              }}
-            >
-              Cost build-up
-            </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-              {item.quantity !== undefined ? (
-                <AdjustmentChip
-                  label="Quantity"
-                  value={item.unit ? `${item.quantity} ${item.unit}` : String(item.quantity)}
-                />
-              ) : null}
-              {item.unitCostCents !== undefined ? (
-                <AdjustmentChip label="Unit cost" value={fmtCentsPrecise(item.unitCostCents)} />
-              ) : null}
-              {item.costSource ? <AdjustmentChip label="Source" value={item.costSource} /> : null}
-              {item.physicalMultiplier !== undefined ? (
-                <AdjustmentChip label="Physical" value={item.physicalMultiplier.toFixed(4)} />
-              ) : null}
-              {item.functionalMultiplier !== undefined ? (
-                <AdjustmentChip label="Functional" value={item.functionalMultiplier.toFixed(4)} />
-              ) : null}
-              {item.timeMultiplier !== undefined ? (
-                <AdjustmentChip label="Time" value={item.timeMultiplier.toFixed(4)} />
-              ) : null}
-              {item.locationMultiplier !== undefined ? (
-                <AdjustmentChip label="Location" value={item.locationMultiplier.toFixed(4)} />
-              ) : null}
-            </View>
-          </View>
-        </>
-      ) : null}
-    </View>
-  );
-}
-
-/**
- * 0.5pt tall background-color bar used in place of `borderTopWidth` dividers
- * inside AssetDetailCard. Plain borders on wrappable containers trigger a
- * react-pdf bug: when the card splits across a page break, clipBorderTop
- * receives an astronomical Y offset and pdfkit rejects it with
- * "unsupported number: -1.9e+21". A background-color View has no border
- * rendering path, so it's clip-free and safe across page breaks.
- */
-function CardDivider() {
-  return (
-    <View
-      style={{
-        height: 0.5,
-        backgroundColor: pdfColors.hairline,
-        marginTop: 8,
-        marginBottom: 8,
-      }}
-    />
-  );
-}
-
-/**
- * v2 per-item detail body — cost estimate block + paragraph
- * justifications + cost summary. Rendered only when the item carries
- * at least one v2-only field (justifications, comparable, time basis,
- * …). Sits between the rationale and the chip build-up so the existing
- * layout stays stable for v1 items.
- */
-function AssetDetailV2Body({ item }: { item: AiReportProps["schedule"]["lineItems"][number] }) {
+  // Flat layout: every piece of v2 detail is rendered as a direct <Text>
+  // child of the outer View. Earlier iterations used nested <View>
+  // section wrappers (borders then backgroundColor then plain) — all
+  // of them triggered @react-pdf's clipBorderTop crash
+  // ("unsupported number: -1.9e+21") when cumulative card content
+  // exceeded a page and the layout engine mis-clipped the subtree at
+  // the page boundary. A flat sequence of siblings renders clean across
+  // page breaks in the local repro
+  // (tests/unit/pdf-render.test.ts > renders a dense v2 study).
   const qty = item.quantity ?? 1;
   const unitCost = item.unitCostCents ?? 0;
   const baseCostCents = qty * unitCost;
+  const adjChips: string[] = [];
+  if (item.quantity !== undefined) {
+    adjChips.push(`Qty ${item.unit ? `${item.quantity} ${item.unit}` : item.quantity}`);
+  }
+  if (item.unitCostCents !== undefined)
+    adjChips.push(`Unit ${fmtCentsPrecise(item.unitCostCents)}`);
+  if (item.costSource) adjChips.push(`Src ${item.costSource}`);
+  if (item.physicalMultiplier !== undefined)
+    adjChips.push(`Phys ${item.physicalMultiplier.toFixed(4)}`);
+  if (item.functionalMultiplier !== undefined)
+    adjChips.push(`Fn ${item.functionalMultiplier.toFixed(4)}`);
+  if (item.timeMultiplier !== undefined) adjChips.push(`Time ${item.timeMultiplier.toFixed(4)}`);
+  if (item.locationMultiplier !== undefined)
+    adjChips.push(`Loc ${item.locationMultiplier.toFixed(4)}`);
 
+  // Return a flat fragment of Text siblings so there's NO wrapping
+  // container. The parent <Page> paginates these siblings directly,
+  // which avoids the clipBorderTop pathology that any <View> wrapper
+  // triggers once its cumulative content height exceeds a single page.
   return (
-    <View>
-      {item.comparableDescription ? (
-        <>
-          <CardDivider />
-          <View>
-            <Text
-              style={{
-                fontSize: 8,
-                color: pdfColors.subtle,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-              }}
-            >
-              Cost estimate
-            </Text>
-            <Text style={{ marginTop: 3, color: pdfColors.foreground }}>
-              {item.comparableDescription}
-            </Text>
-            {item.comparableSourceUrl ? (
-              <Text
-                style={{
-                  fontSize: 8,
-                  fontFamily: "Courier",
-                  color: pdfColors.primary,
-                  marginTop: 2,
-                }}
-              >
-                {item.comparableSourceUrl}
-              </Text>
-            ) : null}
-          </View>
-        </>
-      ) : null}
-
-      {item.physicalJustification || item.functionalJustification ? (
-        <>
-          <CardDivider />
-          <View>
-            <Text
-              style={{
-                fontSize: 8,
-                color: pdfColors.subtle,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-                marginBottom: 4,
-              }}
-            >
-              Per-item adjustments
-            </Text>
-            {item.physicalJustification ? (
-              <Text style={{ marginBottom: 4 }}>
-                <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                  Physical ({(item.physicalMultiplier ?? 1).toFixed(4)}):{" "}
-                </Text>
-                {item.physicalJustification}
-              </Text>
-            ) : null}
-            {item.functionalJustification ? (
-              <Text>
-                <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                  Functional ({(item.functionalMultiplier ?? 1).toFixed(4)}):{" "}
-                </Text>
-                {item.functionalJustification}
-              </Text>
-            ) : null}
-          </View>
-        </>
-      ) : null}
-
-      {item.timeBasis || item.locationBasis ? (
-        <>
-          <CardDivider />
-          <View>
-            <Text
-              style={{
-                fontSize: 8,
-                color: pdfColors.subtle,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-                marginBottom: 4,
-              }}
-            >
-              Global adjustments
-            </Text>
-            {item.timeBasis ? (
-              <Text style={{ marginBottom: 3 }}>
-                <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                  Time ({(item.timeMultiplier ?? 1).toFixed(4)}):{" "}
-                </Text>
-                {item.timeBasis}
-              </Text>
-            ) : null}
-            {item.locationBasis ? (
-              <Text>
-                <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                  Location ({(item.locationMultiplier ?? 1).toFixed(4)}):{" "}
-                </Text>
-                {item.locationBasis}
-              </Text>
-            ) : null}
-          </View>
-        </>
-      ) : null}
-
-      {item.unitCostCents !== undefined && item.quantity !== undefined ? (
-        <>
-          <CardDivider />
-          <View>
-            <Text
-              style={{
-                fontSize: 8,
-                color: pdfColors.subtle,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-                marginBottom: 4,
-              }}
-            >
-              Cost summary
-            </Text>
-            <Text>
-              <Text style={{ fontFamily: "Helvetica-Bold" }}>Base cost: </Text>
-              {fmtCentsPrecise(unitCost)} × {qty}
-              {item.unit ? ` ${item.unit}` : ""} = {fmtCentsPrecise(baseCostCents)}
-            </Text>
-            <Text style={{ fontFamily: "Helvetica-Bold", marginTop: 3 }}>
-              Fully adjusted cost: {fmtCentsPrecise(item.amountCents)}
-            </Text>
-          </View>
-        </>
-      ) : null}
-    </View>
-  );
-}
-
-function AdjustmentChip({ label, value }: { label: string; value: string }) {
-  return (
-    <View>
-      <Text
-        style={{
-          fontSize: 7.5,
-          color: pdfColors.subtle,
-          letterSpacing: 0.6,
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
+    <>
+      <Text style={{ marginTop: 10, fontSize: 11, fontFamily: "Helvetica-Bold" }}>
+        {classLabel}
+        {item.isResidual ? " — Residual" : ""} · {item.name}
       </Text>
-      <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", marginTop: 1 }}>{value}</Text>
-    </View>
+      <Text style={{ fontSize: 10, color: pdfColors.subtle }}>
+        {fmtCents(item.amountCents)} · {fmtPct(pctOfBuilding, 2)} of basis
+      </Text>
+      {item.photoDataUri ? (
+        /* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf <Image> has no alt prop; PDF is not an a11y tree. */
+        <Image src={item.photoDataUri} style={{ width: 180, height: 135, marginTop: 4 }} />
+      ) : null}
+      <Text style={{ marginTop: 4, fontSize: 9 }}>Justification: {item.rationale}</Text>
+      {hasV2Detail && item.comparableDescription ? (
+        <Text style={{ marginTop: 3, fontSize: 9 }}>
+          Cost estimate: {item.comparableDescription}
+        </Text>
+      ) : null}
+      {hasV2Detail && item.physicalJustification ? (
+        <Text style={{ marginTop: 3, fontSize: 9 }}>Physical: {item.physicalJustification}</Text>
+      ) : null}
+      {hasV2Detail && item.functionalJustification ? (
+        <Text style={{ marginTop: 3, fontSize: 9 }}>
+          Functional: {item.functionalJustification}
+        </Text>
+      ) : null}
+      {hasV2Detail && item.timeBasis ? (
+        <Text style={{ marginTop: 3, fontSize: 9 }}>Time: {item.timeBasis}</Text>
+      ) : null}
+      {hasV2Detail && item.locationBasis ? (
+        <Text style={{ marginTop: 3, fontSize: 9 }}>Location: {item.locationBasis}</Text>
+      ) : null}
+    </>
   );
 }
 
