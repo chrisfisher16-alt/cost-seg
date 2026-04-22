@@ -1284,19 +1284,20 @@ function AssetDetailCard({
   return (
     <View
       style={{
-        borderWidth: 1,
-        borderColor: pdfColors.hairline,
+        // Use a filled background instead of a border. A bordered
+        // wrappable View hits a react-pdf bug: when the card splits
+        // across a page break, clipBorderTop receives -1.9e+21 and
+        // pdfkit rejects it as "unsupported number". This is the same
+        // pathology observed with `wrap={false}` on over-tall content,
+        // and reproducible every delivery attempt on v2 schedules
+        // (Inngest runs 01KPS3N..., 01KPS7R..., 01KPS8NS...). Dropping
+        // the border + using accentBg gives visual grouping without
+        // any border rendering path, so page-splitting is safe.
+        backgroundColor: pdfColors.accentBg,
         borderRadius: 4,
         padding: 12,
         marginBottom: 10,
       }}
-      // NOTE: intentionally wrappable. v2 cards with photo + 4 v2-body
-      // subsections + chips often exceed a single page on dense properties.
-      // With `wrap={false}`, @react-pdf's layout emits astronomical negative
-      // offsets that crash pdfkit in `clipBorderTop`
-      // ("unsupported number: -1.9e+21"). Letting the card split across a
-      // page break yields slightly less polished pagination but deterministic
-      // output. See Inngest run 01KPS3N956NDFCX5F65065SP3T for the trace.
     >
       <View
         style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}
