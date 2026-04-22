@@ -29,7 +29,7 @@ export function PlatformPreview() {
         <SectionHeader
           eyebrow="The Pipeline, live"
           title="Every step in view. Nothing behind a loading spinner."
-          description="See the parsing, the land-value split, and the per-asset classification as they happen. Every decision is logged with an IRS citation — no black-box numbers to defend later."
+          description="See the parsing, the land-value split, and the per-asset classification as they happen. Every decision is logged with an IRS citation, so there are no black-box numbers to defend later."
         />
 
         <div className="mt-14 grid items-center gap-8 lg:grid-cols-[1.1fr_1fr]">
@@ -38,7 +38,7 @@ export function PlatformPreview() {
             <Kpi
               label="What you see when your report completes"
               value="$184,300"
-              hint="reclassified into 5-, 7-, 15-year property — year-one deduction at 37% marginal"
+              hint="reclassified into 5-, 7-, 15-year property. Year-one deduction at 37% marginal."
               size="xl"
               tone="accent"
             />
@@ -46,14 +46,14 @@ export function PlatformPreview() {
               <li className="flex gap-3">
                 <CheckIcon className="text-primary mt-[3px] h-4 w-4 shrink-0" aria-hidden />
                 <span>
-                  <strong className="text-foreground">Real-time progress</strong> — streaming step
+                  <strong className="text-foreground">Real-time progress.</strong> A streaming step
                   list with ETA, so you always know what&rsquo;s happening.
                 </span>
               </li>
               <li className="flex gap-3">
                 <CheckIcon className="text-primary mt-[3px] h-4 w-4 shrink-0" aria-hidden />
                 <span>
-                  <strong className="text-foreground">Per-asset rationale</strong> — every line in
+                  <strong className="text-foreground">Per-asset rationale.</strong> Every line in
                   your report shows the comparable, the adjustments, and the IRS citation behind the
                   classification. Appendix B ships with every study.
                 </span>
@@ -61,8 +61,8 @@ export function PlatformPreview() {
               <li className="flex gap-3">
                 <CheckIcon className="text-primary mt-[3px] h-4 w-4 shrink-0" aria-hidden />
                 <span>
-                  <strong className="text-foreground">Share with your CPA</strong> — one click to
-                  send a read-only view; they see the same schedule and methodology you do, no
+                  <strong className="text-foreground">Share with your CPA.</strong> One click to
+                  send a read-only view. They see the same schedule and methodology you do, no
                   account required on their end.
                 </span>
               </li>

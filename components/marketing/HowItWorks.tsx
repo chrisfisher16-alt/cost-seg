@@ -9,18 +9,18 @@ const STEPS = [
     n: "01",
     icon: FileTextIcon,
     title: "Tell us about the property",
-    body: "Address, purchase price, and property type — 90 seconds. No account needed for the free estimate.",
+    body: "Address, purchase price, and property type. 90 seconds. No account needed for the free estimate.",
   },
   {
     n: "02",
     icon: UploadCloudIcon,
     title: "Hand over the basis",
-    body: "DIY tier: type in the numbers from your closing disclosure. AI and Engineer-Reviewed: upload the closing disclosure plus improvement receipts and a few photos — we extract everything automatically.",
+    body: "DIY tier: type in the numbers from your closing disclosure. AI and Engineer-Reviewed: upload the closing disclosure plus improvement receipts and a few photos, and we extract everything automatically.",
   },
   {
     n: "03",
     icon: SparklesIcon,
-    title: "Watch the pipeline work — live",
+    title: "Watch the pipeline work, live",
     body: "See every step in real time: document parsing, basis decomposition, asset classification, narrative drafting. You get a branded PDF the moment it finishes.",
   },
 ];
@@ -32,7 +32,7 @@ export function HowItWorks() {
         <SectionHeader
           eyebrow="How it works"
           title="From purchase price to year-one deductions, in plain view."
-          description="Built for owners of short-term rentals, small multifamily, and commercial real estate — and the CPAs who file for them."
+          description="Built for owners of short-term rentals, small multifamily, and commercial real estate, and for the CPAs who file for them."
         />
         <ol className="mt-14 grid gap-6 md:grid-cols-3">
           {STEPS.map((step) => (

@@ -14,8 +14,8 @@ export function SampleReportPreview() {
       <Container size="xl">
         <SectionHeader
           eyebrow="What you actually get"
-          title="A 214-page-class report. Every number traceable."
-          description="Cover page with your property, executive summary, full MACRS schedule, per-asset rationale with photos, methodology appendix, source documentation. Built to hold up next to anything a $700 engineer produces."
+          title="An engineered-study-class report. Every number traceable."
+          description="Cover page with your property, executive summary, full MACRS schedule, per-asset rationale with photos, methodology appendix, and a CPA filing worksheet. Built to hold up next to anything a $700 engineer produces."
         />
 
         <div className="mt-14 grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:items-center">
@@ -28,7 +28,7 @@ export function SampleReportPreview() {
                 Cover page with property hero photo and prepared-for block
               </SampleBullet>
               <SampleBullet>
-                Executive summary with the five headline numbers upfront — cost basis, land value,
+                Executive summary with the five headline numbers upfront: cost basis, land value,
                 depreciable basis, accelerated property $, and class breakdown
               </SampleBullet>
               <SampleBullet>
@@ -40,10 +40,18 @@ export function SampleReportPreview() {
                 cost
               </SampleBullet>
               <SampleBullet>
-                Appendix with methodology deep-dive (Whiteco factors, HCA tests, Rev. Proc. 87-56)
+                Appendix A: methodology deep-dive (Whiteco factors, HCA tests, Rev. Proc. 87-56)
               </SampleBullet>
               <SampleBullet>
-                Appendix with source docs: ALTA settlement statement, aerial, improvements ledger
+                Appendix B: detailed per-asset schedule covering every line item, its
+                classification, and its adjustments
+              </SampleBullet>
+              <SampleBullet>
+                Appendix C–D: reference documentation and expenditure classification
+              </SampleBullet>
+              <SampleBullet>
+                Appendix E: CPA filing worksheet with pre-filled Form 3115 and Form 4562 inputs,
+                plus the §481(a) adjustment and recommended DCN
               </SampleBullet>
             </ul>
             <div className="flex flex-wrap gap-3 pt-2">

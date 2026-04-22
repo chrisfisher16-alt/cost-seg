@@ -27,17 +27,17 @@ export function Hero() {
         </h1>
 
         <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-balance sm:text-xl">
-          Turn your real-estate basis into year-one tax deductions. Modeling reports in minutes.
-          Engineer-signed, audit-defensible studies in days. At a fraction of the traditional
-          $5,000+ engagement.
+          Turn your real-estate basis into year-one tax deductions. Modeling reports in under 30
+          minutes. Engineer-signed, audit-defensible studies in days. At a fraction of the
+          traditional $5,000+ engagement.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button asChild size="xl" trailingIcon={<ArrowRightIcon />}>
-            <Link href="#estimator">Estimate your savings — free</Link>
+            <Link href="#estimator">Estimate your savings for free</Link>
           </Button>
           <Button asChild size="xl" variant="outline">
-            <Link href="/samples">See a real sample report</Link>
+            <Link href="/pricing">Start a study</Link>
           </Button>
         </div>
 
@@ -56,7 +56,7 @@ export function Hero() {
 function HeroProof() {
   const stats: Array<{ label: string; value: string; hint: string }> = [
     { label: "Avg year-1 deduction", value: "$92k", hint: "On a $500k STR basis" },
-    { label: "Traditional turnaround", value: "6 weeks", hint: "We do it in minutes to days" },
+    { label: "Traditional turnaround", value: "6 weeks", hint: "We do it in 30 minutes to 7 days" },
     { label: "Traditional cost", value: "$5,000+", hint: "We start at $149" },
     { label: "IRS guidelines followed", value: "Pub 5653", hint: "ATG-compliant methodology" },
   ];

@@ -21,7 +21,7 @@ export function PricingSection({ compact = false }: { compact?: boolean }) {
         <SectionHeader
           eyebrow="Pricing"
           title="Pay for exactly the report you need."
-          description="Start with a modeling report for planning. Upgrade to an engineer-signed study when you file — without re-uploading a single document."
+          description="Start with a modeling report for planning. Upgrade to an engineer-signed study when you file, without re-uploading a single document."
         />
 
         {/* md:grid-cols-3 instead of lg: — at 1024px+ cards get generous
@@ -85,7 +85,7 @@ function TierCard({ tier }: { tier: MarketingTierEntry }) {
         </span>
       ) : null}
       <CardContent className="flex flex-1 flex-col p-7">
-        <header className="space-y-1.5">
+        <header className={cn("space-y-1.5", tier.badge && "pr-28")}>
           <p className="text-muted-foreground text-xs font-medium tracking-wide">{tier.tagline}</p>
           <h3 className="text-xl font-semibold tracking-tight">{tier.label}</h3>
         </header>

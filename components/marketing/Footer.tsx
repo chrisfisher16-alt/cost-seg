@@ -46,8 +46,8 @@ export function Footer() {
           <div className="space-y-5">
             <BrandMark size="lg" />
             <p className="text-muted-foreground max-w-sm text-sm leading-relaxed">
-              Cost segregation studies in minutes, not six weeks. Modeling reports for planning,
-              engineer-signed studies for filing.
+              Cost segregation studies in under 30 minutes, not six weeks. Modeling reports for
+              planning, engineer-signed studies for filing.
             </p>
             <div className="space-y-2 text-sm">
               <a

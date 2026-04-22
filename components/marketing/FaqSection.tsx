@@ -21,9 +21,9 @@ export const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
           segregation study signed by a Professional Engineer under IRS Publication 5653.
         </p>
         <p className="mt-2">
-          For filing — especially on larger bases or anything you&rsquo;d defend in an audit —
-          upgrade to our Engineer-Reviewed tier. We re-use every document and data point, so
-          you&rsquo;re not paying twice for the same work.
+          For filing, especially on larger bases or anything you&rsquo;d defend in an audit, upgrade
+          to our Engineer-Reviewed tier. We re-use every document and data point, so you&rsquo;re
+          not paying twice for the same work.
         </p>
       </>
     ),
@@ -54,14 +54,15 @@ export const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
         <p>Three things, plus optional extras:</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
-            <strong>Closing disclosure</strong> (ALTA Settlement Statement or HUD-1) — we extract
-            the purchase price, date, title fees, and allocations automatically.
+            <strong>Closing disclosure</strong> (ALTA Settlement Statement or HUD-1). We extract the
+            purchase price, date, title fees, and allocations automatically.
           </li>
           <li>
-            <strong>Improvement receipts</strong> — any capital expenditures since acquisition.
+            <strong>Improvement receipts.</strong> Any capital expenditures since acquisition.
           </li>
           <li>
-            <strong>Property photos</strong> — interior and exterior; more photos = richer schedule.
+            <strong>Property photos.</strong> Interior and exterior. More photos means a richer
+            schedule.
           </li>
           <li>Optional: appraisal, property management invoices, insurance declarations.</li>
         </ul>
@@ -87,7 +88,7 @@ export const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
     a: (
       <>
         <p>
-          Yes — short-term rentals are one of the highest-leverage use cases. If the average guest
+          Yes. Short-term rentals are one of the highest-leverage use cases. If the average guest
           stay is under 7 days and you materially participate, the STR loophole lets non-real-estate
           professionals use the accelerated depreciation against active income. We explicitly
           support this workflow and generate the schedule classes needed.
@@ -113,7 +114,7 @@ export const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
     a: (
       <>
         <p>
-          Yes — one click from your dashboard. We reuse all of your documents, pipeline outputs, and
+          Yes. One click from your dashboard. We reuse all of your documents, pipeline outputs, and
           classifications. You only pay the delta between the two tiers.
         </p>
       </>
@@ -126,8 +127,8 @@ export const FAQ_ITEMS: Array<{ q: string; a: React.ReactNode }> = [
         <p>
           Engineer-Reviewed studies are designed to defend themselves under IRS Publication 5653.
           For additional peace of mind, our upcoming <strong>Lifetime Audit Protection</strong>{" "}
-          add-on puts a licensed CPA or Enrolled Agent on retainer to represent you through the exam
-          — for the life of the depreciation schedule.
+          add-on puts a licensed CPA or Enrolled Agent on retainer to represent you through the
+          exam, for the life of the depreciation schedule.
         </p>
       </>
     ),
@@ -154,7 +155,7 @@ export function FaqSection({ limit }: { limit?: number }) {
         <SectionHeader
           eyebrow="FAQ"
           title="Answers to the questions we get most."
-          description={`Missing something? Write to ${BRAND.email.support} — we answer every email within one business day.`}
+          description={`Missing something? Write to ${BRAND.email.support}. We answer every email within one business day.`}
         />
         <div className="border-border bg-card mt-10 rounded-2xl border p-2 sm:p-4">
           <Accordion type="single" collapsible className="w-full">

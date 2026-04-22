@@ -83,7 +83,7 @@ export function Estimator() {
               <Field
                 label="Property address"
                 htmlFor="address"
-                hint="Optional — helps us contextualize."
+                hint="Optional. Helps us contextualize."
               >
                 <AddressInput id="address" value={address} onChange={setAddress} />
               </Field>
@@ -244,7 +244,7 @@ function LeadCaptureCard({ leadId }: { leadId: string | null }) {
     return (
       <div className="border-success/30 bg-success/5 text-success mt-6 flex items-center gap-3 rounded-md border p-3 text-sm">
         <CheckCircle2Icon className="h-4 w-4 shrink-0" aria-hidden />
-        <span>Got it — we&rsquo;ll email you a sample report within one business day.</span>
+        <span>Got it. We&rsquo;ll email you a sample report within one business day.</span>
       </div>
     );
   }

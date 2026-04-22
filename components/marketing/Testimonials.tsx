@@ -27,7 +27,7 @@ const QUOTES: Array<{
   },
   {
     quote:
-      "We onboarded four clients in one afternoon. Segra is the first tool my firm hasn&rsquo;t had to explain to clients — they actually get it.",
+      "We onboarded four clients in one afternoon. Segra is the first tool my firm hasn&rsquo;t had to explain to clients. They actually get it.",
     author: "Priya K., CPA",
     role: "Two-partner firm · Tampa, FL",
     numbers: { label: "Clients onboarded", value: "4 in 1 afternoon" },
@@ -41,7 +41,7 @@ export function Testimonials() {
         <SectionHeader
           eyebrow="Illustrative · pre-launch"
           title="The shape of the feedback we're hearing."
-          description="These are composite scenarios from beta-program interviews — not verbatim quotes from named customers. We'll replace them with real, verifiable reviews as soon as we can."
+          description="These are composite scenarios from beta-program interviews, not verbatim quotes from named customers. We'll replace them with real, verifiable reviews as soon as we can."
         />
         <div className="mt-14 grid gap-6 md:grid-cols-3">
           {QUOTES.map((q) => (
