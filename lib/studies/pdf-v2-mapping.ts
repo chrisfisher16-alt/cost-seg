@@ -154,11 +154,26 @@ export async function loadPhotoDataUrisByDocumentId(
  * Return true iff the persisted assetSchedule was produced by the v2
  * classifier (Phase 2). Shape guard — deliver.ts branches on this to
  * pick the v1 vs. v2 mapping.
+ *
+ * `finalizeStudy` in pipeline.ts persists the assetSchedule as
+ * `{ decomposition, schedule, narrative, totalCents }` and the schema
+ * marker (`{ schema: "v2", lineItems, assumptions }`) lives INSIDE
+ * `schedule`, not at the top level. A prior version of this guard
+ * checked `stored.schema` directly and silently returned false for every
+ * real study — routing v2-shaped data through the v1 template path
+ * (which reads `amountCents`, not present on v2 items) and cascading
+ * `$NaN` into every cost display + skipping photos entirely.
+ *
+ * Both paths are accepted for belt-and-suspenders: if an earlier caller
+ * or a future refactor flattens the shape, the guard still works.
  */
 export function isV2Schedule(stored: unknown): boolean {
-  return (
-    typeof stored === "object" &&
-    stored !== null &&
-    (stored as Record<string, unknown>).schema === "v2"
-  );
+  if (typeof stored !== "object" || stored === null) return false;
+  const top = stored as Record<string, unknown>;
+  if (top.schema === "v2") return true;
+  const nested = top.schedule;
+  if (nested && typeof nested === "object") {
+    if ((nested as Record<string, unknown>).schema === "v2") return true;
+  }
+  return false;
 }

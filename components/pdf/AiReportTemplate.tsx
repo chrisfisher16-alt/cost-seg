@@ -1288,13 +1288,6 @@ function AssetDetailCard({
     (decomposition.buildingValueCents > 0
       ? item.amountCents / decomposition.buildingValueCents
       : 0);
-  const hasAdjustments =
-    item.quantity !== undefined ||
-    item.unitCostCents !== undefined ||
-    item.physicalMultiplier !== undefined ||
-    item.functionalMultiplier !== undefined ||
-    item.timeMultiplier !== undefined ||
-    item.locationMultiplier !== undefined;
   // v2 Phase 5: the richer layout switches on when paragraph-level v2
   // justification data is present. Chip-only v1 outputs still render
   // the original compact card.
@@ -1306,37 +1299,16 @@ function AssetDetailCard({
     Boolean(item.locationBasis) ||
     Boolean(item.comparableDescription);
 
-  // Flat layout: every piece of v2 detail is rendered as a direct <Text>
-  // child of the outer View. Earlier iterations used nested <View>
-  // section wrappers (borders then backgroundColor then plain) — all
-  // of them triggered @react-pdf's clipBorderTop crash
+  // Return a flat fragment of Text siblings so there's NO wrapping
+  // container. Earlier iterations used nested <View> section wrappers
+  // (with borders then backgroundColor then plain) and every version
+  // triggered @react-pdf's clipBorderTop crash
   // ("unsupported number: -1.9e+21") when cumulative card content
   // exceeded a page and the layout engine mis-clipped the subtree at
   // the page boundary. A flat sequence of siblings renders clean across
-  // page breaks in the local repro
-  // (tests/unit/pdf-render.test.ts > renders a dense v2 study).
-  const qty = item.quantity ?? 1;
-  const unitCost = item.unitCostCents ?? 0;
-  const baseCostCents = qty * unitCost;
-  const adjChips: string[] = [];
-  if (item.quantity !== undefined) {
-    adjChips.push(`Qty ${item.unit ? `${item.quantity} ${item.unit}` : item.quantity}`);
-  }
-  if (item.unitCostCents !== undefined)
-    adjChips.push(`Unit ${fmtCentsPrecise(item.unitCostCents)}`);
-  if (item.costSource) adjChips.push(`Src ${item.costSource}`);
-  if (item.physicalMultiplier !== undefined)
-    adjChips.push(`Phys ${item.physicalMultiplier.toFixed(4)}`);
-  if (item.functionalMultiplier !== undefined)
-    adjChips.push(`Fn ${item.functionalMultiplier.toFixed(4)}`);
-  if (item.timeMultiplier !== undefined) adjChips.push(`Time ${item.timeMultiplier.toFixed(4)}`);
-  if (item.locationMultiplier !== undefined)
-    adjChips.push(`Loc ${item.locationMultiplier.toFixed(4)}`);
-
-  // Return a flat fragment of Text siblings so there's NO wrapping
-  // container. The parent <Page> paginates these siblings directly,
-  // which avoids the clipBorderTop pathology that any <View> wrapper
-  // triggers once its cumulative content height exceeds a single page.
+  // page breaks — the parent <Page> paginates them directly, which
+  // react-pdf handles correctly. Locked in by
+  // tests/unit/pdf-render.test.ts > renders a dense v2 study.
   return (
     <>
       <Text style={{ marginTop: 10, fontSize: 11, fontFamily: "Helvetica-Bold" }}>

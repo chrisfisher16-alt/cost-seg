@@ -212,7 +212,14 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
       generatedAt: now,
       tierLabel: CATALOG[loadedStudy.tier].label,
       ownerLabel: loadedStudy.user.name ?? null,
-      taxYear: now.getFullYear() - 1,
+      // Tax year = the year the property was placed in service, i.e. the
+      // year the owner first applies the cost-seg reclassification. The
+      // previous `now.getFullYear() - 1` formula assumed every study was
+      // backward-looking (filing prior-year return) which breaks for
+      // recently-acquired properties — e.g. a study generated in April
+      // 2026 for a property acquired in April 2026 should show tax year
+      // 2026, not 2025.
+      taxYear: loadedStudy.property.acquiredAt.getFullYear(),
       property: {
         address: loadedStudy.property.address,
         city: loadedStudy.property.city,
