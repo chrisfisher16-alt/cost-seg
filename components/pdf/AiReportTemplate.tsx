@@ -1385,14 +1385,8 @@ function AssetDetailCard({
         </View>
       ) : null}
 
-      <View
-        style={{
-          marginTop: 8,
-          borderTopWidth: 0.5,
-          borderTopColor: pdfColors.hairline,
-          paddingTop: 8,
-        }}
-      >
+      <CardDivider />
+      <View>
         <Text
           style={{
             fontSize: 8,
@@ -1409,52 +1403,69 @@ function AssetDetailCard({
       {hasV2Detail ? <AssetDetailV2Body item={item} /> : null}
 
       {hasAdjustments ? (
-        <View
-          style={{
-            marginTop: 8,
-            borderTopWidth: 0.5,
-            borderTopColor: pdfColors.hairline,
-            paddingTop: 8,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 8,
-              color: pdfColors.subtle,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              marginBottom: 4,
-            }}
-          >
-            Cost build-up
-          </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            {item.quantity !== undefined ? (
-              <AdjustmentChip
-                label="Quantity"
-                value={item.unit ? `${item.quantity} ${item.unit}` : String(item.quantity)}
-              />
-            ) : null}
-            {item.unitCostCents !== undefined ? (
-              <AdjustmentChip label="Unit cost" value={fmtCentsPrecise(item.unitCostCents)} />
-            ) : null}
-            {item.costSource ? <AdjustmentChip label="Source" value={item.costSource} /> : null}
-            {item.physicalMultiplier !== undefined ? (
-              <AdjustmentChip label="Physical" value={item.physicalMultiplier.toFixed(4)} />
-            ) : null}
-            {item.functionalMultiplier !== undefined ? (
-              <AdjustmentChip label="Functional" value={item.functionalMultiplier.toFixed(4)} />
-            ) : null}
-            {item.timeMultiplier !== undefined ? (
-              <AdjustmentChip label="Time" value={item.timeMultiplier.toFixed(4)} />
-            ) : null}
-            {item.locationMultiplier !== undefined ? (
-              <AdjustmentChip label="Location" value={item.locationMultiplier.toFixed(4)} />
-            ) : null}
+        <>
+          <CardDivider />
+          <View>
+            <Text
+              style={{
+                fontSize: 8,
+                color: pdfColors.subtle,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginBottom: 4,
+              }}
+            >
+              Cost build-up
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {item.quantity !== undefined ? (
+                <AdjustmentChip
+                  label="Quantity"
+                  value={item.unit ? `${item.quantity} ${item.unit}` : String(item.quantity)}
+                />
+              ) : null}
+              {item.unitCostCents !== undefined ? (
+                <AdjustmentChip label="Unit cost" value={fmtCentsPrecise(item.unitCostCents)} />
+              ) : null}
+              {item.costSource ? <AdjustmentChip label="Source" value={item.costSource} /> : null}
+              {item.physicalMultiplier !== undefined ? (
+                <AdjustmentChip label="Physical" value={item.physicalMultiplier.toFixed(4)} />
+              ) : null}
+              {item.functionalMultiplier !== undefined ? (
+                <AdjustmentChip label="Functional" value={item.functionalMultiplier.toFixed(4)} />
+              ) : null}
+              {item.timeMultiplier !== undefined ? (
+                <AdjustmentChip label="Time" value={item.timeMultiplier.toFixed(4)} />
+              ) : null}
+              {item.locationMultiplier !== undefined ? (
+                <AdjustmentChip label="Location" value={item.locationMultiplier.toFixed(4)} />
+              ) : null}
+            </View>
           </View>
-        </View>
+        </>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * 0.5pt tall background-color bar used in place of `borderTopWidth` dividers
+ * inside AssetDetailCard. Plain borders on wrappable containers trigger a
+ * react-pdf bug: when the card splits across a page break, clipBorderTop
+ * receives an astronomical Y offset and pdfkit rejects it with
+ * "unsupported number: -1.9e+21". A background-color View has no border
+ * rendering path, so it's clip-free and safe across page breaks.
+ */
+function CardDivider() {
+  return (
+    <View
+      style={{
+        height: 0.5,
+        backgroundColor: pdfColors.hairline,
+        marginTop: 8,
+        marginBottom: 8,
+      }}
+    />
   );
 }
 
@@ -1473,149 +1484,133 @@ function AssetDetailV2Body({ item }: { item: AiReportProps["schedule"]["lineItem
   return (
     <View>
       {item.comparableDescription ? (
-        <View
-          style={{
-            marginTop: 8,
-            borderTopWidth: 0.5,
-            borderTopColor: pdfColors.hairline,
-            paddingTop: 8,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 8,
-              color: pdfColors.subtle,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-            }}
-          >
-            Cost estimate
-          </Text>
-          <Text style={{ marginTop: 3, color: pdfColors.foreground }}>
-            {item.comparableDescription}
-          </Text>
-          {item.comparableSourceUrl ? (
+        <>
+          <CardDivider />
+          <View>
             <Text
               style={{
                 fontSize: 8,
-                fontFamily: "Courier",
-                color: pdfColors.primary,
-                marginTop: 2,
+                color: pdfColors.subtle,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
               }}
             >
-              {item.comparableSourceUrl}
+              Cost estimate
             </Text>
-          ) : null}
-        </View>
+            <Text style={{ marginTop: 3, color: pdfColors.foreground }}>
+              {item.comparableDescription}
+            </Text>
+            {item.comparableSourceUrl ? (
+              <Text
+                style={{
+                  fontSize: 8,
+                  fontFamily: "Courier",
+                  color: pdfColors.primary,
+                  marginTop: 2,
+                }}
+              >
+                {item.comparableSourceUrl}
+              </Text>
+            ) : null}
+          </View>
+        </>
       ) : null}
 
       {item.physicalJustification || item.functionalJustification ? (
-        <View
-          style={{
-            marginTop: 8,
-            borderTopWidth: 0.5,
-            borderTopColor: pdfColors.hairline,
-            paddingTop: 8,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 8,
-              color: pdfColors.subtle,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              marginBottom: 4,
-            }}
-          >
-            Per-item adjustments
-          </Text>
-          {item.physicalJustification ? (
-            <Text style={{ marginBottom: 4 }}>
-              <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                Physical ({(item.physicalMultiplier ?? 1).toFixed(4)}):{" "}
-              </Text>
-              {item.physicalJustification}
+        <>
+          <CardDivider />
+          <View>
+            <Text
+              style={{
+                fontSize: 8,
+                color: pdfColors.subtle,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginBottom: 4,
+              }}
+            >
+              Per-item adjustments
             </Text>
-          ) : null}
-          {item.functionalJustification ? (
-            <Text>
-              <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                Functional ({(item.functionalMultiplier ?? 1).toFixed(4)}):{" "}
+            {item.physicalJustification ? (
+              <Text style={{ marginBottom: 4 }}>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                  Physical ({(item.physicalMultiplier ?? 1).toFixed(4)}):{" "}
+                </Text>
+                {item.physicalJustification}
               </Text>
-              {item.functionalJustification}
-            </Text>
-          ) : null}
-        </View>
+            ) : null}
+            {item.functionalJustification ? (
+              <Text>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                  Functional ({(item.functionalMultiplier ?? 1).toFixed(4)}):{" "}
+                </Text>
+                {item.functionalJustification}
+              </Text>
+            ) : null}
+          </View>
+        </>
       ) : null}
 
       {item.timeBasis || item.locationBasis ? (
-        <View
-          style={{
-            marginTop: 8,
-            borderTopWidth: 0.5,
-            borderTopColor: pdfColors.hairline,
-            paddingTop: 8,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 8,
-              color: pdfColors.subtle,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              marginBottom: 4,
-            }}
-          >
-            Global adjustments
-          </Text>
-          {item.timeBasis ? (
-            <Text style={{ marginBottom: 3 }}>
-              <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                Time ({(item.timeMultiplier ?? 1).toFixed(4)}):{" "}
-              </Text>
-              {item.timeBasis}
+        <>
+          <CardDivider />
+          <View>
+            <Text
+              style={{
+                fontSize: 8,
+                color: pdfColors.subtle,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginBottom: 4,
+              }}
+            >
+              Global adjustments
             </Text>
-          ) : null}
-          {item.locationBasis ? (
-            <Text>
-              <Text style={{ fontFamily: "Helvetica-Bold" }}>
-                Location ({(item.locationMultiplier ?? 1).toFixed(4)}):{" "}
+            {item.timeBasis ? (
+              <Text style={{ marginBottom: 3 }}>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                  Time ({(item.timeMultiplier ?? 1).toFixed(4)}):{" "}
+                </Text>
+                {item.timeBasis}
               </Text>
-              {item.locationBasis}
-            </Text>
-          ) : null}
-        </View>
+            ) : null}
+            {item.locationBasis ? (
+              <Text>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>
+                  Location ({(item.locationMultiplier ?? 1).toFixed(4)}):{" "}
+                </Text>
+                {item.locationBasis}
+              </Text>
+            ) : null}
+          </View>
+        </>
       ) : null}
 
       {item.unitCostCents !== undefined && item.quantity !== undefined ? (
-        <View
-          style={{
-            marginTop: 8,
-            borderTopWidth: 0.5,
-            borderTopColor: pdfColors.hairline,
-            paddingTop: 8,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 8,
-              color: pdfColors.subtle,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              marginBottom: 4,
-            }}
-          >
-            Cost summary
-          </Text>
-          <Text>
-            <Text style={{ fontFamily: "Helvetica-Bold" }}>Base cost: </Text>
-            {fmtCentsPrecise(unitCost)} × {qty}
-            {item.unit ? ` ${item.unit}` : ""} = {fmtCentsPrecise(baseCostCents)}
-          </Text>
-          <Text style={{ fontFamily: "Helvetica-Bold", marginTop: 3 }}>
-            Fully adjusted cost: {fmtCentsPrecise(item.amountCents)}
-          </Text>
-        </View>
+        <>
+          <CardDivider />
+          <View>
+            <Text
+              style={{
+                fontSize: 8,
+                color: pdfColors.subtle,
+                letterSpacing: 0.6,
+                textTransform: "uppercase",
+                marginBottom: 4,
+              }}
+            >
+              Cost summary
+            </Text>
+            <Text>
+              <Text style={{ fontFamily: "Helvetica-Bold" }}>Base cost: </Text>
+              {fmtCentsPrecise(unitCost)} × {qty}
+              {item.unit ? ` ${item.unit}` : ""} = {fmtCentsPrecise(baseCostCents)}
+            </Text>
+            <Text style={{ fontFamily: "Helvetica-Bold", marginTop: 3 }}>
+              Fully adjusted cost: {fmtCentsPrecise(item.amountCents)}
+            </Text>
+          </View>
+        </>
       ) : null}
     </View>
   );
