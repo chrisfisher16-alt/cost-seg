@@ -70,16 +70,18 @@ export async function pollProcessingStateAction(
     const eventKinds = new Set(events.map((e) => e.kind));
     const steps = buildSteps(study.status, eventKinds, study.failedReason ?? null);
 
-    // Elapsed-timer anchor. Prefer `pipeline.started` — the event the
-    // worker writes the moment Inngest picks up the job. Fall back to
-    // the earliest event in the window (handles long-running studies
-    // where pipeline.started has rolled out of the 20-event cap). Null
-    // when the study is still genuinely queued; the client treats null
-    // as "started now" so the elapsed label doesn't lie about the past.
+    // Elapsed-timer anchor. Prefer `documents.ready` — the event written the
+    // instant the customer clicks "Start my study", which is what they expect
+    // the timer to count from. Fall back to `pipeline.started` (worker pickup,
+    // a few seconds later), then the earliest event in the window for
+    // long-running studies where the ready event has rolled out of the cap.
+    // Never fall back to unrelated lifecycle events like `checkout.completed`
+    // — those predate the click by minutes/hours and would show a bogus
+    // elapsed of "1m 42s" the moment the pipeline page loads.
+    const documentsReady = events.find((e) => e.kind === "documents.ready");
     const pipelineStarted = events.find((e) => e.kind === "pipeline.started");
-    const oldestEvent = events.length > 0 ? events[events.length - 1] : null;
     const pipelineStartedAtIso =
-      pipelineStarted?.createdAt.toISOString() ?? oldestEvent?.createdAt.toISOString() ?? null;
+      documentsReady?.createdAt.toISOString() ?? pipelineStarted?.createdAt.toISOString() ?? null;
 
     // Extract summary numbers from the asset schedule JSON when present. The schema
     // we persist is {decomposition, schedule: {lineItems, assumptions}, narrative,

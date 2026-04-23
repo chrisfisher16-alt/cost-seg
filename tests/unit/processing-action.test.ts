@@ -43,37 +43,58 @@ function mkStudy(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 describe("pollProcessingStateAction — pipelineStartedAtIso", () => {
-  it("returns the pipeline.started event's createdAt when present", async () => {
+  it("prefers the documents.ready event — that's the moment the customer clicked Start", async () => {
     mocks.study.findUnique.mockResolvedValueOnce(mkStudy());
-    const started = new Date("2026-04-20T22:58:07.000Z");
+    const clicked = new Date("2026-04-20T22:58:00.000Z");
+    const workerPickup = new Date("2026-04-20T22:58:07.000Z");
     mocks.studyEvent.findMany.mockResolvedValueOnce([
       {
         id: "e-later",
         kind: "documents.classified",
         createdAt: new Date("2026-04-20T22:58:40.000Z"),
       },
-      { id: "e-started", kind: "pipeline.started", createdAt: started },
+      { id: "e-started", kind: "pipeline.started", createdAt: workerPickup },
+      { id: "e-ready", kind: "documents.ready", createdAt: clicked },
     ]);
     const { pollProcessingStateAction } =
       await import("@/app/(app)/studies/[id]/processing/actions");
     const result = await pollProcessingStateAction("s1");
     if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
-    expect(result.pipelineStartedAtIso).toBe(started.toISOString());
+    expect(result.pipelineStartedAtIso).toBe(clicked.toISOString());
   });
 
-  it("falls back to the oldest event when pipeline.started isn't in the 20-event window", async () => {
-    mocks.study.findUnique.mockResolvedValueOnce(mkStudy({ status: "AI_COMPLETE" }));
-    const older = new Date("2026-04-20T22:59:00.000Z");
-    const newer = new Date("2026-04-20T23:00:00.000Z");
+  it("falls back to pipeline.started when documents.ready is missing", async () => {
+    mocks.study.findUnique.mockResolvedValueOnce(mkStudy());
+    const workerPickup = new Date("2026-04-20T22:58:07.000Z");
     mocks.studyEvent.findMany.mockResolvedValueOnce([
-      { id: "a", kind: "narrative.drafted", createdAt: newer },
-      { id: "b", kind: "assets.classified", createdAt: older },
+      {
+        id: "e-later",
+        kind: "documents.classified",
+        createdAt: new Date("2026-04-20T22:58:40.000Z"),
+      },
+      { id: "e-started", kind: "pipeline.started", createdAt: workerPickup },
+    ]);
+    const { pollProcessingStateAction } =
+      await import("@/app/(app)/studies/[id]/processing/actions");
+    const result = await pollProcessingStateAction("s1");
+    if (!result.ok) throw new Error(`expected ok, got ${result.error}`);
+    expect(result.pipelineStartedAtIso).toBe(workerPickup.toISOString());
+  });
+
+  it("never anchors on unrelated lifecycle events like checkout.completed", async () => {
+    // Regression guard on the "timer shows 1m 42s the moment the pipeline
+    // page loads" bug — the old fallback picked the oldest event, which
+    // was typically a checkout.completed from minutes/hours earlier.
+    mocks.study.findUnique.mockResolvedValueOnce(mkStudy({ status: "AWAITING_DOCUMENTS" }));
+    const checkout = new Date("2026-04-20T22:00:00.000Z");
+    mocks.studyEvent.findMany.mockResolvedValueOnce([
+      { id: "c", kind: "checkout.completed", createdAt: checkout },
     ]);
     const { pollProcessingStateAction } =
       await import("@/app/(app)/studies/[id]/processing/actions");
     const result = await pollProcessingStateAction("s1");
     if (!result.ok) throw new Error("expected ok");
-    expect(result.pipelineStartedAtIso).toBe(older.toISOString());
+    expect(result.pipelineStartedAtIso).toBeNull();
   });
 
   it("returns null when no events have been written yet (genuinely queued)", async () => {
