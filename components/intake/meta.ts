@@ -38,7 +38,26 @@ export interface DocumentKindMeta {
   allowMultiple: boolean;
   /** File extensions (and their MIME types) accepted for this kind. */
   acceptedExts: AcceptedExt[];
+  /**
+   * Hard cap on how many documents of this kind a study can hold.
+   * `undefined` means no cap (kinds like APPRAISAL and CLOSING_DISCLOSURE
+   * are already single-file via `allowMultiple: false`).
+   *
+   * The v2 classifier is O(detected objects) and detected objects scale
+   * linearly with photo count; past ~30 photos the model's output stream
+   * runs into platform HTTP timeouts. 30 also matches the practitioner
+   * reality for 1-unit residential/STR studies (overview per room +
+   * close-ups of §1245 candidates is ~20–30 shots).
+   */
+  maxCount?: number;
 }
+
+/**
+ * Soft-warn threshold for kinds with a `maxCount`. When the uploaded
+ * count reaches this, the UI nudges the user that they're approaching
+ * the cap. Purely visual — no server enforcement.
+ */
+export const UPLOAD_WARN_AT = 20;
 
 export const DOCUMENT_KIND_ORDER: DocumentKind[] = [
   "CLOSING_DISCLOSURE",
@@ -60,10 +79,11 @@ export const DOCUMENT_KIND_META: Record<DocumentKind, DocumentKindMeta> = {
     kind: "PROPERTY_PHOTO",
     label: "Property photos",
     description:
-      "Exterior, interior, kitchen, bath. JPG/PNG. Min 1 photo — add as many as you like.",
+      "Exterior, interior, kitchen, bath. JPG/PNG. Min 1, max 30 — focus on overview shots per room plus close-ups of flooring, cabinetry, appliances, and site improvements.",
     required: true,
     allowMultiple: true,
     acceptedExts: PHOTO_EXTS,
+    maxCount: 30,
   },
   IMPROVEMENT_RECEIPTS: {
     kind: "IMPROVEMENT_RECEIPTS",
