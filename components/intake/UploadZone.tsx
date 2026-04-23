@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-import { DOCUMENT_KIND_META, EXT_TO_MIME, acceptAttrForExts } from "./meta";
+import { DOCUMENT_KIND_META, EXT_TO_MIME, UPLOAD_WARN_AT, acceptAttrForExts } from "./meta";
 
 import type { DocumentKind } from "@prisma/client";
 
@@ -62,7 +62,9 @@ export function UploadZone({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isUploading = uploadingCount > 0;
-  const disabled = locked || isUploading || (!meta.allowMultiple && uploaded.length > 0);
+  const atCap = meta.maxCount !== undefined && uploaded.length >= meta.maxCount;
+  const approachingCap = meta.maxCount !== undefined && uploaded.length >= UPLOAD_WARN_AT;
+  const disabled = locked || isUploading || (!meta.allowMultiple && uploaded.length > 0) || atCap;
 
   // Build the per-kind MIME allowlist from meta once — used by both the drop
   // handler and the client-side validation path. Server re-validates.
@@ -147,9 +149,26 @@ export function UploadZone({
       setError("Only one file for this field. Remove the current file first.");
       return;
     }
+    // Capped kinds: only take files up to the remaining slot count. The
+    // server is the source of truth (counts existing docs) but surfacing
+    // a clear client-side message beats a mid-batch server rejection.
+    let toUpload = list;
+    if (meta.maxCount !== undefined) {
+      const remaining = Math.max(0, meta.maxCount - uploaded.length);
+      if (remaining === 0) {
+        setError(`You've reached the ${meta.maxCount}-file cap. Remove one to add another.`);
+        return;
+      }
+      if (list.length > remaining) {
+        setError(
+          `Only ${remaining} slot${remaining === 1 ? "" : "s"} left (cap ${meta.maxCount}). Uploading the first ${remaining}.`,
+        );
+        toUpload = list.slice(0, remaining);
+      }
+    }
     // Uploads run sequentially — the Property / Supabase storage signed URLs
     // don't love 10 parallel PUTs, and serial gives a predictable toast order.
-    for (const file of list) {
+    for (const file of toUpload) {
       await handleFile(file);
     }
   }
@@ -268,12 +287,29 @@ export function UploadZone({
             ? uploadingCount > 1
               ? `Uploading ${uploadingCount}…`
               : "Uploading…"
-            : meta.allowMultiple || uploaded.length === 0
-              ? meta.allowMultiple
-                ? "Drop files or tap to upload"
-                : "Drop a file or tap to upload"
-              : "Remove the current file to replace it"}
+            : atCap
+              ? `Cap reached (${uploaded.length}/${meta.maxCount}). Remove one to add another.`
+              : meta.allowMultiple || uploaded.length === 0
+                ? meta.allowMultiple
+                  ? "Drop files or tap to upload"
+                  : "Drop a file or tap to upload"
+                : "Remove the current file to replace it"}
         </span>
+        {meta.maxCount !== undefined && !isUploading ? (
+          <span
+            className={cn(
+              "text-xs font-medium",
+              atCap
+                ? "text-destructive"
+                : approachingCap
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-muted-foreground",
+            )}
+          >
+            {uploaded.length} of {meta.maxCount} photos
+            {approachingCap && !atCap ? " — approaching the cap" : ""}
+          </span>
+        ) : null}
         <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
           {acceptedLabels.map((ext) => (
             <span

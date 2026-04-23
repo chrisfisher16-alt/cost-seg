@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 
 import { assertOwnership, requireAuth } from "@/lib/auth/require";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/storage/studies";
 import { ALLOWED_MIMES, MAX_UPLOAD_BYTES, validateUploadedFile } from "@/lib/storage/validate";
 import { emitDocumentsReadyIfComplete, getIntakeCompleteness } from "@/lib/studies/ready-check";
+import { DOCUMENT_KIND_META } from "@/components/intake/meta";
 import type { DocumentKind } from "@prisma/client";
 
 type ActionOk<T> = { ok: true } & T;
@@ -66,39 +68,54 @@ export async function updatePropertyAction(
     };
   }
 
-  const prisma = getPrisma();
-  const study = await prisma.study.findUnique({
-    where: { id: studyId },
-    select: { id: true, userId: true, status: true, propertyId: true },
-  });
-  if (!study) return { ok: false, error: "Study not found." };
-  assertOwnership(user, study);
-  if (study.status !== "AWAITING_DOCUMENTS") {
-    return { ok: false, error: "Property details are locked once processing starts." };
-  }
-
   const cents = parseUsdInputToCents(parsed.data.purchasePriceRaw);
   if (!cents) {
     return { ok: false, error: "Purchase price must be a positive number." };
   }
 
-  await prisma.property.update({
-    where: { id: study.propertyId },
-    data: {
-      address: parsed.data.address,
-      city: parsed.data.city,
-      state: parsed.data.state,
-      zip: parsed.data.zip,
-      purchasePrice: cents / 100,
-      acquiredAt: new Date(parsed.data.acquiredAt),
-      propertyType: parsed.data.propertyType,
-      squareFeet: parsed.data.squareFeet,
-      yearBuilt: parsed.data.yearBuilt,
-    },
-  });
+  // DB calls inside try/catch so a transient Postgres / pooler hiccup
+  // surfaces as an inline form error ("Couldn't save — try again") instead
+  // of escaping the action and triggering the page-level error.tsx
+  // boundary ("We couldn't load this page"), which is far more alarming
+  // and loses the user's typed input. The exception is still reported to
+  // Sentry with the studyId tag so we can debug from the digest.
+  try {
+    const prisma = getPrisma();
+    const study = await prisma.study.findUnique({
+      where: { id: studyId },
+      select: { id: true, userId: true, status: true, propertyId: true },
+    });
+    if (!study) return { ok: false, error: "Study not found." };
+    assertOwnership(user, study);
+    if (study.status !== "AWAITING_DOCUMENTS") {
+      return { ok: false, error: "Property details are locked once processing starts." };
+    }
 
-  revalidatePath(`/studies/${studyId}/intake`);
-  return { ok: true };
+    await prisma.property.update({
+      where: { id: study.propertyId },
+      data: {
+        address: parsed.data.address,
+        city: parsed.data.city,
+        state: parsed.data.state,
+        zip: parsed.data.zip,
+        purchasePrice: cents / 100,
+        acquiredAt: new Date(parsed.data.acquiredAt),
+        propertyType: parsed.data.propertyType,
+        squareFeet: parsed.data.squareFeet,
+        yearBuilt: parsed.data.yearBuilt,
+      },
+    });
+
+    revalidatePath(`/studies/${studyId}/intake`);
+    return { ok: true };
+  } catch (err) {
+    Sentry.captureException(err, { tags: { action: "updatePropertyAction", studyId } });
+    console.error("[updatePropertyAction] failed", { studyId, err });
+    return {
+      ok: false,
+      error: "Couldn't save right now. Try again in a moment — your typed details are still here.",
+    };
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -142,6 +159,22 @@ export async function createUploadUrlAction(
   assertOwnership(user, study);
   if (study.status !== "AWAITING_DOCUMENTS") {
     return { ok: false, error: "Uploads are locked once processing starts." };
+  }
+
+  // Per-kind count cap. Client UI also blocks at this number, but the
+  // server is the source of truth — a racing second tab or a direct
+  // action call would bypass the client gate.
+  const cap = DOCUMENT_KIND_META[parsed.data.kind].maxCount;
+  if (cap !== undefined) {
+    const current = await prisma.document.count({
+      where: { studyId, kind: parsed.data.kind },
+    });
+    if (current >= cap) {
+      return {
+        ok: false,
+        error: `You already have ${current} ${DOCUMENT_KIND_META[parsed.data.kind].label.toLowerCase()}. Remove one to upload another.`,
+      };
+    }
   }
 
   const documentId = randomUUID();

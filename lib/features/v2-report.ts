@@ -98,3 +98,17 @@ export function isV2ReviewEnabled(): boolean {
 export function isV2ReviewEnforceEnabled(): boolean {
   return readBooleanFlag("V2_REPORT_REVIEW_ENFORCE");
 }
+
+/**
+ * Phase 8 flag — when ON (and `V2_REPORT_CLASSIFIER` is also on), Step C
+ * dispatches to the fan-out orchestrator instead of the single-call v2
+ * classifier. Fan-out runs one LLM call per photo + one for receipts,
+ * then merges + balances deterministically. See ADR 0014.
+ *
+ * The fan-out produces the same `schema: "v2"` output shape (with an
+ * added `photoDocumentIds: string[]` on merged items), so downstream
+ * PDF rendering + the review gate don't branch on this flag.
+ */
+export function isV2ClassifierFanoutEnabled(): boolean {
+  return readBooleanFlag("V2_REPORT_CLASSIFIER_FANOUT");
+}
