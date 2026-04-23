@@ -30,18 +30,19 @@ export interface EtaStep {
 }
 
 /**
- * Baseline duration per step in seconds. Sum is ~150s — same ballpark as
- * the old fixed `targetTotalSec`, but redistributed so the ETA drops at
- * the right rate when each step completes.
+ * Baseline duration per step in seconds. Calibrated against observed
+ * real-world runs with ~10 photos + transaction report + closing disclosure,
+ * which typically complete in ~18–20 minutes end to end. `assets` dominates
+ * because every photo/receipt is classified individually by Claude.
  */
 export const STEP_BASELINE_SEC: Record<EtaStepId, number> = {
   upload: 0,
-  classify: 25,
-  decompose: 12,
-  assets: 75,
-  narrative: 25,
-  render: 8,
-  deliver: 5,
+  classify: 120,
+  decompose: 45,
+  assets: 720,
+  narrative: 180,
+  render: 30,
+  deliver: 10,
 };
 
 export type EtaConfidence = "high" | "medium" | "low";
@@ -101,11 +102,20 @@ export function estimatePipelineEta(steps: EtaStep[], elapsedSec: number): EtaEs
 }
 
 function formatEtaLabel(remainingSec: number, confidence: EtaConfidence): string {
-  if (confidence === "low") return "finishing up";
-  // Anything at or under the deliver-step baseline (5s) is functionally
+  if (confidence === "low") {
+    // "Low" means we've already blown past the per-step baselines, so a
+    // precise seconds countdown would be lying. But "finishing up" is also
+    // a lie when 15 minutes of baseline work are still ahead — the word
+    // implies imminent completion. Key off remainingSec so the label
+    // scales with how much work is left, not just how slow we are.
+    if (remainingSec <= 15) return "finishing up";
+    if (remainingSec < 120) return "a bit longer";
+    return "still working";
+  }
+  // Anything at or under the deliver-step baseline (10s) is functionally
   // "done" to a human watching the pipeline — waiting on email + dashboard
   // refresh, no point showing a single-digit countdown.
-  if (remainingSec <= 5) return "any moment now";
+  if (remainingSec <= 10) return "any moment now";
   if (remainingSec < 30) return "< 30s";
   if (remainingSec < 60) return `~${remainingSec}s`;
   const mins = Math.round(remainingSec / 60);

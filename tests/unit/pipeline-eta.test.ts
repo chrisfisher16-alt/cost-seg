@@ -54,40 +54,65 @@ describe("estimatePipelineEta", () => {
     expect(r.confidence).toBe("high");
   });
 
-  it("near the end: render + deliver is ~15s, not the old fixed 150s minus elapsed", () => {
+  it("near the end: render + deliver remaining is small, not total-budget minus elapsed", () => {
+    // Elapsed matches a nominally on-track run: done steps (classify + decompose
+    // + assets + narrative) sum to their baselines.
+    const doneElapsed =
+      STEP_BASELINE_SEC.classify +
+      STEP_BASELINE_SEC.decompose +
+      STEP_BASELINE_SEC.assets +
+      STEP_BASELINE_SEC.narrative;
     const r = estimatePipelineEta(
       steps("render", ["upload", "classify", "decompose", "assets", "narrative"]),
-      130,
+      doneElapsed,
     );
-    // ½ render + deliver = 4 + 5 = 9 (rounded)
     expect(r.remainingSec).toBe(
       Math.round(STEP_BASELINE_SEC.render / 2 + STEP_BASELINE_SEC.deliver),
     );
+    // With render=30s, deliver=10s, remaining = 25s → "< 30s".
     expect(r.label).toMatch(/<\s*30s/);
   });
 
   it("final step only: 'any moment now'", () => {
     const allButDeliver = ALL_IDS.filter((id) => id !== "deliver");
-    const r = estimatePipelineEta(steps("deliver", allButDeliver), 148);
-    // ½ × deliver (5s) ≈ 3s — rounds into the any-moment bucket.
-    expect(r.remainingSec).toBeLessThanOrEqual(3);
+    const priorBudget =
+      STEP_BASELINE_SEC.classify +
+      STEP_BASELINE_SEC.decompose +
+      STEP_BASELINE_SEC.assets +
+      STEP_BASELINE_SEC.narrative +
+      STEP_BASELINE_SEC.render;
+    const r = estimatePipelineEta(steps("deliver", allButDeliver), priorBudget);
+    // ½ × deliver ≤ deliver/2 — rounds into the any-moment bucket (≤10s).
+    expect(r.remainingSec).toBeLessThanOrEqual(Math.ceil(STEP_BASELINE_SEC.deliver / 2));
     expect(r.label).toBe("any moment now");
   });
 
-  it("overrun: elapsed more than 2x expected → confidence low, fuzzy label", () => {
-    // Expected elapsed at active=classify = 0 (no done except upload=0) + ½ classify ≈ 13s.
-    // We're claiming 60s elapsed → 60 > 13*2 = 26 → overrun.
-    const r = estimatePipelineEta(steps("classify", ["upload"]), 60);
+  it("overrun: elapsed more than 2x expected → confidence low, label honest about remaining work", () => {
+    // Expected elapsed at active=classify = 0 (upload=0) + ½ classify.
+    // Pick an elapsed well over 2× that threshold to force overrun.
+    const expected = STEP_BASELINE_SEC.classify / 2;
+    const r = estimatePipelineEta(steps("classify", ["upload"]), expected * 2.5);
     expect(r.confidence).toBe("low");
-    expect(r.label).toBe("finishing up");
+    // Remaining is still huge (most of the pipeline is ahead) — label must
+    // not claim "finishing up" when 15+ minutes of baseline work remain.
+    expect(r.label).not.toBe("finishing up");
+    expect(r.label).toBe("still working");
   });
 
-  it("near-overrun (between 1x and 2x) but inside total budget: medium confidence", () => {
-    // At the render step: expected elapsed = done (classify+decompose+assets+narrative = 137)
-    // + ½ render (4) = 141. Elapsed 190 > 141*1.2=169 but < 141*2=282 → medium.
+  it("near-overrun (between 1x and 2x expected) but inside total budget: medium confidence", () => {
+    // Pick a scenario where elapsed is between 1.2× and 2× expected and
+    // also above 1.2× total budget — both conditions are coherent only at
+    // the tail of the pipeline, so use render-active with priors done.
+    const doneBudget =
+      STEP_BASELINE_SEC.classify +
+      STEP_BASELINE_SEC.decompose +
+      STEP_BASELINE_SEC.assets +
+      STEP_BASELINE_SEC.narrative;
+    const expected = doneBudget + STEP_BASELINE_SEC.render / 2;
+    const elapsed = Math.round(expected * 1.3); // between 1.2× and 2×
     const r = estimatePipelineEta(
       steps("render", ["upload", "classify", "decompose", "assets", "narrative"]),
-      190,
+      elapsed,
     );
     expect(r.confidence).toBe("medium");
     expect(r.label).not.toBe("finishing up");
