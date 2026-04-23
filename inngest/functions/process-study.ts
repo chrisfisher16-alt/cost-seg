@@ -223,16 +223,69 @@ export const processStudy = inngest.createFunction(
     // when V2_REPORT_CLASSIFIER is on. The v2 schedule shape is not
     // compatible with the v1 PDF renderer yet (Phase 5 work) — but the
     // shape is persisted so admin surfaces + follow-on work can see it.
-    const { isV2ClassifierEnabled } = await import("@/lib/features/v2-report");
+    //
+    // v2 Phase 8 (ADR 0014): when V2_REPORT_CLASSIFIER_FANOUT is also on,
+    // Step C fans out into one LLM call per photo + one for receipts,
+    // each wrapped in its own `step.run(...)` for durable memoization.
+    // This removes the single-HTTP-timeout failure mode; schedule shape
+    // is unchanged so downstream code (narrative, PDF, review gate)
+    // does not branch on this flag.
+    const { isV2ClassifierEnabled, isV2ClassifierFanoutEnabled } =
+      await import("@/lib/features/v2-report");
     const useV2Classifier = isV2ClassifierEnabled();
+    const useV2Fanout = useV2Classifier && isV2ClassifierFanoutEnabled();
 
-    const assetsResult = useV2Classifier
-      ? await step.run("step-c-classify-assets-v2", () =>
-          pipeline.runClassifyAssetsV2(study, decomposition.buildingValueCents, improvements),
-        )
-      : await step.run("step-c-classify-assets", () =>
-          pipeline.runClassifyAssets(study, decomposition.buildingValueCents, improvements),
-        );
+    // Union of the three possible classifier result shapes. Downstream
+    // only reads `.balanced`, `.schedule.lineItems`, `.balanceMessage`,
+    // `.attempts` — all common to v1, v2 monolith, and v2 fan-out. The
+    // `schedule.lineItems` reducer below handles both v1 (`amountCents`)
+    // and v2 (`adjustedCostCents`) shapes.
+    type AnyAssetsResult =
+      | Awaited<ReturnType<typeof pipeline.runClassifyAssets>>
+      | Awaited<ReturnType<typeof pipeline.runClassifyAssetsV2>>;
+    let assetsResult: AnyAssetsResult;
+    let fanoutStats: {
+      candidatesIn: number;
+      mergedOut: number;
+      collisionsResolved: number;
+      illegalResidualsDropped: number;
+      receiptLines: number;
+      photoLines: number;
+      photoCallCount: number;
+      receiptsCallCount: number;
+      attempts: number;
+    } | null = null;
+
+    if (useV2Fanout) {
+      const { runFanout, invokePhotoCandidate, invokeReceiptsCandidate } =
+        await import("@/lib/ai/steps/classify-assets-v2-fanout");
+      const orchestratorInput = await pipeline.buildClassifyAssetsV2Input(
+        study,
+        decomposition.buildingValueCents,
+        improvements,
+      );
+      const fanoutResult = await runFanout(orchestratorInput, {
+        classifyPhoto: (promptInput, attempt) =>
+          step.run(
+            `step-c-candidates-photo-${promptInput.photo.documentId}-attempt-${attempt}`,
+            () => invokePhotoCandidate(studyId, promptInput, attempt),
+          ),
+        classifyReceipts: (promptInput, attempt) =>
+          step.run(`step-c-candidates-receipts-attempt-${attempt}`, () =>
+            invokeReceiptsCandidate(studyId, promptInput, attempt),
+          ),
+      });
+      assetsResult = fanoutResult;
+      fanoutStats = fanoutResult.stats;
+    } else if (useV2Classifier) {
+      assetsResult = await step.run("step-c-classify-assets-v2", () =>
+        pipeline.runClassifyAssetsV2(study, decomposition.buildingValueCents, improvements),
+      );
+    } else {
+      assetsResult = await step.run("step-c-classify-assets", () =>
+        pipeline.runClassifyAssets(study, decomposition.buildingValueCents, improvements),
+      );
+    }
 
     if (!assetsResult.balanced) {
       await step.run("fail-unbalanced", () =>
@@ -252,6 +305,20 @@ export const processStudy = inngest.createFunction(
         schema: useV2Classifier ? "v2" : "v1",
       }),
     );
+
+    // Fan-out telemetry (ADR 0014). Captures the merge heuristic's
+    // collision + drop rates so we can spot drift in production without
+    // a test failure — a sudden spike in `collisionsResolved` vs.
+    // `candidatesIn` means the normalize rule is over-merging.
+    if (fanoutStats) {
+      await step.run("emit-dedupe-stats-event", () =>
+        emitProgressEvent(
+          studyId,
+          "classifier.dedupe_stats",
+          fanoutStats as Record<string, unknown>,
+        ),
+      );
+    }
 
     const narrative = await step.run("step-d-narrative", () =>
       pipeline.runNarrative(

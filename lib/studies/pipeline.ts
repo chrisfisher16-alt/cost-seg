@@ -338,12 +338,16 @@ export async function runClassifyAssets(
 }
 
 /**
- * v2 classifier entry point. Fetches persisted photoAnalysis rows from
- * the DB (populated by Phase 1) and hands them to `classifyAssetsV2`
- * alongside receipts + property facts. Photo documents with missing or
- * malformed analysis are skipped — the prompt tolerates photo-less runs.
+ * Build the `ClassifyAssetsV2OrchestratorInput` for a loaded study.
+ * Fetches persisted photoAnalysis rows (populated by Phase 1); photo
+ * documents with missing or malformed analysis are skipped — the
+ * classifier tolerates photo-less runs.
+ *
+ * Shared by the monolith path (`runClassifyAssetsV2`) and the fan-out
+ * path (wired in `inngest/functions/process-study.ts` when
+ * `V2_REPORT_CLASSIFIER_FANOUT=1`).
  */
-export async function runClassifyAssetsV2(
+export async function buildClassifyAssetsV2Input(
   study: LoadedStudy,
   buildingValueCents: number,
   improvements: Array<{
@@ -352,7 +356,17 @@ export async function runClassifyAssetsV2(
     dateIso?: string;
     category?: string;
   }>,
-) {
+): Promise<{
+  studyId: string;
+  propertyType: PropertyType;
+  address: string;
+  squareFeet: number | null;
+  yearBuilt: number | null;
+  acquiredAtIso: string;
+  buildingValueCents: number;
+  photos: Array<{ documentId: string; filename: string; analysis: DescribePhotoOutput }>;
+  improvementLineItems: typeof improvements;
+}> {
   const prisma = getPrisma();
   const photoDocs = study.documents.filter((d) => d.kind === "PROPERTY_PHOTO");
   const photos: Array<{
@@ -374,7 +388,7 @@ export async function runClassifyAssetsV2(
     }
   }
 
-  return classifyAssetsV2({
+  return {
     studyId: study.id,
     propertyType: study.propertyType,
     address: study.address,
@@ -384,7 +398,26 @@ export async function runClassifyAssetsV2(
     buildingValueCents,
     photos,
     improvementLineItems: improvements,
-  });
+  };
+}
+
+/**
+ * v2 monolith classifier entry point. Kept as the default path while
+ * `V2_REPORT_CLASSIFIER_FANOUT` rolls out; will be deleted once the
+ * fan-out is stable in prod (see ADR 0014's rollout ladder).
+ */
+export async function runClassifyAssetsV2(
+  study: LoadedStudy,
+  buildingValueCents: number,
+  improvements: Array<{
+    description: string;
+    amountCents: number;
+    dateIso?: string;
+    category?: string;
+  }>,
+) {
+  const input = await buildClassifyAssetsV2Input(study, buildingValueCents, improvements);
+  return classifyAssetsV2(input);
 }
 
 export async function runNarrative(

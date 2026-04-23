@@ -228,6 +228,14 @@ const lineItemSchemaObj = {
     locationBasis: { type: "string", minLength: 1, maxLength: 200 },
     adjustedCostCents: { type: "integer", minimum: 0 },
     photoDocumentId: { type: "string" },
+    // Added in Phase 8 (ADR 0014) so a merged item can carry every
+    // photo it was detected in. Legacy `photoDocumentId` is kept
+    // populated (first UUID) for backward-compat readers.
+    photoDocumentIds: {
+      type: "array",
+      items: { type: "string" },
+      maxItems: 50,
+    },
     isResidual: { type: "boolean" },
     rationale: { type: "string", minLength: 1, maxLength: 400 },
   },
@@ -302,6 +310,12 @@ export const assetLineItemV2Schema = z.object({
   locationBasis: z.string().min(1).max(200),
   adjustedCostCents: z.number().int().min(0),
   photoDocumentId: z.string().optional(),
+  /**
+   * Phase 8 (ADR 0014) — full UUID set when a merged item was detected
+   * across multiple photos. The legacy `photoDocumentId` stays populated
+   * with the first UUID so older PDF-render code keeps working.
+   */
+  photoDocumentIds: z.array(z.string()).max(50).optional(),
   isResidual: z.boolean().optional(),
   rationale: z.string().min(1).max(400),
 });
