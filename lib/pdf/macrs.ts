@@ -238,11 +238,14 @@ export function aggregateBasisByClass(
   let twoSeven = 0;
   let three9 = 0;
   for (const li of lineItems) {
-    if (li.category === "5yr") five += li.amountCents;
-    else if (li.category === "7yr") seven += li.amountCents;
-    else if (li.category === "15yr") fifteen += li.amountCents;
-    else if (li.category === "27_5yr") twoSeven += li.amountCents;
-    else if (li.category === "39yr") three9 += li.amountCents;
+    // Coalesce missing/NaN amounts to 0 — a single malformed line item
+    // would otherwise cascade `$NaN` into every MACRS row.
+    const cents = Number.isFinite(li.amountCents) ? li.amountCents : 0;
+    if (li.category === "5yr") five += cents;
+    else if (li.category === "7yr") seven += cents;
+    else if (li.category === "15yr") fifteen += cents;
+    else if (li.category === "27_5yr") twoSeven += cents;
+    else if (li.category === "39yr") three9 += cents;
   }
   return {
     fiveYrBasisCents: five,

@@ -119,6 +119,53 @@ export interface PhotoDocRef {
 }
 
 /**
+ * Cover-hero preference order. Highest-priority roomType wins; within
+ * a tie, the first photo in input order wins (caller's ordering is
+ * already stable by upload time). When no photo matches any ranked
+ * roomType, falls back to the first photo with ANY analysis, then the
+ * first photo at all.
+ *
+ * Exterior-front is the target — that's what a cost-seg report's
+ * cover looks like in the benchmark studies (one clear marketing
+ * shot of the property from the curb). Side and rear are fallbacks
+ * for cases where intake didn't include a curb shot but did include
+ * other exteriors.
+ */
+const HERO_ROOM_PRIORITY: readonly string[] = [
+  "exterior_front",
+  "exterior_side",
+  "exterior_rear",
+  "yard",
+] as const;
+
+export interface HeroPhotoCandidate {
+  documentId: string;
+  /** Optional — from describePhotos output if the Phase 1 vision pass ran. */
+  roomType?: string | null;
+}
+
+/**
+ * Pick the best documentId to use as the cover hero. Returns null
+ * when `candidates` is empty. Extracted as a pure function so the
+ * priority rules can be unit-tested without touching storage.
+ */
+export function pickHeroPhotoDocumentId(candidates: HeroPhotoCandidate[]): string | null {
+  if (candidates.length === 0) return null;
+  for (const preferred of HERO_ROOM_PRIORITY) {
+    const match = candidates.find((c) => c.roomType === preferred);
+    if (match) return match.documentId;
+  }
+  // No ranked roomType matched — prefer the first candidate that at
+  // least has SOME analysis (indicating the describe-photos pass
+  // succeeded for it), else the first candidate overall.
+  return (
+    candidates.find((c) => typeof c.roomType === "string")?.documentId ??
+    candidates[0]?.documentId ??
+    null
+  );
+}
+
+/**
  * Download each photo from Supabase Storage, encode as base64, return
  * a Map keyed by documentId. Missing / unreadable photos are skipped
  * silently — the render-time card falls back to no-photo layout.

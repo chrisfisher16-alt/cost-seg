@@ -74,6 +74,15 @@ export interface AiReportProps {
       assessorUrl?: string | null;
       listingUrl?: string | null;
     } | null;
+    /**
+     * Hero shot for the cover page — typically the exterior-front
+     * photograph picked by `deliver.ts` via the describe-photos
+     * roomType ranking (exterior_front > exterior_side > exterior_rear
+     * > yard > first photo). Inline data URI so the PDF stays
+     * self-contained. Omitted when no photo is available or v2 PDF is
+     * off; the cover falls back cleanly to the text-only layout.
+     */
+    heroPhotoDataUri?: string | null;
   };
 
   decomposition: {
@@ -181,10 +190,14 @@ function fmtDateLong(d: Date): string {
 // -----------------------------------------------------------------------------
 
 export function AiReportTemplate(props: AiReportProps) {
-  const taxYear = props.taxYear ?? new Date(props.generatedAt).getFullYear() - 1;
   const realPropertyYears = props.property.realPropertyYears ?? 39;
   const placedInServiceIso = props.property.placedInServiceIso ?? props.property.acquiredAtIso;
   const placedInServiceDate = new Date(`${placedInServiceIso}T00:00:00`);
+  // Default tax year to the placed-in-service year — that's when the
+  // owner first applies the cost-seg reclassification. The old
+  // `generatedAt - 1` fallback assumed every study was a look-back
+  // filing and printed the wrong year for year-of-acquisition studies.
+  const taxYear = props.taxYear ?? placedInServiceDate.getFullYear();
 
   const basisByClass = aggregateBasisByClass(props.schedule.lineItems);
   const macrs = computeMacrsSchedule({
@@ -283,11 +296,32 @@ export function AiReportTemplate(props: AiReportProps) {
 
 function CoverPage(props: AiReportProps & { taxYear: number }) {
   const ownerLabel = props.ownerLabel ?? `the owner of ${props.property.address}`;
+  const heroPhoto = props.property.heroPhotoDataUri ?? null;
   return (
     <Page size="LETTER" style={baseStyles.coverPage}>
-      <View style={{ marginBottom: 36 }}>
+      <View style={{ marginBottom: heroPhoto ? 20 : 36 }}>
         <BrandMarkPdf size={22} />
       </View>
+
+      {/* Hero photo — exterior-front shot selected by deliver.ts.
+          Rendered above the title block in a generous 16:7 rectangle
+          with a soft border to echo the brand card beneath. The
+          photo's aspect is NOT forced to match (react-pdf's
+          objectFit: "cover" keeps the crop centered). Layout
+          gracefully omits the whole block when no hero is available. */}
+      {heroPhoto ? (
+        <View
+          style={{
+            marginBottom: 20,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: pdfColors.primarySoftBorder,
+            overflow: "hidden",
+          }}
+        >
+          <Image src={heroPhoto} style={{ width: "100%", height: 240, objectFit: "cover" }} />
+        </View>
+      ) : null}
 
       <View
         style={{
@@ -296,7 +330,7 @@ function CoverPage(props: AiReportProps & { taxYear: number }) {
           borderWidth: 1,
           borderRadius: 8,
           padding: 32,
-          minHeight: 220,
+          minHeight: heroPhoto ? 160 : 220,
           justifyContent: "center",
         }}
       >
@@ -689,15 +723,21 @@ function LandAndBasisPage(props: AiReportProps) {
         depreciation deductions. Land is not depreciable because it does not wear out or become
         obsolete; therefore, the land value is subtracted from the total cost basis.
       </Text>
-      <View style={baseStyles.panelBox}>
+      {/* wrap={false}: keep Formula + Calculation together. Otherwise
+          react-pdf can break between them, stranding the "Formula"
+          heading at the bottom of one page and the equation on the
+          next. Also: the minus glyphs use ASCII "-" not U+2212 — the
+          PDF "Standard 14" Courier font has no U+2212 glyph and
+          silently drops it, leaving "Total Cost Basis  Land Value". */}
+      <View style={baseStyles.panelBox} wrap={false}>
         <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>Formula</Text>
         <Text style={{ fontFamily: "Courier", fontSize: 9.5, marginBottom: 8 }}>
-          Depreciable Basis = Total Cost Basis − Land Value
+          Depreciable Basis = Total Cost Basis - Land Value
         </Text>
         <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>Calculation</Text>
         <Text style={{ fontFamily: "Courier", fontSize: 9.5 }}>
           {fmtCents(props.decomposition.buildingValueCents)} ={" "}
-          {fmtCents(props.decomposition.purchasePriceCents)} −{" "}
+          {fmtCents(props.decomposition.purchasePriceCents)} -{" "}
           {fmtCents(props.decomposition.landValueCents)}
         </Text>
       </View>
@@ -763,6 +803,10 @@ function AssetSummaryPage(props: AiReportProps) {
       />
 
       <DataTable
+        // Asset Summary is ≤5 rows (one per MACRS class present) + a
+        // totals footer. Page-break-atomic so the footer can't strand
+        // on the next page.
+        keepTogether
         columns={[
           { key: "category", header: "Asset category", flex: 2, render: (r) => r.category },
           { key: "period", header: "Recovery period", flex: 1.2, render: (r) => r.period },
@@ -1099,6 +1143,10 @@ function AppendixAContent(props: AiReportProps) {
         Cost estimation sources
       </Text>
       <DataTable
+        // 3-row static reference table — must never split across a
+        // page boundary (was producing a header-only page + an orphan
+        // rows-only page on some studies).
+        keepTogether
         columns={[
           {
             key: "source",
@@ -1579,6 +1627,11 @@ function AppendixEContent(
             Delta column — the cumulative catch-up deduction the taxpayer claims in {taxYear}.
           </Text>
           <DataTable
+            // Typically ≤10 year rows + totals footer. Keep atomic so
+            // the §481(a) Δ column footer — which is the number the CPA
+            // will copy into Form 3115 Schedule E — doesn't strand on
+            // the next page away from its supporting breakdown.
+            keepTogether
             columns={[
               {
                 key: "year",
@@ -1633,6 +1686,8 @@ function AppendixEContent(
 
       <SectionHeader title="Per-class depreciation input for Form 4562" />
       <DataTable
+        // ≤5 rows (one per MACRS class). Stays atomic.
+        keepTogether
         columns={[
           {
             key: "label",

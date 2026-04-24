@@ -2,6 +2,15 @@ import "server-only";
 
 import { z } from "zod";
 
+// `.env` files cannot express undefined — cleared-but-present keys arrive as
+// "". Coerce empty/whitespace strings to undefined before validation so an
+// optional `STRIPE_SECRET_KEY=` line doesn't fail a `startsWith("sk_")` check.
+const optional = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    schema.optional(),
+  );
+
 /**
  * Server-side env schema. Validated at module load so missing or malformed
  * values crash early at boot instead of silently at request time.
@@ -29,45 +38,45 @@ const serverEnvSchema = z.object({
   // Stripe — OPTIONAL at the schema level so local dev without Stripe can
   // still boot. Individual consumers check existence via
   // `isStripeConfigured()` or handle `undefined` directly.
-  STRIPE_SECRET_KEY: z.string().startsWith("sk_").optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
-  STRIPE_PRICE_ID_DIY: z.string().startsWith("price_").optional(),
-  STRIPE_PRICE_ID_TIER_1: z.string().startsWith("price_").optional(),
-  STRIPE_PRICE_ID_TIER_2: z.string().startsWith("price_").optional(),
+  STRIPE_SECRET_KEY: optional(z.string().startsWith("sk_")),
+  STRIPE_WEBHOOK_SECRET: optional(z.string().startsWith("whsec_")),
+  STRIPE_PRICE_ID_DIY: optional(z.string().startsWith("price_")),
+  STRIPE_PRICE_ID_TIER_1: optional(z.string().startsWith("price_")),
+  STRIPE_PRICE_ID_TIER_2: optional(z.string().startsWith("price_")),
 
   // Resend — optional. `getResend()` returns null when missing so dev
   // callers degrade to console logging.
-  RESEND_API_KEY: z.string().startsWith("re_").optional(),
-  RESEND_FROM_EMAIL: z.string().min(5).optional(),
+  RESEND_API_KEY: optional(z.string().startsWith("re_")),
+  RESEND_FROM_EMAIL: optional(z.string().min(5)),
 
   // Inngest — optional. User-action entry points use `safeInngestSend`
   // which degrades to a structured log line when Inngest is unreachable.
-  INNGEST_EVENT_KEY: z.string().min(10).optional(),
-  INNGEST_SIGNING_KEY: z.string().min(10).optional(),
+  INNGEST_EVENT_KEY: optional(z.string().min(10)),
+  INNGEST_SIGNING_KEY: optional(z.string().min(10)),
 
   // Sentry
-  SENTRY_DSN: z.string().url().optional(),
-  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
-  SENTRY_ORG: z.string().optional(),
-  SENTRY_PROJECT: z.string().optional(),
-  SENTRY_AUTH_TOKEN: z.string().optional(),
+  SENTRY_DSN: optional(z.string().url()),
+  NEXT_PUBLIC_SENTRY_DSN: optional(z.string().url()),
+  SENTRY_ORG: optional(z.string()),
+  SENTRY_PROJECT: optional(z.string()),
+  SENTRY_AUTH_TOKEN: optional(z.string()),
 
   // PostHog
-  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+  NEXT_PUBLIC_POSTHOG_KEY: optional(z.string()),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().default("https://us.i.posthog.com"),
-  POSTHOG_API_KEY: z.string().optional(),
+  POSTHOG_API_KEY: optional(z.string()),
 
   // Google Places
-  NEXT_PUBLIC_GOOGLE_MAPS_KEY: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_MAPS_KEY: optional(z.string()),
 
   // Upstash
-  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  UPSTASH_REDIS_REST_URL: optional(z.string().url()),
+  UPSTASH_REDIS_REST_TOKEN: optional(z.string()),
 
   // Promo bypass (founder / QA only). When set, enables the `promoCode`
   // path on /get-started that skips Stripe and creates the study directly.
   // Leave unset in production — presence of the var is the enable flag.
-  FISHER_PROMO_CODE: z.string().optional(),
+  FISHER_PROMO_CODE: optional(z.string()),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

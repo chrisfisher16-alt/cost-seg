@@ -21,17 +21,21 @@ export function computeYearOneProjection(lineItems: Line[]): YearOneProjection {
   let residential = 0;
   let commercial = 0;
   for (const li of lineItems) {
+    // Coalesce missing/NaN amounts to 0 so a single malformed line
+    // item can't poison every downstream sum into `$NaN`. See deliver.ts
+    // for the primary fix (always map v2 → v1 field names).
+    const cents = Number.isFinite(li.amountCents) ? li.amountCents : 0;
     switch (li.category) {
       case "5yr":
       case "7yr":
       case "15yr":
-        bonus += li.amountCents;
+        bonus += cents;
         break;
       case "27_5yr":
-        residential += li.amountCents;
+        residential += cents;
         break;
       case "39yr":
-        commercial += li.amountCents;
+        commercial += cents;
         break;
     }
   }
@@ -53,8 +57,9 @@ export function groupByDepreciationClass(
   const buckets = new Map<DepreciationClassKey, { amountCents: number; count: number }>();
   for (const li of lineItems) {
     if (!isKnownClass(li.category)) continue;
+    const cents = Number.isFinite(li.amountCents) ? li.amountCents : 0;
     const b = buckets.get(li.category) ?? { amountCents: 0, count: 0 };
-    b.amountCents += li.amountCents;
+    b.amountCents += cents;
     b.count += 1;
     buckets.set(li.category, b);
   }
