@@ -90,11 +90,21 @@ export interface MergeCandidatesResult {
     illegalResidualsDropped: number;
     receiptLines: number;
     photoLines: number;
+    /**
+     * Pre-scale sum of non-residual adjusted costs. When this exceeds
+     * `buildingValueCents`, merge scales every non-residual line down
+     * proportionally; `scaledDownRatio` records the scale factor
+     * applied (1.0 means no scaling happened). Observed drift in this
+     * stat over time indicates the classifier is systematically
+     * over-allocating — a signal the merge heuristic needs tightening.
+     */
+    preScaleNonResidualSumCents: number;
+    scaledDownRatio: number;
   };
   /**
-   * Sum of non-residual adjusted costs. When this exceeds buildingValue,
-   * the orchestrator throws a balance error and retries the whole
-   * fan-out once. Exposed so the orchestrator doesn't have to re-sum.
+   * Post-scale sum of non-residual adjusted costs. Always ≤ building
+   * value after merge completes. Exposed so the orchestrator doesn't
+   * have to re-sum.
    */
   nonResidualSumCents: number;
 }
@@ -184,13 +194,56 @@ export function mergeCandidates(input: MergeCandidatesInput): MergeCandidatesRes
   }
 
   const mergedPhotoItems = Array.from(photoByKey.values());
-  const nonResidual = [...receiptItems, ...mergedPhotoItems];
+  const preScaleNonResidual = [...receiptItems, ...mergedPhotoItems];
+  const preScaleNonResidualSumCents = preScaleNonResidual.reduce(
+    (acc, li) => acc + li.adjustedCostCents,
+    0,
+  );
+
+  // Proportional scale-down safety net.
+  //
+  // The fan-out classifier occasionally over-allocates — the merge
+  // dedupe heuristic can't catch every cross-photo duplicate (e.g.
+  // "rustic wooden dining table" vs. "rectangular dining table with
+  // bench" don't normalize-match), and on photo-rich studies the
+  // cumulative drift can push Σ(adjustedCosts) past building value.
+  // Before this fix, the orchestrator retried the whole fan-out with
+  // a balance-error prompt, which (a) cost another ~25 min of Opus
+  // time and (b) typically produced the same systematic over-
+  // allocation the second time — resulting in
+  // `NonRetriableError: Asset schedule did not balance after retry`.
+  //
+  // New behavior: when Σ > building value, scale each non-residual
+  // item's `adjustedCostCents` and `comparable.unitCostCents` by
+  // `buildingValue / Σ`. The arithmetic relation
+  // (adjustedCost = qty × unitCost × multipliers) is preserved
+  // because both sides of that product are scaled by the same factor.
+  // The residual lands at 0. The schedule ships.
+  //
+  // Drift shows up in the `classifier.dedupe_stats` StudyEvent as
+  // `scaledDownRatio < 1.0` — watch this metric; a persistent ratio
+  // under ~0.8 is the signal to tighten the merge heuristic.
+  const nonResidual: AssetLineItemV2[] = [];
+  let scaledDownRatio = 1;
+  if (preScaleNonResidualSumCents > input.buildingValueCents && preScaleNonResidualSumCents > 0) {
+    scaledDownRatio = input.buildingValueCents / preScaleNonResidualSumCents;
+    for (const item of preScaleNonResidual) {
+      const scaledAdjusted = Math.max(0, Math.round(item.adjustedCostCents * scaledDownRatio));
+      const scaledUnit = Math.max(0, Math.round(item.comparable.unitCostCents * scaledDownRatio));
+      nonResidual.push({
+        ...item,
+        adjustedCostCents: scaledAdjusted,
+        comparable: { ...item.comparable, unitCostCents: scaledUnit },
+      });
+    }
+  } else {
+    nonResidual.push(...preScaleNonResidual);
+  }
   const nonResidualSumCents = nonResidual.reduce((acc, li) => acc + li.adjustedCostCents, 0);
 
-  // Build the residual line. If nonResidualSum > buildingValue, the
-  // caller decides what to do (retry the fan-out with a balance error).
-  // We still emit a residual line for schema compliance; its cents may
-  // be negative, which downstream validation catches.
+  // Build the residual line. After the scale-down path, residualCents
+  // is ≥ 0 by construction (within 1¢ rounding drift, which
+  // applyResidualPlug absorbs downstream).
   const residual = buildResidual(input.residualClass);
   const residualCents = input.buildingValueCents - nonResidualSumCents;
   const residualWithPlug: AssetLineItemV2 = {
@@ -215,6 +268,8 @@ export function mergeCandidates(input: MergeCandidatesInput): MergeCandidatesRes
       illegalResidualsDropped,
       receiptLines: receiptItems.length,
       photoLines: mergedPhotoItems.length,
+      preScaleNonResidualSumCents,
+      scaledDownRatio,
     },
     nonResidualSumCents,
   };
