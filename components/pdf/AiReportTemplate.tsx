@@ -998,7 +998,13 @@ function MethodologyPage(props: AiReportProps) {
         <Text style={{ fontFamily: "Helvetica-Bold" }}>Appendix D</Text>.
       </Text>
 
-      <View style={baseStyles.disclosureBox}>
+      {/* wrap={false}: a bordered View that splits across a page
+          boundary triggers react-pdf's clipBorderTop crash
+          ("unsupported number: -1.9e+21"). The disclosure copy is
+          short enough to always fit on a single page, so keeping it
+          atomic is free. Same reasoning applied to every other
+          bordered wrapper in this template. */}
+      <View style={baseStyles.disclosureBox} wrap={false}>
         <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>
           Important scope disclosure.
         </Text>
@@ -1129,7 +1135,8 @@ function AppendixAContent(props: AiReportProps) {
         proportionally among components adjusted for time, location, physical depreciation, and
         functional obsolescence.
       </Text>
-      <View style={baseStyles.panelBox}>
+      {/* wrap={false} — clipBorderTop crash guard (see disclosure box above). */}
+      <View style={baseStyles.panelBox} wrap={false}>
         <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>Allocation formula</Text>
         <Text style={{ fontFamily: "Courier", fontSize: 9 }}>
           Component Allocated Value = (Component Adjusted Value / Σ Adjusted Values) × Total Basis
@@ -1433,7 +1440,8 @@ function AppendixCContent(props: AiReportProps) {
         />
       </View>
 
-      <View style={baseStyles.panelBox}>
+      {/* wrap={false} — clipBorderTop crash guard. */}
+      <View style={baseStyles.panelBox} wrap={false}>
         <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>
           Engineer-Reviewed tier
         </Text>
@@ -1748,7 +1756,8 @@ function AppendixEContent(
         <Form3115Checkbox label="Retain this study, the asset schedule, and source documentation for the life of the depreciation schedule." />
       </View>
 
-      <View style={baseStyles.disclosureBox}>
+      {/* wrap={false} — clipBorderTop crash guard. */}
+      <View style={baseStyles.disclosureBox} wrap={false}>
         <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>
           Decision-support only.
         </Text>
