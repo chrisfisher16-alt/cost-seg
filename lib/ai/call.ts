@@ -11,6 +11,90 @@ import { getAnthropic } from "./client";
 import { computeCostUsd } from "./cost";
 
 /**
+ * Retry policy for transient Anthropic errors. Applies to every
+ * `messages.stream().finalMessage()` call made through `callTool`.
+ *
+ * The platform returns `overloaded_error` (HTTP 529) when capacity is
+ * briefly constrained — common on newly-released models like Sonnet
+ * 4.6 during spikes. `rate_limit_error` (429) signals the account
+ * has hit an RPM/TPM cap; also transient. Both are safe to retry with
+ * exponential backoff; neither indicates a prompt-level bug.
+ *
+ * The SDK's built-in retry is 2 attempts, which isn't enough for
+ * sustained overloads. Exposed here so the whole pipeline (photo
+ * slices, document classifier, narrative, describe-photos) gets the
+ * same recovery budget.
+ */
+const MAX_TRANSIENT_RETRIES = 3;
+const BACKOFF_BASE_MS = 2_000;
+const BACKOFF_MAX_MS = 20_000;
+
+function isTransientAnthropicError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { status?: number; error?: { type?: string }; name?: string };
+  // Status-based detection — covers both the SDK's own APIError and
+  // anything raised as a plain object with status.
+  if (e.status === 429 || e.status === 529 || (typeof e.status === "number" && e.status >= 500)) {
+    return true;
+  }
+  // Payload-based detection — the SDK sometimes wraps errors so only
+  // `error.type` is set. Seen on stream-mid errors.
+  const t = e.error?.type;
+  if (t === "overloaded_error" || t === "rate_limit_error" || t === "api_error") {
+    return true;
+  }
+  // Message-based fallback — catch any remaining shape variations.
+  const msg = (err as { message?: string }).message ?? "";
+  return /overloaded|rate.?limit|too many requests|temporarily unavailable/i.test(msg);
+}
+
+function backoffMs(attempt: number): number {
+  const expo = Math.min(BACKOFF_BASE_MS * 2 ** attempt, BACKOFF_MAX_MS);
+  // ±25% jitter — spreads retries when many slices hit the same
+  // overload window at once.
+  const jitter = expo * (0.75 + Math.random() * 0.5);
+  return Math.round(jitter);
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Call `messages.stream().finalMessage()` with transient-error retry.
+ * Non-transient errors (invalid_request, auth, schema validation
+ * downstream) bubble immediately without burning retry budget.
+ *
+ * Exported for unit tests — production callers use `callTool` which
+ * wraps this with schema validation + audit logging.
+ */
+export async function streamFinalMessageWithRetry(
+  client: Anthropic,
+  params: Anthropic.Messages.MessageStreamParams,
+  operation: string,
+): Promise<Anthropic.Messages.Message> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt += 1) {
+    try {
+      return await client.messages.stream(params).finalMessage();
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientAnthropicError(err) || attempt === MAX_TRANSIENT_RETRIES) {
+        throw err;
+      }
+      const wait = backoffMs(attempt);
+      console.warn(
+        `[ai] ${operation}: transient Anthropic error on attempt ${attempt + 1}/${MAX_TRANSIENT_RETRIES + 1}; retrying in ${wait}ms`,
+        (err as { error?: unknown }).error ?? err,
+      );
+      await sleep(wait);
+    }
+  }
+  // Unreachable — the loop either returns or throws.
+  throw lastErr;
+}
+
+/**
  * One attachment passed alongside the user message. Three shapes:
  *   • `document` — PDF bytes, forwarded as a Claude document content block.
  *   • `image` — JPEG/PNG bytes, forwarded as an image content block.
@@ -160,16 +244,22 @@ export async function callTool<TOutput>(
   // alone — even when the actual response comes back in under a minute.
   // `finalMessage()` waits for the stream to complete and returns the
   // fully-assembled Message, so from here on the code is identical.
-  let response = await client.messages
-    .stream({
+  //
+  // Wrapped in `streamFinalMessageWithRetry` so `overloaded_error` /
+  // `rate_limit_error` / 5xx responses (common on newly-released
+  // models during capacity spikes) don't fail the whole Inngest step.
+  let response = await streamFinalMessageWithRetry(
+    client,
+    {
       model: args.model,
       max_tokens: maxTokens,
       system: args.system,
       messages: [{ role: "user", content }],
       tools,
       tool_choice: { type: "tool", name: args.tool.name },
-    })
-    .finalMessage();
+    },
+    args.operation,
+  );
 
   let toolUseBlock = response.content.find(
     (block) => block.type === "tool_use" && block.name === args.tool.name,
@@ -199,8 +289,9 @@ export async function callTool<TOutput>(
     // billed — the first attempt is sunk cost.
     const firstErrorMessage = parsed.error.message;
     const firstToolUseId = toolUseBlock.id;
-    response = await client.messages
-      .stream({
+    response = await streamFinalMessageWithRetry(
+      client,
+      {
         model: args.model,
         max_tokens: maxTokens,
         system: args.system,
@@ -221,8 +312,9 @@ export async function callTool<TOutput>(
         ],
         tools,
         tool_choice: { type: "tool", name: args.tool.name },
-      })
-      .finalMessage();
+      },
+      `${args.operation}:repair`,
+    );
     toolUseBlock = response.content.find(
       (block) => block.type === "tool_use" && block.name === args.tool.name,
     );
