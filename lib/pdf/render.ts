@@ -33,27 +33,73 @@ export async function renderAiReportPdf(props: AiReportProps): Promise<Buffer> {
     return await renderToBuffer(AiReportTemplate(props));
   } catch (err) {
     if (!isCoordinateOverflowError(err)) throw err;
-    console.error(
-      `[pdf] primary render hit react-pdf coordinate overflow; retrying with sanitized props.`,
-      { study: props.studyId, message: errorMessage(err) },
-    );
-    const sanitized = sanitizeForFallbackRender(props);
+    console.error(`[pdf] primary render hit react-pdf coordinate overflow; entering fallback.`, {
+      study: props.studyId,
+      message: errorMessage(err),
+    });
+    return renderFallbackCascade(sanitizeForFallbackRender(props));
+  }
+}
+
+/**
+ * Fallback cascade for diagnosing which appendix triggers the crash.
+ *
+ * Tries each narrower render in sequence; returns the first that
+ * succeeds and logs which mode worked so the next pass of template
+ * hardening can target the right appendix.
+ *
+ *   1. Skip Appendix B only (keep D). If this succeeds, B is the
+ *      culprit.
+ *   2. Skip Appendix D only (keep B). If this succeeds, D is the
+ *      culprit.
+ *   3. Skip both. Guaranteed-minimal render; confirms the bug is
+ *      somewhere in B or D (or both) rather than in the core.
+ *
+ * Mode 3 is our current known-good fallback. Modes 1+2 are purely
+ * diagnostic — they don't hurt ops because if they fail, we just fall
+ * through to mode 3 and still ship. Vercel function logs surface the
+ * winning mode so we know which appendix to fix first.
+ */
+async function renderFallbackCascade(sanitized: AiReportProps): Promise<Buffer> {
+  const attempts: Array<{
+    mode: string;
+    props: AiReportProps & { skipAppendixB?: boolean; skipAppendixD?: boolean };
+  }> = [
+    { mode: "skip-B-only", props: { ...sanitized, skipAppendixB: true } },
+    { mode: "skip-D-only", props: { ...sanitized, skipAppendixD: true } },
+    { mode: "skip-both", props: { ...sanitized, skipAppendixB: true, skipAppendixD: true } },
+  ];
+
+  let lastErr: unknown;
+  for (const attempt of attempts) {
     try {
-      // `safeMode: true` makes the template skip Appendix B (per-asset
-      // detail cards) and Appendix D (expenditure schedule). Those
-      // appendices are the empirical trigger of the clipBorderTop
-      // crash — even with sanitized strings + dropped photos, the
-      // accumulated layout state across many detail-heavy pages can
-      // still explode. Skipping them guarantees the render succeeds.
-      return await renderToBuffer(AiReportTemplate({ ...sanitized, safeMode: true }));
-    } catch (fallbackErr) {
-      console.error(`[pdf] sanitized fallback also failed`, {
-        study: props.studyId,
-        message: errorMessage(fallbackErr),
-      });
-      throw fallbackErr;
+      const buffer = await renderToBuffer(AiReportTemplate(attempt.props));
+      console.warn(
+        `[pdf] fallback succeeded in mode=${attempt.mode} for study=${sanitized.studyId}. ` +
+          `The skipped appendix is the clipBorderTop-crash trigger on this study's data.`,
+      );
+      return buffer;
+    } catch (err) {
+      lastErr = err;
+      if (!isCoordinateOverflowError(err)) {
+        // Different failure mode — stop trying, surface it.
+        throw err;
+      }
+      console.warn(
+        `[pdf] fallback mode=${attempt.mode} also hit coordinate overflow; trying next mode.`,
+        { study: sanitized.studyId, message: errorMessage(err) },
+      );
     }
   }
+
+  // All three fallback modes crashed with coordinate overflow — the
+  // bug is in the core report shell, not the appendices. Surface the
+  // last error; caller handles the study-FAILED transition.
+  console.error(`[pdf] every fallback mode failed`, {
+    study: sanitized.studyId,
+    message: errorMessage(lastErr),
+  });
+  throw lastErr;
 }
 
 function errorMessage(err: unknown): string {
