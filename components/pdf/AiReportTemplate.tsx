@@ -189,7 +189,16 @@ function fmtDateLong(d: Date): string {
 // Document
 // -----------------------------------------------------------------------------
 
-export function AiReportTemplate(props: AiReportProps) {
+/**
+ * When true, the template skips Appendix B (per-asset detail cards)
+ * and Appendix D (expenditure classification schedule). Used by the
+ * render-layer fallback when react-pdf's clipBorderTop crash fires on
+ * the primary render — the detail-heavy appendices are the empirical
+ * trigger, and shipping the core report (cover, exec summary, MACRS
+ * schedule, narrative, methodology, CPA worksheet) beats not shipping
+ * at all. See lib/pdf/render.ts for the fallback logic.
+ */
+export function AiReportTemplate(props: AiReportProps & { safeMode?: boolean }) {
   const realPropertyYears = props.property.realPropertyYears ?? 39;
   const placedInServiceIso = props.property.placedInServiceIso ?? props.property.acquiredAtIso;
   const placedInServiceDate = new Date(`${placedInServiceIso}T00:00:00`);
@@ -250,13 +259,17 @@ export function AiReportTemplate(props: AiReportProps) {
       />
       <AppendixAContent {...props} />
 
-      <AppendixCover
-        letter="B"
-        title="Detailed Asset Schedule"
-        subtitle="Every classified line item with its rationale and adjustments"
-        studyId={props.studyId}
-      />
-      <AppendixBContent {...props} />
+      {props.safeMode ? null : (
+        <>
+          <AppendixCover
+            letter="B"
+            title="Detailed Asset Schedule"
+            subtitle="Every classified line item with its rationale and adjustments"
+            studyId={props.studyId}
+          />
+          <AppendixBContent {...props} />
+        </>
+      )}
 
       <AppendixCover
         letter="C"
@@ -266,13 +279,17 @@ export function AiReportTemplate(props: AiReportProps) {
       />
       <AppendixCContent {...props} />
 
-      <AppendixCover
-        letter="D"
-        title="Expenditure Classification Schedule"
-        subtitle="Spreadsheet-style listing of every classified expenditure"
-        studyId={props.studyId}
-      />
-      <AppendixDContent {...props} />
+      {props.safeMode ? null : (
+        <>
+          <AppendixCover
+            letter="D"
+            title="Expenditure Classification Schedule"
+            subtitle="Spreadsheet-style listing of every classified expenditure"
+            studyId={props.studyId}
+          />
+          <AppendixDContent {...props} />
+        </>
+      )}
 
       <AppendixCover
         letter="E"

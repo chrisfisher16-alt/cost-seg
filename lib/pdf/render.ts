@@ -39,7 +39,13 @@ export async function renderAiReportPdf(props: AiReportProps): Promise<Buffer> {
     );
     const sanitized = sanitizeForFallbackRender(props);
     try {
-      return await renderToBuffer(AiReportTemplate(sanitized));
+      // `safeMode: true` makes the template skip Appendix B (per-asset
+      // detail cards) and Appendix D (expenditure schedule). Those
+      // appendices are the empirical trigger of the clipBorderTop
+      // crash — even with sanitized strings + dropped photos, the
+      // accumulated layout state across many detail-heavy pages can
+      // still explode. Skipping them guarantees the render succeeds.
+      return await renderToBuffer(AiReportTemplate({ ...sanitized, safeMode: true }));
     } catch (fallbackErr) {
       console.error(`[pdf] sanitized fallback also failed`, {
         study: props.studyId,
