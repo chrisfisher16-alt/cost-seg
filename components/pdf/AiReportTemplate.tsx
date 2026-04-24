@@ -311,6 +311,7 @@ function CoverPage(props: AiReportProps & { taxYear: number }) {
           gracefully omits the whole block when no hero is available. */}
       {heroPhoto ? (
         <View
+          wrap={false}
           style={{
             marginBottom: 20,
             borderRadius: 8,
@@ -324,6 +325,7 @@ function CoverPage(props: AiReportProps & { taxYear: number }) {
       ) : null}
 
       <View
+        wrap={false}
         style={{
           backgroundColor: pdfColors.primarySoft,
           borderColor: pdfColors.primarySoftBorder,
@@ -354,6 +356,7 @@ function CoverPage(props: AiReportProps & { taxYear: number }) {
       <View style={{ flex: 1 }} />
 
       <View
+        wrap={false}
         style={{
           borderTopWidth: 1,
           borderTopColor: pdfColors.hairline,
@@ -502,8 +505,12 @@ function TableOfContents(props: AiReportProps) {
 
       <View style={{ marginTop: 8 }}>
         {sections.map((s, i) => (
+          // wrap={false} on each bordered row — splitting a bordered
+          // View across a page boundary triggers react-pdf's
+          // clipBorderTop crash (see AssetDetailCard comment).
           <View
             key={i}
+            wrap={false}
             style={{
               flexDirection: "row",
               paddingVertical: 5,
@@ -1562,7 +1569,13 @@ function AppendixEContent(
         before filing.
       </Text>
 
+      {/* wrap={false} — the "Recommended filing" card is a bordered
+          View; splitting it across a page boundary triggers
+          react-pdf's clipBorderTop crash (see comment on
+          AssetDetailCard). The summary paragraph is short enough to
+          always fit on one page. */}
       <View
+        wrap={false}
         style={{
           marginTop: 14,
           padding: 16,
