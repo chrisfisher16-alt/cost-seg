@@ -190,15 +190,22 @@ function fmtDateLong(d: Date): string {
 // -----------------------------------------------------------------------------
 
 /**
- * When true, the template skips Appendix B (per-asset detail cards)
- * and Appendix D (expenditure classification schedule). Used by the
- * render-layer fallback when react-pdf's clipBorderTop crash fires on
- * the primary render — the detail-heavy appendices are the empirical
- * trigger, and shipping the core report (cover, exec summary, MACRS
- * schedule, narrative, methodology, CPA worksheet) beats not shipping
- * at all. See lib/pdf/render.ts for the fallback logic.
+ * Granular skip flags used by the render-layer fallback to diagnose
+ * which appendix triggers react-pdf's clipBorderTop crash. The
+ * fallback sequence (see lib/pdf/render.ts) tries skipping only B,
+ * only D, then both — the first mode that renders cleanly identifies
+ * the culprit for a future targeted fix.
+ *
+ * Both appendices are detail-heavy (Appendix B: 20+ pages of
+ * per-asset cards; Appendix D: big expenditure-classification table)
+ * and either can accumulate enough layout state to overflow pdfkit's
+ * coordinate engine on a sufficiently dense study.
+ *
+ * Normal renders pass neither flag — both appendices render.
  */
-export function AiReportTemplate(props: AiReportProps & { safeMode?: boolean }) {
+export function AiReportTemplate(
+  props: AiReportProps & { skipAppendixB?: boolean; skipAppendixD?: boolean },
+) {
   const realPropertyYears = props.property.realPropertyYears ?? 39;
   const placedInServiceIso = props.property.placedInServiceIso ?? props.property.acquiredAtIso;
   const placedInServiceDate = new Date(`${placedInServiceIso}T00:00:00`);
@@ -259,7 +266,7 @@ export function AiReportTemplate(props: AiReportProps & { safeMode?: boolean }) 
       />
       <AppendixAContent {...props} />
 
-      {props.safeMode ? null : (
+      {props.skipAppendixB ? null : (
         <>
           <AppendixCover
             letter="B"
@@ -279,7 +286,7 @@ export function AiReportTemplate(props: AiReportProps & { safeMode?: boolean }) 
       />
       <AppendixCContent {...props} />
 
-      {props.safeMode ? null : (
+      {props.skipAppendixD ? null : (
         <>
           <AppendixCover
             letter="D"
