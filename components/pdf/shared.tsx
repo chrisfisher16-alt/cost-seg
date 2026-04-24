@@ -509,7 +509,11 @@ export function DataTable<Row>({
 }) {
   return (
     <View style={{ marginTop: 8 }} wrap={!keepTogether}>
-      <View style={baseStyles.tableHeaderRow}>
+      {/* wrap={false} on header + each row + footer: bordered Views
+          that split across a page boundary trigger react-pdf's
+          clipBorderTop crash. Rows and footer already had it; header
+          was missing and could crash on long tables. */}
+      <View style={baseStyles.tableHeaderRow} wrap={false}>
         {columns.map((col) => (
           <Text
             key={col.key}
