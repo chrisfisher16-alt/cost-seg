@@ -152,56 +152,13 @@ describe("runFanout — skip empty photos + receipt manifest plumbing", () => {
   });
 });
 
-describe("runFanout — balance + retry behavior", () => {
-  it("retries once with the validation error threaded in when the first pass is unbalanced", async () => {
-    const classifyPhoto = makePhotoFn();
-    // First attempt returns a non-residual sum EXCEEDING building value →
-    // balance error → retry.
-    classifyPhoto
-      .mockResolvedValueOnce({
-        lineItems: [line({ name: "mega", adjustedCostCents: 3_000_000 })],
-        assumptions: "",
-      })
-      .mockResolvedValueOnce({
-        lineItems: [line({ name: "mega", adjustedCostCents: 500_000 })],
-        assumptions: "",
-      });
-
-    const classifyReceipts = makeReceiptsFn().mockResolvedValue({ lineItems: [], assumptions: "" });
-
-    const result = await runFanout(
-      baseInput({
-        buildingValueCents: 2_000_000,
-        photos: [
-          {
-            documentId: "p1",
-            filename: "a.jpg",
-            analysis: photoAnalysis([
-              {
-                name: "mega",
-                category: "furniture",
-                quantity: 1,
-                condition: "good",
-                conditionJustification: "ok",
-              },
-            ]),
-          },
-        ],
-      }),
-      { classifyPhoto, classifyReceipts },
-    );
-
-    expect(classifyPhoto).toHaveBeenCalledTimes(2);
-    // Second call received a priorAttemptError.
-    expect(classifyPhoto.mock.calls[1]![0].priorAttemptError).toBeTruthy();
-    expect(classifyPhoto.mock.calls[1]![0].priorAttemptError).toMatch(
-      /exceed|non-residual|building value/i,
-    );
-    expect(result.balanced).toBe(true);
-    expect(result.attempts).toBe(2);
-  });
-
-  it("returns balanced=false when both attempts fail the balance check", async () => {
+describe("runFanout — scale-down + retry behavior", () => {
+  it("ships a balanced schedule via scale-down on a single attempt when the model over-allocates (no retry)", async () => {
+    // First attempt returns a non-residual sum EXCEEDING building value.
+    // Before this fix, the orchestrator retried the whole fan-out with
+    // a balance-error prompt — ~25 min of wall-clock on photo-rich
+    // studies. Now the merge's scale-down handles it on the first
+    // attempt and we ship.
     const classifyPhoto = makePhotoFn().mockResolvedValue({
       lineItems: [line({ name: "mega", adjustedCostCents: 3_000_000 })],
       assumptions: "",
@@ -230,9 +187,49 @@ describe("runFanout — balance + retry behavior", () => {
       { classifyPhoto, classifyReceipts },
     );
 
-    expect(result.balanced).toBe(false);
-    expect(result.balanceMessage).toBeTruthy();
-    expect(result.attempts).toBe(2);
+    // Only one fan-out attempt — scale-down obviates the retry.
+    expect(classifyPhoto).toHaveBeenCalledTimes(1);
+    expect(result.balanced).toBe(true);
+    expect(result.attempts).toBe(1);
+    expect(result.stats.scaledDownRatio).toBeLessThan(1);
+    expect(result.residualCents).toBeGreaterThanOrEqual(0);
+  });
+
+  it("never throws / never returns balanced=false even on extreme over-allocation", async () => {
+    // Extreme case — model over-allocates by 10x. Previously this
+    // caused a NonRetriableError after two failed attempts. Now the
+    // scale-down absorbs any ratio and ships a balanced schedule.
+    const classifyPhoto = makePhotoFn().mockResolvedValue({
+      lineItems: [line({ name: "mega", adjustedCostCents: 20_000_000 })],
+      assumptions: "",
+    });
+    const classifyReceipts = makeReceiptsFn().mockResolvedValue({ lineItems: [], assumptions: "" });
+
+    const result = await runFanout(
+      baseInput({
+        buildingValueCents: 2_000_000,
+        photos: [
+          {
+            documentId: "p1",
+            filename: "a.jpg",
+            analysis: photoAnalysis([
+              {
+                name: "mega",
+                category: "furniture",
+                quantity: 1,
+                condition: "good",
+                conditionJustification: "ok",
+              },
+            ]),
+          },
+        ],
+      }),
+      { classifyPhoto, classifyReceipts },
+    );
+
+    expect(result.balanced).toBe(true);
+    expect(result.stats.scaledDownRatio).toBeCloseTo(0.1, 5);
+    expect(classifyPhoto).toHaveBeenCalledTimes(1);
   });
 
   it("threads a caller-supplied priorAttemptError (from the review-retry loop) into attempt 1", async () => {

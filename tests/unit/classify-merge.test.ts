@@ -223,14 +223,47 @@ describe("mergeCandidates — residual + illegal residual dropping", () => {
     expect(residuals[0]!.name).toBe("Building structure (residual)");
   });
 
-  it("emits a negative residual when non-residual sum exceeds building value (caller retries)", () => {
+  it("scales non-residual items down proportionally when sum exceeds building value (never emits a negative residual)", () => {
     const result = mergeCandidates({
       slices: [{ lineItems: [photoItem({ name: "mega item", adjustedCostCents: 2_000_000 })] }],
       buildingValueCents: 1_000_000,
       residualClass: "27_5yr",
     });
+    // Post-scale: the single item's adjusted cost matches building
+    // value; residual is ~0 (within rounding); stats.scaledDownRatio
+    // is 0.5 (1,000,000 / 2,000,000).
+    const nonResidual = result.schedule.lineItems.filter((li) => li.isResidual !== true);
+    expect(nonResidual).toHaveLength(1);
+    expect(nonResidual[0]!.adjustedCostCents).toBe(1_000_000);
     const residual = result.schedule.lineItems.find((li) => li.isResidual === true)!;
-    expect(residual.adjustedCostCents).toBe(-1_000_000);
+    expect(residual.adjustedCostCents).toBe(0);
+    expect(result.stats.scaledDownRatio).toBeCloseTo(0.5, 5);
+    expect(result.stats.preScaleNonResidualSumCents).toBe(2_000_000);
+  });
+
+  it("scales unitCostCents alongside adjustedCostCents so the arithmetic relation holds", () => {
+    // Receipt item: multipliers all 1.0, so adjustedCost = qty × unitCost.
+    // After scale-down, both sides must still satisfy that relation.
+    const result = mergeCandidates({
+      slices: [{ lineItems: [receiptItem("oversized receipt", 2_500_000)] }],
+      buildingValueCents: 1_000_000,
+      residualClass: "27_5yr",
+    });
+    const scaled = result.schedule.lineItems.find((li) => li.isResidual !== true)!;
+    // adjustedCost == qty × unitCost × 1 × 1 × 1 × 1 (within 1¢ rounding)
+    const expectedFromArithmetic = Math.round(scaled.quantity * scaled.comparable.unitCostCents);
+    expect(Math.abs(scaled.adjustedCostCents - expectedFromArithmetic)).toBeLessThanOrEqual(1);
+  });
+
+  it("leaves adjustedCostCents unchanged when sum is within building value (no scaling)", () => {
+    const result = mergeCandidates({
+      slices: [{ lineItems: [photoItem({ name: "normal item", adjustedCostCents: 50_000 })] }],
+      buildingValueCents: 1_000_000,
+      residualClass: "27_5yr",
+    });
+    const item = result.schedule.lineItems.find((li) => li.isResidual !== true)!;
+    expect(item.adjustedCostCents).toBe(50_000);
+    expect(result.stats.scaledDownRatio).toBe(1);
   });
 });
 

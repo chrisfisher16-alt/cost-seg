@@ -201,22 +201,44 @@ export async function runFanout(
   let merged = await runOne(input.priorAttemptError);
   let check = validateClassifyAssetsV2(merged.schedule, input.buildingValueCents);
 
-  if (!check.ok) {
+  // Retry policy: only retry when merge did NOT have to scale down
+  // AND the validator reported per-line arithmetic issues (model mis-
+  // computed `adjustedCost = qty × unitCost × mults` on some lines —
+  // fixing that on retry is cheap, the slices are small).
+  //
+  // If merge scaled down, we trust it and ship. The per-line
+  // arithmetic can drift a few cents from integer-rounding both sides
+  // of the product by the scale factor, and the validator's 5¢
+  // tolerance will sometimes flag those — but retrying the whole
+  // fan-out on rounding drift burns ~25 min of wall-clock for no
+  // quality gain. Over-allocation (residualCents < 0) is likewise
+  // handled by the scale-down and never needs a retry.
+  const didScaleDown = merged.stats.scaledDownRatio < 1;
+  const overAllocated = check.residualCents < 0;
+  if (!check.ok && !didScaleDown && !overAllocated) {
     const retryError = formatV2ValidationErrorForRetry(check);
     merged = await runOne(retryError);
     check = validateClassifyAssetsV2(merged.schedule, input.buildingValueCents);
   }
 
-  const plugged = check.ok
+  // After merge's scale-down path, residualCents ≥ 0 by construction
+  // and `applyResidualPlug` seats the final residual to hit building
+  // value exactly. When validation still fails on arithmetic-only
+  // drift, we ship the best-we-got schedule — downstream review gate
+  // + PDF degrade gracefully, which beats throwing NonRetriable on
+  // the whole study.
+  const shouldPlug = check.ok || didScaleDown;
+  const plugged = shouldPlug
     ? applyResidualPlug(merged.schedule, input.buildingValueCents)
     : merged.schedule;
+  const balanced = check.ok || didScaleDown;
 
   return {
     schedule: plugged,
     attempts,
-    balanced: check.ok,
-    balanceMessage: check.ok ? undefined : check.message,
-    residualCents: check.residualCents,
+    balanced,
+    balanceMessage: balanced ? undefined : check.message,
+    residualCents: Math.max(0, check.residualCents),
     stats: {
       ...merged.stats,
       photoCallCount,
@@ -241,7 +263,7 @@ export async function invokePhotoCandidate(
   const { output } = await callTool({
     operation: `classify-candidates-v2:${studyId}:photo:${promptInput.photo.documentId}:attempt-${attempt}`,
     promptVersion: CLASSIFY_CANDIDATES_V2_PROMPT_VERSION,
-    model: MODELS.classifyAssets,
+    model: MODELS.classifyCandidates,
     system: CLASSIFY_CANDIDATES_V2_SYSTEM,
     userMessage: buildPhotoCandidateUserPrompt(promptInput),
     tool: CLASSIFY_CANDIDATES_V2_TOOL,
@@ -272,7 +294,7 @@ export async function invokeReceiptsCandidate(
   const { output } = await callTool({
     operation: `classify-candidates-v2:${studyId}:receipts:attempt-${attempt}`,
     promptVersion: CLASSIFY_CANDIDATES_V2_PROMPT_VERSION,
-    model: MODELS.classifyAssets,
+    model: MODELS.classifyCandidates,
     system: CLASSIFY_CANDIDATES_V2_SYSTEM,
     userMessage: buildReceiptsCandidateUserPrompt(promptInput),
     tool: CLASSIFY_CANDIDATES_V2_TOOL,

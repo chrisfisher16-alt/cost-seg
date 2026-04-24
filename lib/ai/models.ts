@@ -20,6 +20,13 @@ export const MODELS = {
   reviewReport: "claude-opus-4-7",
   decomposePurchasePrice: "claude-opus-4-7",
   classifyAssets: "claude-opus-4-7",
+  // v2 Phase 8 (ADR 0014) per-slice fan-out classifier. Sonnet is
+  // sufficient for per-photo slices — each call emits only 5-15 line
+  // items (vs the 80-180 the monolith had to coordinate), so global
+  // reasoning over the full schedule is handled deterministically by
+  // the merge + residual-plug stages downstream. Moving this to Sonnet
+  // cuts Step C wall-clock roughly in half and costs ~5× less per call.
+  classifyCandidates: "claude-sonnet-4-6",
   draftNarrative: "claude-opus-4-7",
   retryFallback: "claude-haiku-4-5-20251001",
 } as const;
