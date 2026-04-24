@@ -21,6 +21,7 @@ import {
   loadPhotoDataUrisByDocumentId,
   mapEnrichment,
   mapV2LineItems,
+  pickHeroPhotoDocumentId,
   type V2LineItem,
 } from "@/lib/studies/pdf-v2-mapping";
 import { reclassifyV2ForDeliver } from "@/lib/studies/reclassify-for-deliver";
@@ -144,7 +145,9 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
       },
       documents: {
         where: { kind: "PROPERTY_PHOTO" },
-        select: { id: true, storagePath: true, mimeType: true },
+        // photoAnalysis is what the cover-hero picker keys off of
+        // (describe-photos v2 Phase 1 writes `roomType` here).
+        select: { id: true, storagePath: true, mimeType: true, photoAnalysis: true },
       },
     },
   });
@@ -168,11 +171,17 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
   const bonusEligible = isBonusEligible(study.property.acquiredAt);
   const acquiredAtIso = study.property.acquiredAt.toISOString().slice(0, 10);
 
-  // v2 Phase 5 (ADR 0012). When the persisted schedule is v2-shaped AND
-  // the flag is on, map the richer fields into the template props and
-  // inline property photos as data URIs. Off path: identical to v1.
-  const v2Pdf = isV2PdfEnabled() && isV2Schedule(study.assetSchedule);
-  const photoDataUris = v2Pdf
+  // v2 Phase 5 (ADR 0012). Shape-based routing is decoupled from the
+  // V2_REPORT_PDF flag: whenever the persisted schedule is v2-shaped we
+  // MUST map `adjustedCostCents → amountCents` or every cost in the PDF
+  // renders as `$NaN` (the v1 template path only reads `amountCents`,
+  // which v2 items don't have). The flag now gates only the expensive /
+  // feature additions — photo loading and property enrichment — so
+  // flipping it off degrades the report gracefully instead of producing
+  // garbage numbers.
+  const v2Shape = isV2Schedule(study.assetSchedule);
+  const v2FeaturesOn = v2Shape && isV2PdfEnabled();
+  const photoDataUris = v2FeaturesOn
     ? await loadPhotoDataUrisByDocumentId(
         study.documents.map((d) => ({
           documentId: d.id,
@@ -182,9 +191,29 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
       )
     : new Map<string, string>();
 
+  // Cover-page hero shot. Prefer an exterior-front photo (roomType
+  // tagged by the Phase 1 describe-photos pass); fall back through
+  // side/rear/yard, then the first photo with any analysis. Omitted
+  // entirely when V2 features are off — the cover page reverts to the
+  // text-only layout. `photoAnalysis.roomType` may be missing on
+  // older studies that ran before the Phase 1 describer landed; the
+  // picker tolerates nullish roomType by falling through to "first".
+  const heroDocumentId = v2FeaturesOn
+    ? pickHeroPhotoDocumentId(
+        study.documents.map((d) => ({
+          documentId: d.id,
+          roomType:
+            d.photoAnalysis && typeof d.photoAnalysis === "object" && "roomType" in d.photoAnalysis
+              ? ((d.photoAnalysis as { roomType?: string | null }).roomType ?? null)
+              : null,
+        })),
+      )
+    : null;
+  const heroPhotoDataUri = heroDocumentId ? (photoDataUris.get(heroDocumentId) ?? null) : null;
+
   // Mutable schedule view — the review retry loop below may replace it
   // when classify-assets-v2 is rerun on a content blocker.
-  let currentV2LineItems: V2LineItem[] | null = v2Pdf
+  let currentV2LineItems: V2LineItem[] | null = v2Shape
     ? (
         study.assetSchedule as unknown as {
           schema: "v2";
@@ -194,10 +223,10 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
     : null;
   let currentTotalCents = stored.totalCents;
 
-  const renderedEnrichment = v2Pdf ? mapEnrichment(study.property.enrichmentJson) : null;
+  const renderedEnrichment = v2FeaturesOn ? mapEnrichment(study.property.enrichmentJson) : null;
 
   function buildRenderedLineItems(): Array<Record<string, unknown>> {
-    if (v2Pdf && currentV2LineItems) {
+    if (v2Shape && currentV2LineItems) {
       return mapV2LineItems(currentV2LineItems, photoDataUris) as unknown as Array<
         Record<string, unknown>
       >;
@@ -232,6 +261,7 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
         acquiredAtIso,
         placedInServiceIso: acquiredAtIso,
         enrichment: renderedEnrichment,
+        heroPhotoDataUri,
       },
       decomposition: stored.decomposition,
       narrative: stored.narrative,
@@ -261,7 +291,7 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
   const enforce = isV2ReviewEnforceEnabled();
   const address = `${study.property.address}, ${study.property.city}, ${study.property.state}`;
   let buffer: Buffer;
-  if (reviewOn && v2Pdf) {
+  if (reviewOn && v2FeaturesOn) {
     const loop = await runRenderReviewLoop({
       renderPdf: () => renderAiReportPdf(buildProps()),
       runReview: (pdf) =>
@@ -316,7 +346,7 @@ export async function deliverAiReport(studyId: string): Promise<DeliverAiReportR
         studyId: study.id,
         address,
         pdf: buffer,
-        context: v2Pdf ? "v2 schedule" : "v1 schedule",
+        context: v2Shape ? "v2 schedule" : "v1 schedule",
         enforce,
       });
 

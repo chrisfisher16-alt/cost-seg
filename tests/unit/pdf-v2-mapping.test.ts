@@ -4,6 +4,7 @@ import {
   isV2Schedule,
   mapEnrichment,
   mapV2LineItems,
+  pickHeroPhotoDocumentId,
   type V2LineItem,
 } from "@/lib/studies/pdf-v2-mapping";
 
@@ -160,5 +161,57 @@ describe("loadPhotoDataUrisByDocumentId", () => {
     expect(result.has("p2")).toBe(false);
     vi.doUnmock("@/lib/storage/studies");
     vi.resetModules();
+  });
+});
+
+describe("pickHeroPhotoDocumentId — cover-hero selection", () => {
+  it("returns null for an empty candidate list", () => {
+    expect(pickHeroPhotoDocumentId([])).toBeNull();
+  });
+
+  it("picks exterior_front over every other roomType", () => {
+    expect(
+      pickHeroPhotoDocumentId([
+        { documentId: "kitchen", roomType: "kitchen" },
+        { documentId: "front", roomType: "exterior_front" },
+        { documentId: "yard", roomType: "yard" },
+      ]),
+    ).toBe("front");
+  });
+
+  it("falls through the exterior priority chain when front is absent", () => {
+    expect(
+      pickHeroPhotoDocumentId([
+        { documentId: "yard", roomType: "yard" },
+        { documentId: "rear", roomType: "exterior_rear" },
+        { documentId: "side", roomType: "exterior_side" },
+      ]),
+    ).toBe("side");
+    expect(
+      pickHeroPhotoDocumentId([
+        { documentId: "yard", roomType: "yard" },
+        { documentId: "rear", roomType: "exterior_rear" },
+      ]),
+    ).toBe("rear");
+    expect(
+      pickHeroPhotoDocumentId([
+        { documentId: "yard", roomType: "yard" },
+        { documentId: "kitchen", roomType: "kitchen" },
+      ]),
+    ).toBe("yard");
+  });
+
+  it("falls back to the first analyzed photo when no exterior/yard match", () => {
+    expect(
+      pickHeroPhotoDocumentId([
+        { documentId: "p1", roomType: null },
+        { documentId: "p2", roomType: "kitchen" },
+        { documentId: "p3", roomType: "primary_bath" },
+      ]),
+    ).toBe("p2");
+  });
+
+  it("falls back to the first photo when none have roomType at all", () => {
+    expect(pickHeroPhotoDocumentId([{ documentId: "p1" }, { documentId: "p2" }])).toBe("p1");
   });
 });

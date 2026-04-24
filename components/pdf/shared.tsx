@@ -224,6 +224,11 @@ export const baseStyles = StyleSheet.create({
     letterSpacing: -0.4,
     color: pdfColors.foreground,
     marginTop: 4,
+    // Explicit lineHeight: without it, react-pdf computes a line box
+    // that's slightly shorter than the glyph's actual descent, so the
+    // next sibling Text (kpiHint) renders with its top edge visually
+    // overlapping the number's bottom. 1.2 gives clean separation.
+    lineHeight: 1.2,
   },
   kpiValueAccent: {
     fontSize: 30,
@@ -231,11 +236,15 @@ export const baseStyles = StyleSheet.create({
     letterSpacing: -0.5,
     color: pdfColors.primary,
     marginTop: 4,
+    lineHeight: 1.2,
   },
   kpiHint: {
     fontSize: 8,
     color: pdfColors.subtle,
-    marginTop: 2,
+    // marginTop: 2 was visually fusing the hint into the big number
+    // above it on the exec-summary KPI box. 8 gives a full blank line
+    // at this fontSize.
+    marginTop: 8,
     lineHeight: 1.4,
   },
 
@@ -479,13 +488,27 @@ export function DataTable<Row>({
   columns,
   rows,
   footer,
+  keepTogether = false,
 }: {
   columns: DataTableColumn<Row>[];
   rows: Row[];
   footer?: Record<string, string>;
+  /**
+   * Treat the entire table (header + all rows + optional footer) as an
+   * atomic block — react-pdf will push the whole table to the next page
+   * rather than split it. Use for small reference tables (≤ 10 rows) in
+   * the methodology appendix; leave false (default) for the big asset
+   * schedule so long tables still paginate naturally row-by-row.
+   *
+   * Fixes the "table header rendered, then a page-boundary whitespace
+   * gap, then rows" artifact we saw on the Cost Estimation Sources
+   * section — individual rows had `wrap={false}` but nothing kept the
+   * header attached to them across a page break.
+   */
+  keepTogether?: boolean;
 }) {
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: 8 }} wrap={!keepTogether}>
       <View style={baseStyles.tableHeaderRow}>
         {columns.map((col) => (
           <Text
